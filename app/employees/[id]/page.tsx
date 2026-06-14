@@ -27,6 +27,8 @@ export default function EmployeeDetail() {
   const params = useParams()
   const [worker, setWorker] = useState<Worker | null>(null)
   const [loading, setLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
+  const [document, setDocument] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -41,6 +43,35 @@ export default function EmployeeDetail() {
     }
     fetchWorker()
   }, [params.id])
+
+  const generateDocument = async () => {
+    if (!worker) return
+    setGenerating(true)
+    setDocument(null)
+    const activeStatus = worker.residence_statuses?.find(s => s.is_active)
+
+    const prompt = `以下の外国人労働者の情報をもとに、在留資格更新許可申請書の下書きを日本語で作成してください。
+
+【申請者情報】
+氏名（漢字）: ${worker.name_kanji}
+氏名（ローマ字）: ${worker.name_romaji}
+国籍: ${worker.nationality}
+生年月日: ${worker.date_of_birth}
+パスポート番号: ${worker.passport_number}
+在留カード番号: ${worker.residence_card_number}
+在留資格: ${activeStatus?.status_type || '不明'}
+在留期限: ${activeStatus?.expiry_date || '不明'}
+
+申請書の形式で、申請理由・就労状況・今後の活動予定を含む文書を作成してください。`
+
+const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    })
+    const data = await res.json()
+    setDocument(data.text || 'エラーが発生しました')
+    setGenerating(false)  }
 
   const getDaysUntil = (dateStr: string) => {
     const diff = new Date(dateStr).getTime() - new Date().getTime()
@@ -95,7 +126,7 @@ export default function EmployeeDetail() {
           </div>
         </div>
 
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
           <div style={{background:"#fff",border:urgent?"1px solid #fecaca":"1px solid #e0e0e0",borderRadius:12,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
             <h2 style={{margin:"0 0 16px",fontSize:15,fontWeight:600,color:"#000"}}>在留情報</h2>
             {[
@@ -109,7 +140,13 @@ export default function EmployeeDetail() {
                 <span style={{fontSize:13,color:"#000",fontWeight:500}}>{item.value}</span>
               </div>
             ))}
-            <button style={{marginTop:16,background:"#dc2626",border:"none",borderRadius:6,padding:"10px 16px",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer",width:"100%"}}>更新申請書を生成 →</button>
+            <button
+              onClick={generateDocument}
+              disabled={generating}
+              style={{marginTop:16,background:generating?"#999":"#dc2626",border:"none",borderRadius:6,padding:"10px 16px",color:"#fff",fontSize:13,fontWeight:600,cursor:generating?"not-allowed":"pointer",width:"100%"}}
+            >
+              {generating ? '⏳ AI生成中...' : '更新申請書を生成 →'}
+            </button>
           </div>
 
           <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
@@ -149,6 +186,20 @@ export default function EmployeeDetail() {
             </div>
           </div>
         </div>
+
+        {/* AI生成結果 */}
+        {document && (
+          <div style={{background:"#fff",border:"1px solid #0066cc",borderRadius:12,padding:"24px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <h2 style={{margin:0,fontSize:15,fontWeight:600,color:"#000"}}>✨ AI生成：在留資格更新許可申請書</h2>
+              <button
+                onClick={()=>navigator.clipboard.writeText(document)}
+                style={{background:"#f0f0f0",border:"none",borderRadius:6,padding:"6px 12px",fontSize:12,cursor:"pointer",color:"#333"}}
+              >コピー</button>
+            </div>
+            <pre style={{margin:0,fontSize:13,lineHeight:1.8,color:"#333",whiteSpace:"pre-wrap",fontFamily:"system-ui,sans-serif"}}>{document}</pre>
+          </div>
+        )}
       </div>
     </div>
   )

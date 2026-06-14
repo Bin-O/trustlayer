@@ -23,7 +23,7 @@ export default function Dashboard() {
           <span style={{fontWeight:700,fontSize:18,color:"#000"}}>TrustLayer</span>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:16}}>
-          <button onClick={()=>router.push('/workers')} style={{background:"#0066cc",border:"none",borderRadius:6,padding:"8px 16px",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}}>外国人管理</button>
+          <button onClick={()=>router.push('/employees')} style={{background:"#0066cc",border:"none",borderRadius:6,padding:"8px 16px",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}}>外国人管理</button>
           <div style={{width:34,height:34,borderRadius:"50%",background:"#0066cc",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:"#fff",fontSize:14}}>田</div>
         </div>
       </div>
