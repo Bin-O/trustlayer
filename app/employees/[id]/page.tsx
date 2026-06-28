@@ -22,13 +22,105 @@ type Worker = {
   }[]
 }
 
+type Evaluation = {
+  attendance_score: number | null
+  performance_score: number | null
+  compliance_score: number | null
+  evaluated_at: string | null
+}
+
+type ScoreBreakdown = {
+  total: number
+  expiry: { score: number; max: number; label: string }
+  docs: { score: number; max: number; label: string }
+  attendance: { score: number | null; max: number; label: string }
+  performance: { score: number | null; max: number; label: string }
+  compliance: { score: number | null; max: number; label: string }
+  hasEvaluation: boolean
+}
+
+function calcTrustScore(worker: Worker, evaluation: Evaluation | null): ScoreBreakdown {
+  const activeStatus = worker.residence_statuses?.find(s => s.is_active)
+  const days = activeStatus
+    ? Math.ceil((new Date(activeStatus.expiry_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+    : -1
+
+  let expiryScore = 0
+  if (days >= 90) expiryScore = 30
+  else if (days >= 60) expiryScore = 22
+  else if (days >= 30) expiryScore = 12
+  else if (days >= 0) expiryScore = 5
+
+  let docScore = 0
+  if (worker.passport_number) docScore += 5
+  if (worker.residence_card_number) docScore += 5
+  if (activeStatus?.status_type) docScore += 5
+  if (activeStatus?.expiry_date) docScore += 5
+
+  const attendance = evaluation?.attendance_score ?? null
+  const performance = evaluation?.performance_score ?? null
+  const compliance = evaluation?.compliance_score ?? null
+  const hasEvaluation = evaluation !== null
+
+  const total = expiryScore + docScore + (attendance ?? 0) + (performance ?? 0) + (compliance ?? 0)
+
+  return {
+    total,
+    expiry: { score: expiryScore, max: 30, label: '在留期限管理' },
+    docs: { score: docScore, max: 20, label: '書類整備' },
+    attendance: { score: attendance, max: 20, label: '勤怠評価' },
+    performance: { score: performance, max: 20, label: '業務評価' },
+    compliance: { score: compliance, max: 10, label: 'コンプライアンス' },
+    hasEvaluation,
+  }
+}
+
+function ScoreBar({ score, max, hasData }: { score: number | null; max: number; hasData: boolean }) {
+  if (!hasData || score === null) {
+    return (
+      <div style={{ height: 6, borderRadius: 3, background: '#f0f0f0', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+      </div>
+    )
+  }
+  const pct = Math.round((score / max) * 100)
+  const color = pct >= 80 ? '#16a34a' : pct >= 50 ? '#d97706' : '#dc2626'
+  return (
+    <div style={{ height: 6, borderRadius: 3, background: '#f0f0f0', overflow: 'hidden' }}>
+      <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3, transition: 'width 0.4s ease' }} />
+    </div>
+  )
+}
+
+function ScoreRing({ score, max }: { score: number; max: number }) {
+  const pct = score / max
+  const color = pct >= 0.8 ? '#16a34a' : pct >= 0.5 ? '#d97706' : '#dc2626'
+  const r = 26
+  const circ = 2 * Math.PI * r
+  const dash = circ * pct
+  return (
+    <div style={{ position: 'relative', width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <svg width={72} height={72} style={{ position: 'absolute', transform: 'rotate(-90deg)' }}>
+        <circle cx={36} cy={36} r={r} fill="none" stroke="#f0f0f0" strokeWidth={6} />
+        <circle cx={36} cy={36} r={r} fill="none" stroke={color} strokeWidth={6}
+          strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
+      </svg>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color, lineHeight: 1 }}>{score}</div>
+        <div style={{ fontSize: 9, color: '#999', lineHeight: 1 }}>/100</div>
+      </div>
+    </div>
+  )
+}
+
 export default function EmployeeDetail() {
   const router = useRouter()
   const params = useParams()
   const [worker, setWorker] = useState<Worker | null>(null)
+  const [evaluation, setEvaluation] = useState<Evaluation | null>(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
-  const [document, setDocument] = useState<string | null>(null)
+  const [generatedDoc, setGeneratedDoc] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -44,10 +136,29 @@ export default function EmployeeDetail() {
     fetchWorker()
   }, [params.id])
 
+  useEffect(() => {
+    if (!params.id) return
+    const fetchEvaluation = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('evaluations')
+          .select('attendance_score, performance_score, compliance_score, evaluated_at')
+          .eq('worker_id', params.id)
+          .order('evaluated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (!error && data) setEvaluation(data)
+      } catch {
+        // evaluations table not yet created — ignore
+      }
+    }
+    fetchEvaluation()
+  }, [params.id])
+
   const generateDocument = async () => {
     if (!worker) return
     setGenerating(true)
-    setDocument(null)
+    setGeneratedDoc(null)
     const activeStatus = worker.residence_statuses?.find(s => s.is_active)
 
     const prompt = `以下の外国人労働者の情報をもとに、在留資格更新許可申請書の下書きを日本語で作成してください。
@@ -64,14 +175,21 @@ export default function EmployeeDetail() {
 
 申請書の形式で、申請理由・就労状況・今後の活動予定を含む文書を作成してください。`
 
-const res = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
-    })
-    const data = await res.json()
-    setDocument(data.text || 'エラーが発生しました')
-    setGenerating(false)  }
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      })
+      const data = await res.json()
+      setGeneratedDoc(data.text || 'エラーが発生しました')
+    } catch (e) {
+      console.error('[generate] error:', e)
+      setGeneratedDoc('通信エラーが発生しました。もう一度お試しください。')
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   const getDaysUntil = (dateStr: string) => {
     const diff = new Date(dateStr).getTime() - new Date().getTime()
@@ -92,6 +210,16 @@ const res = await fetch('/api/generate', {
   const activeStatus = worker.residence_statuses?.find(s => s.is_active)
   const days = activeStatus ? getDaysUntil(activeStatus.expiry_date) : 999
   const urgent = days <= 30
+  const score = calcTrustScore(worker, evaluation)
+  const scoreColor = score.total >= 80 ? '#16a34a' : score.total >= 50 ? '#d97706' : '#dc2626'
+
+  const breakdownItems = [
+    score.expiry,
+    score.docs,
+    score.attendance,
+    score.performance,
+    score.compliance,
+  ]
 
   return (
     <div style={{minHeight:"100vh",background:"#f3f2ef",fontFamily:"system-ui,sans-serif"}}>
@@ -110,6 +238,7 @@ const res = await fetch('/api/generate', {
       <div style={{maxWidth:900,margin:"0 auto",padding:"32px 24px"}}>
         <button onClick={()=>router.push('/employees')} style={{background:"none",border:"none",color:"#0066cc",fontSize:13,cursor:"pointer",marginBottom:20,padding:0}}>← 一覧に戻る</button>
 
+        {/* Profile header */}
         <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"24px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)",display:"flex",alignItems:"center",gap:20}}>
           <div style={{fontSize:56}}>{getFlag(worker.nationality)}</div>
           <div style={{flex:1}}>
@@ -121,12 +250,16 @@ const res = await fetch('/api/generate', {
             <div style={{fontSize:13,color:"#666"}}>{worker.nationality} ／ {activeStatus?.status_type || '未登録'}</div>
           </div>
           <div style={{textAlign:"center"}}>
-            <div style={{fontSize:36,fontWeight:700,color:"#16a34a"}}>--</div>
-            <div style={{fontSize:12,color:"#999"}}>信頼スコア</div>
+            <ScoreRing score={score.total} max={100} />
+            <div style={{fontSize:11,color:"#999",marginTop:4}}>信頼スコア</div>
+            {!score.hasEvaluation && (
+              <div style={{fontSize:10,color:"#d97706",marginTop:2}}>評価待ち含む</div>
+            )}
           </div>
         </div>
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+          {/* 在留情報 */}
           <div style={{background:"#fff",border:urgent?"1px solid #fecaca":"1px solid #e0e0e0",borderRadius:12,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
             <h2 style={{margin:"0 0 16px",fontSize:15,fontWeight:600,color:"#000"}}>在留情報</h2>
             {[
@@ -149,6 +282,7 @@ const res = await fetch('/api/generate', {
             </button>
           </div>
 
+          {/* 基本情報 */}
           <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
             <h2 style={{margin:"0 0 16px",fontSize:15,fontWeight:600,color:"#000"}}>基本情報</h2>
             {[
@@ -164,6 +298,7 @@ const res = await fetch('/api/generate', {
             ))}
           </div>
 
+          {/* 連絡先 */}
           <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
             <h2 style={{margin:"0 0 16px",fontSize:15,fontWeight:600,color:"#000"}}>連絡先</h2>
             {[
@@ -178,26 +313,55 @@ const res = await fetch('/api/generate', {
             <button style={{marginTop:16,background:"#00b300",border:"none",borderRadius:6,padding:"10px 16px",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer",width:"100%"}}>LINEで通知を送る</button>
           </div>
 
+          {/* 信頼スコア内訳 */}
           <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
-            <h2 style={{margin:"0 0 16px",fontSize:15,fontWeight:600,color:"#000"}}>信頼スコア内訳</h2>
-            <div style={{textAlign:"center",padding:"20px",color:"#999",fontSize:13}}>
-              📊 データ収集中...<br/>
-              <span style={{fontSize:12}}>評価データが入力されると自動算出されます</span>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <h2 style={{margin:0,fontSize:15,fontWeight:600,color:"#000"}}>信頼スコア内訳</h2>
+              <div style={{fontSize:20,fontWeight:700,color:scoreColor}}>{score.total}<span style={{fontSize:12,color:"#999",fontWeight:400}}> / 100</span></div>
             </div>
+
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              {breakdownItems.map((item, i) => {
+                const hasData = i < 2 || score.hasEvaluation
+                const scoreVal = item.score
+                const pct = hasData && scoreVal !== null ? Math.round((scoreVal / item.max) * 100) : 0
+                const itemColor = pct >= 80 ? '#16a34a' : pct >= 50 ? '#d97706' : '#dc2626'
+
+                return (
+                  <div key={i}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                      <span style={{fontSize:12,color:"#555"}}>{item.label}</span>
+                      {hasData && scoreVal !== null ? (
+                        <span style={{fontSize:12,fontWeight:600,color:itemColor}}>{scoreVal} / {item.max}</span>
+                      ) : (
+                        <span style={{fontSize:11,color:"#bbb",background:"#f5f5f5",padding:"1px 8px",borderRadius:3}}>未入力</span>
+                      )}
+                    </div>
+                    <ScoreBar score={scoreVal} max={item.max} hasData={hasData} />
+                  </div>
+                )
+              })}
+            </div>
+
+            {!score.hasEvaluation && (
+              <div style={{marginTop:14,padding:"8px 10px",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,fontSize:11,color:"#92400e"}}>
+                ※ 勤怠・業務・コンプライアンスの評価データが未入力です。<br/>Supabase に <code>evaluations</code> テーブルを作成すると自動反映されます。
+              </div>
+            )}
           </div>
         </div>
 
         {/* AI生成結果 */}
-        {document && (
+        {generatedDoc && (
           <div style={{background:"#fff",border:"1px solid #0066cc",borderRadius:12,padding:"24px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
               <h2 style={{margin:0,fontSize:15,fontWeight:600,color:"#000"}}>✨ AI生成：在留資格更新許可申請書</h2>
               <button
-                onClick={()=>navigator.clipboard.writeText(document)}
+                onClick={()=>navigator.clipboard.writeText(generatedDoc)}
                 style={{background:"#f0f0f0",border:"none",borderRadius:6,padding:"6px 12px",fontSize:12,cursor:"pointer",color:"#333"}}
               >コピー</button>
             </div>
-            <pre style={{margin:0,fontSize:13,lineHeight:1.8,color:"#333",whiteSpace:"pre-wrap",fontFamily:"system-ui,sans-serif"}}>{document}</pre>
+            <pre style={{margin:0,fontSize:13,lineHeight:1.8,color:"#333",whiteSpace:"pre-wrap",fontFamily:"system-ui,sans-serif"}}>{generatedDoc}</pre>
           </div>
         )}
       </div>

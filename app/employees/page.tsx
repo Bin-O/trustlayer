@@ -70,7 +70,7 @@ export default function Employees() {
             <h1 style={{margin:'0 0 4px',fontSize:22,fontWeight:700,color:'#000'}}>在留情報一覧</h1>
             <p style={{margin:0,fontSize:14,color:'#666'}}>登録外国人材：{workers.length}名</p>
           </div>
-          <button style={{background:'#0066cc',border:'none',borderRadius:6,padding:'10px 20px',color:'#fff',fontWeight:600,fontSize:13,cursor:'pointer'}}>＋ 新規登録</button>
+          <button onClick={()=>router.push('/employees/new')} style={{background:'#0066cc',border:'none',borderRadius:6,padding:'10px 20px',color:'#fff',fontWeight:600,fontSize:13,cursor:'pointer'}}>＋ 新規登録</button>
         </div>
 
         {loading ? (

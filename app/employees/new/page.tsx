@@ -1,0 +1,206 @@
+'use client'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+
+const NATIONALITIES = ['ベトナム', 'フィリピン', '中国', 'バングラデシュ', '韓国', 'インドネシア', 'ミャンマー', 'タイ', 'インド', 'その他']
+const LANGUAGES = [
+  { value: 'vi', label: 'ベトナム語' },
+  { value: 'en', label: '英語' },
+  { value: 'zh', label: '中国語' },
+  { value: 'ja', label: '日本語' },
+]
+const VISA_TYPES = [
+  '特定技能1号', '特定技能2号',
+  '技術・人文知識・国際業務', '高度専門職1号', '高度専門職2号',
+  '技能実習1号イ', '技能実習2号イ', '技能実習3号イ',
+  '特定活動', 'その他',
+]
+
+type Form = {
+  name_kanji: string
+  name_romaji: string
+  nationality: string
+  date_of_birth: string
+  passport_number: string
+  residence_card_number: string
+  preferred_language: string
+  status_type: string
+  issued_date: string
+  expiry_date: string
+}
+
+const EMPTY: Form = {
+  name_kanji: '', name_romaji: '', nationality: 'ベトナム',
+  date_of_birth: '', passport_number: '', residence_card_number: '',
+  preferred_language: 'vi', status_type: '特定技能1号',
+  issued_date: '', expiry_date: '',
+}
+
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 6 }}>
+        {label}{required && <span style={{ color: '#dc2626', marginLeft: 4 }}>*</span>}
+      </label>
+      {children}
+    </div>
+  )
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db',
+  borderRadius: 6, padding: '9px 12px', fontSize: 14, color: '#111',
+  outline: 'none', background: '#fff',
+}
+
+export default function NewEmployee() {
+  const router = useRouter()
+  const [form, setForm] = useState<Form>(EMPTY)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const set = (key: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setForm(f => ({ ...f, [key]: e.target.value }))
+
+  const validate = () => {
+    const required: (keyof Form)[] = ['name_kanji', 'name_romaji', 'nationality', 'date_of_birth', 'passport_number', 'residence_card_number', 'status_type', 'issued_date', 'expiry_date']
+    for (const k of required) {
+      if (!form[k].trim()) return `${k} は必須です`
+    }
+    if (new Date(form.expiry_date) <= new Date(form.issued_date)) return '在留期限は発行日より後の日付を入力してください'
+    return null
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const validErr = validate()
+    if (validErr) { setError(validErr); return }
+
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      const res = await fetch('/api/workers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '登録に失敗しました')
+      router.push(`/employees/${data.id}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '登録に失敗しました')
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#f3f2ef', fontFamily: 'system-ui,sans-serif' }}>
+      {/* Header */}
+      <div style={{ background: '#fff', borderBottom: '1px solid #e0e0e0', padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg,#0066cc,#004499)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🌐</div>
+          <span style={{ fontWeight: 700, fontSize: 18, color: '#000' }}>TrustLayer</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <button onClick={() => router.push('/dashboard')} style={{ background: 'none', border: 'none', color: '#666', fontSize: 13, cursor: 'pointer' }}>ダッシュボード</button>
+          <button onClick={() => router.push('/employees')} style={{ background: 'none', border: 'none', color: '#0066cc', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>在留管理</button>
+          <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#0066cc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff', fontSize: 14 }}>田</div>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px' }}>
+        <button onClick={() => router.push('/employees')} style={{ background: 'none', border: 'none', color: '#0066cc', fontSize: 13, cursor: 'pointer', marginBottom: 20, padding: 0 }}>← 一覧に戻る</button>
+
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: '#000' }}>新規外国人登録</h1>
+          <p style={{ margin: 0, fontSize: 14, color: '#666' }}>基本情報と在留資格を入力してください</p>
+        </div>
+
+        {error && (
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', marginBottom: 20, color: '#dc2626', fontSize: 13 }}>
+            ⚠️ {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          {/* 基本情報 */}
+          <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 12, padding: 24, marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <h2 style={{ margin: '0 0 20px', fontSize: 15, fontWeight: 600, color: '#000' }}>基本情報</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
+              <Field label="氏名（漢字・カタカナ）" required>
+                <input style={inputStyle} value={form.name_kanji} onChange={set('name_kanji')} placeholder="グエン・ヴァン・アン" />
+              </Field>
+              <Field label="氏名（ローマ字）" required>
+                <input style={inputStyle} value={form.name_romaji} onChange={set('name_romaji')} placeholder="NGUYEN VAN AN" />
+              </Field>
+              <Field label="国籍" required>
+                <select style={inputStyle} value={form.nationality} onChange={set('nationality')}>
+                  {NATIONALITIES.map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </Field>
+              <Field label="生年月日" required>
+                <input style={inputStyle} type="date" value={form.date_of_birth} onChange={set('date_of_birth')} />
+              </Field>
+              <Field label="パスポート番号" required>
+                <input style={inputStyle} value={form.passport_number} onChange={set('passport_number')} placeholder="B12345678" />
+              </Field>
+              <Field label="在留カード番号" required>
+                <input style={inputStyle} value={form.residence_card_number} onChange={set('residence_card_number')} placeholder="RC-2024-001" />
+              </Field>
+              <Field label="使用言語" required>
+                <select style={inputStyle} value={form.preferred_language} onChange={set('preferred_language')}>
+                  {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                </select>
+              </Field>
+            </div>
+          </div>
+
+          {/* 在留資格情報 */}
+          <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 12, padding: 24, marginBottom: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <h2 style={{ margin: '0 0 20px', fontSize: 15, fontWeight: 600, color: '#000' }}>在留資格情報</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
+              <Field label="在留資格" required>
+                <select style={inputStyle} value={form.status_type} onChange={set('status_type')}>
+                  {VISA_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </Field>
+              <div /> {/* spacer */}
+              <Field label="在留カード発行日" required>
+                <input style={inputStyle} type="date" value={form.issued_date} onChange={set('issued_date')} />
+              </Field>
+              <Field label="在留期限" required>
+                <input style={inputStyle} type="date" value={form.expiry_date} onChange={set('expiry_date')} />
+              </Field>
+            </div>
+
+            {form.expiry_date && (() => {
+              const days = Math.ceil((new Date(form.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+              const color = days < 0 ? '#dc2626' : days <= 30 ? '#d97706' : '#16a34a'
+              const label = days < 0 ? `期限切れ（${Math.abs(days)}日超過）` : `残り ${days} 日`
+              return <p style={{ margin: '-8px 0 0', fontSize: 12, color }}>{label}</p>
+            })()}
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={() => router.push('/employees')}
+              style={{ background: '#fff', border: '1px solid #d1d5db', borderRadius: 6, padding: '10px 24px', fontSize: 14, color: '#333', cursor: 'pointer', fontWeight: 500 }}
+            >
+              キャンセル
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              style={{ background: submitting ? '#9ca3af' : '#0066cc', border: 'none', borderRadius: 6, padding: '10px 32px', fontSize: 14, color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+            >
+              {submitting ? '登録中...' : '登録する'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
