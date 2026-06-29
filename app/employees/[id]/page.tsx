@@ -2,6 +2,7 @@
 import { useRouter, useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getDocumentsForStatus, type DocumentDef } from '@/lib/documents/statusDocumentMap'
 
 type Worker = {
   id: string
@@ -121,6 +122,7 @@ export default function EmployeeDetail() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [generatedDoc, setGeneratedDoc] = useState<string | null>(null)
+  const [docGenerating, setDocGenerating] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -155,7 +157,7 @@ export default function EmployeeDetail() {
     fetchEvaluation()
   }, [params.id])
 
-  const generateDocument = async () => {
+  const generateRenewalDoc = async () => {
     if (!worker) return
     setGenerating(true)
     setGeneratedDoc(null)
@@ -191,6 +193,35 @@ export default function EmployeeDetail() {
     }
   }
 
+  const generateWordDoc = async (doc: DocumentDef) => {
+    if (!worker) return
+    setDocGenerating(doc.id)
+    try {
+      const res = await fetch('/api/documents/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: doc.id, workerId: worker.id }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        alert(`生成エラー: ${err.error || '不明なエラー'}`)
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${doc.shortLabel}_${worker.name_romaji}.docx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error('[generateWordDoc] error:', e)
+      alert('通信エラーが発生しました。')
+    } finally {
+      setDocGenerating(null)
+    }
+  }
+
   const getDaysUntil = (dateStr: string) => {
     const diff = new Date(dateStr).getTime() - new Date().getTime()
     return Math.ceil(diff / (1000 * 60 * 60 * 24))
@@ -220,6 +251,10 @@ export default function EmployeeDetail() {
     score.performance,
     score.compliance,
   ]
+
+  const applicableDocs = getDocumentsForStatus(activeStatus?.status_type ?? '')
+  const availableDocs = applicableDocs.filter(d => d.available)
+  const comingSoonDocs = applicableDocs.filter(d => !d.available)
 
   return (
     <div style={{minHeight:"100vh",background:"#f3f2ef",fontFamily:"system-ui,sans-serif"}}>
@@ -274,7 +309,7 @@ export default function EmployeeDetail() {
               </div>
             ))}
             <button
-              onClick={generateDocument}
+              onClick={generateRenewalDoc}
               disabled={generating}
               style={{marginTop:16,background:generating?"#999":"#dc2626",border:"none",borderRadius:6,padding:"10px 16px",color:"#fff",fontSize:13,fontWeight:600,cursor:generating?"not-allowed":"pointer",width:"100%"}}
             >
@@ -345,13 +380,75 @@ export default function EmployeeDetail() {
 
             {!score.hasEvaluation && (
               <div style={{marginTop:14,padding:"8px 10px",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,fontSize:11,color:"#92400e"}}>
-                ※ 勤怠・業務・コンプライアンスの評価データが未入力です。<br/>Supabase に <code>evaluations</code> テーブルを作成すると自動反映されます。
+                ※ 勤怠・業務・コンプライアンスの評価データが未入力です。
               </div>
             )}
           </div>
         </div>
 
-        {/* AI生成結果 */}
+        {/* 書類生成セクション — 在留資格に応じて動的に表示 */}
+        {applicableDocs.length > 0 && (
+          <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+              <h2 style={{margin:0,fontSize:15,fontWeight:600,color:"#000"}}>書類生成</h2>
+              <span style={{fontSize:12,color:"#888",background:"#f5f5f5",padding:"2px 8px",borderRadius:4}}>
+                {activeStatus?.status_type}
+              </span>
+            </div>
+
+            {availableDocs.length > 0 && (
+              <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:comingSoonDocs.length > 0 ? 14 : 0}}>
+                {availableDocs.map(doc => (
+                  <button
+                    key={doc.id}
+                    onClick={() => generateWordDoc(doc)}
+                    disabled={docGenerating === doc.id}
+                    style={{
+                      background: docGenerating === doc.id ? '#e5e7eb' : '#0066cc',
+                      color: docGenerating === doc.id ? '#9ca3af' : '#fff',
+                      border: 'none',
+                      borderRadius: 6,
+                      padding: '9px 16px',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: docGenerating === doc.id ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    {docGenerating === doc.id ? '⏳ 生成中...' : `📄 ${doc.shortLabel}`}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {comingSoonDocs.length > 0 && (
+              <div>
+                <div style={{fontSize:11,color:"#999",marginBottom:8}}>準備中</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                  {comingSoonDocs.map(doc => (
+                    <span
+                      key={doc.id}
+                      style={{
+                        background:"#f5f5f5",
+                        color:"#aaa",
+                        border:"1px solid #e5e7eb",
+                        borderRadius:6,
+                        padding:"6px 14px",
+                        fontSize:12,
+                      }}
+                    >
+                      {doc.shortLabel}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* AI生成結果（在留資格更新申請書） */}
         {generatedDoc && (
           <div style={{background:"#fff",border:"1px solid #0066cc",borderRadius:12,padding:"24px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
