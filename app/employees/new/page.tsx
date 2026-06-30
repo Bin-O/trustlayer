@@ -1,6 +1,7 @@
 'use client'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import AppHeader from '@/components/AppHeader'
 
 const NATIONALITIES = ['ベトナム', 'フィリピン', '中国', 'バングラデシュ', '韓国', 'インドネシア', 'ミャンマー', 'タイ', 'インド', 'その他']
 const LANGUAGES = [
@@ -97,17 +98,7 @@ export default function NewEmployee() {
   return (
     <div style={{ minHeight: '100vh', background: '#f3f2ef', fontFamily: 'system-ui,sans-serif' }}>
       {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e0e0e0', padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg,#0066cc,#004499)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🌐</div>
-          <span style={{ fontWeight: 700, fontSize: 18, color: '#000' }}>TrustLayer</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <button onClick={() => router.push('/dashboard')} style={{ background: 'none', border: 'none', color: '#666', fontSize: 13, cursor: 'pointer' }}>ダッシュボード</button>
-          <button onClick={() => router.push('/employees')} style={{ background: 'none', border: 'none', color: '#0066cc', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>在留管理</button>
-          <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#0066cc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff', fontSize: 14 }}>田</div>
-        </div>
-      </div>
+      <AppHeader currentPage="employees" />
 
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px' }}>
         <button onClick={() => router.push('/employees')} style={{ background: 'none', border: 'none', color: '#0066cc', fontSize: 13, cursor: 'pointer', marginBottom: 20, padding: 0 }}>← 一覧に戻る</button>

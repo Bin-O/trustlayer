@@ -2,6 +2,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import AppHeader from '@/components/AppHeader'
 
 type Worker = {
   id: string
@@ -140,16 +141,7 @@ export default function Dashboard() {
   return (
     <div style={{ minHeight: '100vh', background: '#f3f2ef', fontFamily: 'system-ui,sans-serif' }}>
       {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e0e0e0', padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg,#0066cc,#004499)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🌐</div>
-          <span style={{ fontWeight: 700, fontSize: 18, color: '#000' }}>TrustLayer</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <button onClick={() => router.push('/employees')} style={{ background: '#0066cc', border: 'none', borderRadius: 6, padding: '8px 16px', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>外国人管理</button>
-          <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#0066cc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff', fontSize: 14 }}>田</div>
-        </div>
-      </div>
+      <AppHeader currentPage="dashboard" />
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
         {/* Welcome */}
