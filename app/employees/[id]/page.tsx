@@ -377,6 +377,20 @@ export default function EmployeeDetail() {
           </div>
         </div>
 
+        {/* 雇用条件入力 */}
+        <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:600,color:"#000",marginBottom:2}}>雇用条件書</div>
+            <div style={{fontSize:13,color:"#888"}}>契約期間・労働時間・賃金などを入力します</div>
+          </div>
+          <button
+            onClick={() => router.push(`/employees/${worker.id}/employment-conditions`)}
+            style={{background:"#0066cc",border:"none",borderRadius:6,padding:"9px 18px",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer",flexShrink:0}}
+          >
+            ✏️ 雇用条件を入力
+          </button>
+        </div>
+
         {/* 書類生成セクション — 在留資格に応じて動的に表示 */}
         {applicableDocs.length > 0 && (
           <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
