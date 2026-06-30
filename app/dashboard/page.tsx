@@ -44,6 +44,13 @@ function getRelativeTime(dateStr: string) {
   return `${Math.floor(days / 7)}週間前`
 }
 
+function getGreeting() {
+  const hour = new Date().getHours()
+  if (hour >= 5 && hour < 11) return 'おはようございます'
+  if (hour >= 11 && hour < 18) return 'こんにちは'
+  return 'こんばんは'
+}
+
 export default function Dashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -147,7 +154,7 @@ export default function Dashboard() {
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
         {/* Welcome */}
         <div style={{ marginBottom: 28 }}>
-          <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: '#000' }}>おはようございます 👋</h1>
+          <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: '#000' }}>{getGreeting()} 👋</h1>
           <p style={{ margin: 0, fontSize: 14, color: '#666' }}>今日のタスクを確認しましょう</p>
         </div>
 
