@@ -34,8 +34,8 @@ const DOC: Record<DocumentId, DocumentDef> = {
     id: 'todoke_joken_henkou',
     label: '随時届出（雇用条件変更）',
     shortLabel: '随時届出-条件変更',
-    available: false,
-    outputFormat: 'docx',
+    available: true,
+    outputFormat: 'excel',
   },
   todoke_junyuu_konnan: {
     id: 'todoke_junyuu_konnan',
