@@ -54,6 +54,8 @@ type Form = {
   insurance_koyo: boolean; insurance_rousai: boolean
   insurance_kokumin_nenkin: boolean; insurance_kokumin_kenko: boolean
   health_checkup_on_hire: string; health_checkup_first: string; health_checkup_interval: string
+  change_reason: string
+  effective_date: string
 }
 
 const INIT: Form = {
@@ -89,6 +91,8 @@ const INIT: Form = {
   insurance_kosei_nenkin: true, insurance_kenko: true, insurance_koyo: true,
   insurance_rousai: true, insurance_kokumin_nenkin: false, insurance_kokumin_kenko: false,
   health_checkup_on_hire: '', health_checkup_first: '', health_checkup_interval: '1年ごと',
+  change_reason: '',
+  effective_date: '',
 }
 
 function validate(step: number, f: Form): string[] {
@@ -122,12 +126,13 @@ export default function EmploymentConditionsPage() {
   const workerId = params.id as string
 
   const [step, setStep] = useState(1)
-  const [form, setForm] = useState<Form>(INIT)
+  const [form, setForm] = useState<Form>(() => ({ ...INIT, effective_date: new Date().toISOString().slice(0, 10) }))
   const [workerName, setWorkerName] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
   const [saved, setSaved] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
 
   const s = <K extends keyof Form>(k: K, v: Form[K]) => setForm(p => ({ ...p, [k]: v }))
 
@@ -143,6 +148,7 @@ export default function EmploymentConditionsPage() {
       if (wRes.data) setWorkerName(wRes.data.name_kanji)
 
       if (cRes.data || ctRes.data) {
+        setIsEditing(true)
         const c = cRes.data ?? {}; const ct = ctRes.data ?? {}
         setForm(prev => ({
           ...prev,
@@ -201,6 +207,23 @@ export default function EmploymentConditionsPage() {
     if (e.length) { setErrors(e); return }
     setSaving(true)
     const supabase = createClient()
+
+    // 既存レコードがある場合はUPSERT前にスナップショットを保存
+    if (isEditing) {
+      const [prevCond, prevContract] = await Promise.all([
+        supabase.from('employment_conditions').select('*').eq('worker_id', workerId).maybeSingle(),
+        supabase.from('worker_contracts').select('*').eq('worker_id', workerId).maybeSingle(),
+      ])
+      if (prevCond.data) {
+        await supabase.from('employment_condition_history').insert({
+          worker_id: workerId,
+          change_reason: form.change_reason || null,
+          snapshot_data: prevCond.data,
+          contract_snapshot: prevContract.data ?? null,
+          ...(form.effective_date ? { changed_at: form.effective_date } : {}),
+        })
+      }
+    }
 
     const cond = {
       worker_id: workerId,
@@ -530,6 +553,24 @@ export default function EmploymentConditionsPage() {
 
   const renderStep6 = () => (
     <>
+      {isEditing && (
+        <>
+          <Divider label="変更情報" />
+          <F label="変更適用日">
+            <input type="date" style={inp} value={form.effective_date} onChange={e => s('effective_date', e.target.value)} />
+          </F>
+          <F label="変更理由（随時届出・変更内容の記録用）">
+            <input
+              type="text"
+              style={inp}
+              value={form.change_reason}
+              placeholder="例：昇給に伴う基本給変更、就業場所変更など"
+              onChange={e => s('change_reason', e.target.value)}
+            />
+          </F>
+        </>
+      )}
+
       <Divider label="社会保険・労働保険" />
       {[
         { k: 'insurance_kosei_nenkin' as const, label: '厚生年金保険', sub: '加入' },
