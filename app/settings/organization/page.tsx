@@ -7,12 +7,21 @@ const ORG_ID = '11111111-1111-1111-1111-111111111111'
 
 type OrgBasic = {
   name: string
+  name_kana: string
   address: string
   phone: string
   representative_title: string
   representative_name: string
   corporate_number: string
   industry: string
+  support_office_address: string
+  support_office_phone: string
+  support_supervisor_name: string
+  support_supervisor_kana: string
+  support_supervisor_title: string
+  support_staff_name: string
+  support_staff_kana: string
+  support_staff_title: string
 }
 
 type OrgDefaults = {
@@ -26,12 +35,21 @@ type OrgDefaults = {
 
 const EMPTY_BASIC: OrgBasic = {
   name: '',
+  name_kana: '',
   address: '',
   phone: '',
   representative_title: '',
   representative_name: '',
   corporate_number: '',
   industry: '',
+  support_office_address: '',
+  support_office_phone: '',
+  support_supervisor_name: '',
+  support_supervisor_kana: '',
+  support_supervisor_title: '',
+  support_staff_name: '',
+  support_staff_kana: '',
+  support_staff_title: '',
 }
 
 const EMPTY_DEFAULTS: OrgDefaults = {
@@ -56,18 +74,27 @@ export default function OrganizationSettings() {
     const supabase = createClient()
     const fetchAll = async () => {
       const [orgRes, defRes] = await Promise.all([
-        supabase.from('organizations').select('name,address,phone,representative_title,representative_name,corporate_number,industry').eq('id', ORG_ID).single(),
+        supabase.from('organizations').select('name,name_kana,address,phone,representative_title,representative_name,corporate_number,industry,support_office_address,support_office_phone,support_supervisor_name,support_supervisor_kana,support_supervisor_title,support_staff_name,support_staff_kana,support_staff_title').eq('id', ORG_ID).single(),
         supabase.from('organization_defaults').select('*').eq('organization_id', ORG_ID).maybeSingle(),
       ])
       if (orgRes.data) {
         setBasic({
           name: orgRes.data.name ?? '',
+          name_kana: orgRes.data.name_kana ?? '',
           address: orgRes.data.address ?? '',
           phone: orgRes.data.phone ?? '',
           representative_title: orgRes.data.representative_title ?? '',
           representative_name: orgRes.data.representative_name ?? '',
           corporate_number: orgRes.data.corporate_number ?? '',
           industry: orgRes.data.industry ?? '',
+          support_office_address: orgRes.data.support_office_address ?? '',
+          support_office_phone: orgRes.data.support_office_phone ?? '',
+          support_supervisor_name: orgRes.data.support_supervisor_name ?? '',
+          support_supervisor_kana: orgRes.data.support_supervisor_kana ?? '',
+          support_supervisor_title: orgRes.data.support_supervisor_title ?? '',
+          support_staff_name: orgRes.data.support_staff_name ?? '',
+          support_staff_kana: orgRes.data.support_staff_kana ?? '',
+          support_staff_title: orgRes.data.support_staff_title ?? '',
         })
       }
       if (defRes.data) {
@@ -93,15 +120,25 @@ export default function OrganizationSettings() {
       .from('organizations')
       .update({
         name: basic.name,
+        name_kana: basic.name_kana || null,
         address: basic.address,
         phone: basic.phone,
         representative_title: basic.representative_title,
         representative_name: basic.representative_name,
         corporate_number: basic.corporate_number || null,
         industry: basic.industry || null,
+        support_office_address: basic.support_office_address || null,
+        support_office_phone: basic.support_office_phone || null,
+        support_supervisor_name: basic.support_supervisor_name || null,
+        support_supervisor_kana: basic.support_supervisor_kana || null,
+        support_supervisor_title: basic.support_supervisor_title || null,
+        support_staff_name: basic.support_staff_name || null,
+        support_staff_kana: basic.support_staff_kana || null,
+        support_staff_title: basic.support_staff_title || null,
       })
       .eq('id', ORG_ID)
     if (err) {
+      console.error('saveBasic error:', err)
       setError(err.message)
     } else {
       setSaved(true)
@@ -239,6 +276,11 @@ export default function OrganizationSettings() {
                   <input style={inputStyle} value={basic.name} onChange={e => setBasic(p => ({ ...p, name: e.target.value }))} placeholder="例：株式会社TrustLayer" />
                 </div>
 
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>会社名（フリガナ）</label>
+                  <input style={inputStyle} value={basic.name_kana} onChange={e => setBasic(p => ({ ...p, name_kana: e.target.value }))} placeholder="例：カブシキガイシャトラストレイヤー" />
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div style={fieldStyle}>
                     <label style={labelStyle}>代表者役職</label>
@@ -269,6 +311,58 @@ export default function OrganizationSettings() {
                 <div style={fieldStyle}>
                   <label style={labelStyle}>業種</label>
                   <input style={inputStyle} value={basic.industry} onChange={e => setBasic(p => ({ ...p, industry: e.target.value }))} placeholder="例：製造業、建設業、飲食業など" />
+                </div>
+
+                {/* 支援担当情報 */}
+                <div style={{ borderTop: '1px solid #f0f0f0', marginTop: 8, paddingTop: 24, marginBottom: 8 }}>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: '#111' }}>支援担当情報</h3>
+                  <p style={{ margin: '0 0 20px', fontSize: 12, color: '#888' }}>支援計画書（参考様式第1-17号）に記載します</p>
+
+                  <div style={fieldStyle}>
+                    <label style={labelStyle}>支援担当事務所の住所</label>
+                    <input style={inputStyle} value={basic.support_office_address} onChange={e => setBasic(p => ({ ...p, support_office_address: e.target.value }))} placeholder="例：東京都千代田区丸の内1-1-1" />
+                  </div>
+
+                  <div style={fieldStyle}>
+                    <label style={labelStyle}>支援担当事務所の電話番号</label>
+                    <input style={inputStyle} value={basic.support_office_phone} onChange={e => setBasic(p => ({ ...p, support_office_phone: e.target.value }))} placeholder="例：03-1234-5678" />
+                  </div>
+
+                  <div style={{ borderLeft: '3px solid #e0e0e0', paddingLeft: 16, marginBottom: 20 }}>
+                    <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 600, color: '#555' }}>支援責任者</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                      <div style={fieldStyle}>
+                        <label style={labelStyle}>氏名</label>
+                        <input style={inputStyle} value={basic.support_supervisor_name} onChange={e => setBasic(p => ({ ...p, support_supervisor_name: e.target.value }))} placeholder="例：田中 太郎" />
+                      </div>
+                      <div style={fieldStyle}>
+                        <label style={labelStyle}>氏名（フリガナ）</label>
+                        <input style={inputStyle} value={basic.support_supervisor_kana} onChange={e => setBasic(p => ({ ...p, support_supervisor_kana: e.target.value }))} placeholder="例：タナカ タロウ" />
+                      </div>
+                      <div style={fieldStyle}>
+                        <label style={labelStyle}>役職</label>
+                        <input style={inputStyle} value={basic.support_supervisor_title} onChange={e => setBasic(p => ({ ...p, support_supervisor_title: e.target.value }))} placeholder="例：支援部長" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ borderLeft: '3px solid #e0e0e0', paddingLeft: 16, marginBottom: 20 }}>
+                    <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 600, color: '#555' }}>支援担当者</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                      <div style={fieldStyle}>
+                        <label style={labelStyle}>氏名</label>
+                        <input style={inputStyle} value={basic.support_staff_name} onChange={e => setBasic(p => ({ ...p, support_staff_name: e.target.value }))} placeholder="例：鈴木 花子" />
+                      </div>
+                      <div style={fieldStyle}>
+                        <label style={labelStyle}>氏名（フリガナ）</label>
+                        <input style={inputStyle} value={basic.support_staff_kana} onChange={e => setBasic(p => ({ ...p, support_staff_kana: e.target.value }))} placeholder="例：スズキ ハナコ" />
+                      </div>
+                      <div style={fieldStyle}>
+                        <label style={labelStyle}>役職</label>
+                        <input style={inputStyle} value={basic.support_staff_title} onChange={e => setBasic(p => ({ ...p, support_staff_title: e.target.value }))} placeholder="例：支援担当" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 20, display: 'flex', alignItems: 'center', gap: 12 }}>

@@ -27,8 +27,8 @@ const DOC: Record<DocumentId, DocumentDef> = {
     id: 'shien_keikaku',
     label: '1号特定技能外国人支援計画書',
     shortLabel: '支援計画書',
-    available: false,
-    outputFormat: 'docx',
+    available: true,
+    outputFormat: 'excel',
   },
   todoke_joken_henkou: {
     id: 'todoke_joken_henkou',

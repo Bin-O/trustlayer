@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { generateKoyouJoken } from '@/lib/documents/generator'
 import { generateTodokeJokenHenkou } from '@/lib/documents/generatorExcel'
+import { generateShienKeikaku } from '@/lib/documents/generatorShienKeikaku'
 import type { KoyouJokenData } from '@/lib/documents/templates/koyouJoken'
 import type { TodokeJokenHenkouData, ChangedSection } from '@/lib/documents/templates/todokeJokenHenkou'
+import type { ShienKeikakuData } from '@/lib/documents/generatorShienKeikaku'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -92,6 +94,49 @@ export async function POST(req: NextRequest) {
       })
     } catch (e) {
       console.error('[documents/generate] todoke_joken_henkou error:', e)
+      return NextResponse.json({ error: '文書生成中にエラーが発生しました' }, { status: 500 })
+    }
+  }
+
+  if (documentId === 'shien_keikaku') {
+    const today = new Date().toISOString().slice(0, 10)
+    const input: ShienKeikakuData = {
+      worker: {
+        name_kanji: worker.name_kanji ?? worker.name_romaji ?? '',
+        name_kana: worker.name_kana ?? null,
+        date_of_birth: worker.date_of_birth ?? null,
+        nationality: worker.nationality ?? null,
+        gender: worker.gender ?? null,
+      },
+      org: org ? {
+        name: org.name ?? '',
+        name_kana: org.name_kana ?? null,
+        address: org.address ?? null,
+        phone: org.phone ?? null,
+        support_office_address: org.support_office_address ?? null,
+        support_office_phone: org.support_office_phone ?? null,
+        support_supervisor_name: org.support_supervisor_name ?? null,
+        support_supervisor_kana: org.support_supervisor_kana ?? null,
+        support_supervisor_title: org.support_supervisor_title ?? null,
+        support_staff_name: org.support_staff_name ?? null,
+        support_staff_kana: org.support_staff_kana ?? null,
+        support_staff_title: org.support_staff_title ?? null,
+      } : null,
+      created_date: today,
+    }
+
+    try {
+      const buffer = await generateShienKeikaku(input)
+      const filename = `支援計画書_${worker.name_kanji ?? worker.name_romaji}.xlsx`
+
+      return new NextResponse(buffer as unknown as BodyInit, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+        },
+      })
+    } catch (e) {
+      console.error('[documents/generate] shien_keikaku error:', e)
       return NextResponse.json({ error: '文書生成中にエラーが発生しました' }, { status: 500 })
     }
   }

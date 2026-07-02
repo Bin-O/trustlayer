@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     const {
       name_kanji, name_romaji, nationality, date_of_birth,
       passport_number, residence_card_number, preferred_language,
-      status_type, issued_date, expiry_date,
+      status_type, issued_date, expiry_date, gender,
     } = body
 
     const { data: worker, error: workerErr } = await supabase
@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
         residence_card_number,
         preferred_language,
         status: 'active',
+        ...(gender ? { gender } : {}),
       })
       .select()
       .single()

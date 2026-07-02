@@ -28,13 +28,14 @@ type Form = {
   status_type: string
   issued_date: string
   expiry_date: string
+  gender: string
 }
 
 const EMPTY: Form = {
   name_kanji: '', name_romaji: '', nationality: 'ベトナム',
   date_of_birth: '', passport_number: '', residence_card_number: '',
   preferred_language: 'vi', status_type: '特定技能1号',
-  issued_date: '', expiry_date: '',
+  issued_date: '', expiry_date: '', gender: '',
 }
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
@@ -138,6 +139,13 @@ export default function NewEmployee() {
               </Field>
               <Field label="在留カード番号" required>
                 <input style={inputStyle} value={form.residence_card_number} onChange={set('residence_card_number')} placeholder="RC-2024-001" />
+              </Field>
+              <Field label="性別">
+                <select style={inputStyle} value={form.gender} onChange={set('gender')}>
+                  <option value="">選択してください</option>
+                  <option value="male">男性</option>
+                  <option value="female">女性</option>
+                </select>
               </Field>
               <Field label="使用言語" required>
                 <select style={inputStyle} value={form.preferred_language} onChange={set('preferred_language')}>

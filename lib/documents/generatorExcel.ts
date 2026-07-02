@@ -5,14 +5,15 @@ import type { TodokeJokenHenkouData, ChangedSection } from './templates/todokeJo
 const TEMPLATE_PATH = path.join(process.cwd(), 'lib/documents/templates/form-3-1-1.xlsx')
 
 // 在留カード番号 12文字 → 各セルに1文字ずつ書き込む
-// テンプレートのスタイル(style 142)はフォントカラー theme="1"(白)のため、黒を明示指定する
+// 行22は装飾用1行マージ、行23-24が実際の入力ボックス（I23:J24, K23:L24...のマスターセルが行23）
+// スタイル157はフォントカラー theme="1"(白)のため、黒を明示指定する
 function writeResidenceCard(ws: ExcelJS.Worksheet, cardNumber: string) {
   const cols = ['I', 'K', 'M', 'O', 'Q', 'S', 'U', 'W', 'Y', 'AA', 'AC', 'AE'] as const
   const chars = cardNumber.replace(/[^A-Z0-9]/gi, '').toUpperCase().padEnd(12, ' ')
   cols.forEach((col, i) => {
     const ch = chars[i]?.trim()
     if (ch) {
-      const cell = ws.getCell(`${col}22`)
+      const cell = ws.getCell(`${col}23`)
       cell.value = ch
       cell.font = { ...cell.font, color: { argb: 'FF000000' } }
     }
