@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 
 const ORG_ID = '11111111-1111-1111-1111-111111111111'
 
-type Page = 'dashboard' | 'employees' | 'settings'
+type Page = 'dashboard' | 'employees' | 'reports' | 'settings'
 
 export default function AppHeader({ currentPage }: { currentPage: Page }) {
   const router = useRouter()
@@ -48,6 +48,7 @@ export default function AppHeader({ currentPage }: { currentPage: Page }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         {navBtn('ダッシュボード', 'dashboard', '/dashboard')}
         {navBtn('在留管理', 'employees', '/employees')}
+        {navBtn('定期届出', 'reports', '/reports/annual')}
         {navBtn('設定', 'settings', '/settings/organization')}
         <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#0066cc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff', fontSize: 14 }}>田</div>
       </div>
