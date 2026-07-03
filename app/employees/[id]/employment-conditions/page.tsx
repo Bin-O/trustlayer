@@ -177,6 +177,42 @@ function computeDiff(prev: Record<string, unknown>, next: Form): { item: DiffIte
   return results
 }
 
+// コンポーネント外で定義することで毎レンダリングでの再生成を防ぎ input フォーカス維持
+const inp: React.CSSProperties = {
+  width: '100%', border: '1px solid #d0d0d0', borderRadius: 6,
+  padding: '9px 12px', fontSize: 14, color: '#111', outline: 'none', boxSizing: 'border-box',
+}
+const sel: React.CSSProperties = { ...inp, background: '#fff' }
+
+const F = ({ label, req, half, children }: { label: string; req?: boolean; half?: boolean; children: React.ReactNode }) => (
+  <div style={{ marginBottom: 14, gridColumn: half ? 'span 1' : undefined }}>
+    <label style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginBottom: 4 }}>
+      {label}{req && <span style={{ color: '#dc2626', marginLeft: 2 }}>*</span>}
+    </label>
+    {children}
+  </div>
+)
+const Toggle = ({ val, onChange, label, sub }: { val: boolean; onChange: (v: boolean) => void; label: string; sub?: string }) => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: '#f9f9f9', border: '1px solid #ececec', borderRadius: 8, marginBottom: 10 }}>
+    <div>
+      <div style={{ fontSize: 14, fontWeight: 600, color: '#111' }}>{label}</div>
+      {sub && <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{sub}</div>}
+    </div>
+    <div onClick={() => onChange(!val)} style={{ position: 'relative', width: 44, height: 24, background: val ? '#0066cc' : '#ccc', borderRadius: 12, cursor: 'pointer', flexShrink: 0 }}>
+      <div style={{ position: 'absolute', top: 3, left: val ? 23 : 3, width: 18, height: 18, background: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+    </div>
+  </div>
+)
+const G2 = ({ children }: { children: React.ReactNode }) => (
+  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>{children}</div>
+)
+const G3 = ({ children }: { children: React.ReactNode }) => (
+  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>{children}</div>
+)
+const Divider = ({ label }: { label: string }) => (
+  <div style={{ fontSize: 12, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 1, borderBottom: '1px solid #ececec', paddingBottom: 6, marginBottom: 14, marginTop: 20 }}>{label}</div>
+)
+
 export default function EmploymentConditionsPage() {
   const params = useParams()
   const router = useRouter()
@@ -399,40 +435,7 @@ export default function EmploymentConditionsPage() {
     }
   }
 
-  // ── Shared UI helpers ───────────────────────────────────────────
-  const inp: React.CSSProperties = {
-    width: '100%', border: '1px solid #d0d0d0', borderRadius: 6,
-    padding: '9px 12px', fontSize: 14, color: '#111', outline: 'none', boxSizing: 'border-box',
-  }
-  const sel: React.CSSProperties = { ...inp, background: '#fff' }
-  const F = ({ label, req, half, children }: { label: string; req?: boolean; half?: boolean; children: React.ReactNode }) => (
-    <div style={{ marginBottom: 14, gridColumn: half ? 'span 1' : undefined }}>
-      <label style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginBottom: 4 }}>
-        {label}{req && <span style={{ color: '#dc2626', marginLeft: 2 }}>*</span>}
-      </label>
-      {children}
-    </div>
-  )
-  const Toggle = ({ val, onChange, label, sub }: { val: boolean; onChange: (v: boolean) => void; label: string; sub?: string }) => (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: '#f9f9f9', border: '1px solid #ececec', borderRadius: 8, marginBottom: 10 }}>
-      <div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#111' }}>{label}</div>
-        {sub && <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{sub}</div>}
-      </div>
-      <div onClick={() => onChange(!val)} style={{ position: 'relative', width: 44, height: 24, background: val ? '#0066cc' : '#ccc', borderRadius: 12, cursor: 'pointer', flexShrink: 0 }}>
-        <div style={{ position: 'absolute', top: 3, left: val ? 23 : 3, width: 18, height: 18, background: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-      </div>
-    </div>
-  )
-  const G2 = ({ children }: { children: React.ReactNode }) => (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>{children}</div>
-  )
-  const G3 = ({ children }: { children: React.ReactNode }) => (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>{children}</div>
-  )
-  const Divider = ({ label }: { label: string }) => (
-    <div style={{ fontSize: 12, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 1, borderBottom: '1px solid #ececec', paddingBottom: 6, marginBottom: 14, marginTop: 20 }}>{label}</div>
-  )
+  // ── インライン JSX ファクトリ（form/s を参照するためコンポーネント内に残す）──────
   const numInp = (k: keyof Form, min?: number, max?: number) => (
     <input type="number" style={inp} value={(form[k] as number | null) ?? ''} min={min} max={max}
       onChange={e => s(k, e.target.value === '' ? null : Number(e.target.value) as Form[typeof k])} />
