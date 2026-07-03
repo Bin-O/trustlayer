@@ -2,6 +2,7 @@ export type DocumentId =
   | 'koyou_joken'
   | 'shien_keikaku'
   | 'todoke_joken_henkou'
+  | 'todoke_keiyaku_shuryo'
   | 'todoke_junyuu_konnan'
   | 'todoke_shien_konnan'
   | 'teiki_todoke'
@@ -37,6 +38,13 @@ const DOC: Record<DocumentId, DocumentDef> = {
     available: true,
     outputFormat: 'excel',
   },
+  todoke_keiyaku_shuryo: {
+    id: 'todoke_keiyaku_shuryo',
+    label: '随時届出（契約終了・新契約締結）参考様式第3-1-2号',
+    shortLabel: '随時届出-契約終了',
+    available: true,
+    outputFormat: 'excel',
+  },
   todoke_junyuu_konnan: {
     id: 'todoke_junyuu_konnan',
     label: '随時届出（受入困難・退職等）',
@@ -69,6 +77,7 @@ export const STATUS_DOCUMENT_MAP: Record<string, DocumentId[]> = {
     'koyou_joken',
     'shien_keikaku',
     'todoke_joken_henkou',
+    'todoke_keiyaku_shuryo',
     'todoke_junyuu_konnan',
     'todoke_shien_konnan',
     'teiki_todoke',

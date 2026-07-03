@@ -124,6 +124,23 @@ export default function EmployeeDetail() {
   const [generating, setGenerating] = useState(false)
   const [generatedDoc, setGeneratedDoc] = useState<string | null>(null)
   const [docGenerating, setDocGenerating] = useState<string | null>(null)
+  const [keiyakuModal, setKeiyakuModal] = useState<{
+    open: boolean
+    hasTermination: boolean
+    terminationDate: string
+    terminationType: 'expiry' | 'resignation' | 'dismissal' | 'other'
+    terminationReason: string
+    hasNewContract: boolean
+    newContractDate: string
+  }>({
+    open: false,
+    hasTermination: true,
+    terminationDate: '',
+    terminationType: 'expiry',
+    terminationReason: '',
+    hasNewContract: false,
+    newContractDate: '',
+  })
   const supabase = createClient()
 
   useEffect(() => {
@@ -194,8 +211,64 @@ export default function EmployeeDetail() {
     }
   }
 
+  const generateKeiyakuDoc = async () => {
+    if (!worker) return
+    const km = keiyakuModal
+    if (!km.hasTermination && !km.hasNewContract) {
+      alert('契約終了または新規締結のいずれかを選択してください。')
+      return
+    }
+    if (km.hasTermination && !km.terminationDate) {
+      alert('契約終了日を入力してください。')
+      return
+    }
+    if (km.hasNewContract && !km.newContractDate) {
+      alert('新契約締結日を入力してください。')
+      return
+    }
+    setDocGenerating('todoke_keiyaku_shuryo')
+    try {
+      const res = await fetch('/api/documents/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          documentId: 'todoke_keiyaku_shuryo',
+          workerId: worker.id,
+          termination: km.hasTermination ? {
+            date: km.terminationDate,
+            type: km.terminationType,
+            reason: km.terminationReason || null,
+          } : null,
+          newContract: km.hasNewContract ? { date: km.newContractDate } : null,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        alert(`生成エラー: ${err.error || '不明なエラー'}`)
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `随時届出_契約終了_${worker.name_romaji}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+      setKeiyakuModal(prev => ({ ...prev, open: false }))
+    } catch (e) {
+      console.error('[generateKeiyakuDoc] error:', e)
+      alert('通信エラーが発生しました。')
+    } finally {
+      setDocGenerating(null)
+    }
+  }
+
   const generateWordDoc = async (doc: DocumentDef) => {
     if (!worker) return
+    if (doc.id === 'todoke_keiyaku_shuryo') {
+      setKeiyakuModal(prev => ({ ...prev, open: true }))
+      return
+    }
     setDocGenerating(doc.id)
     try {
       const res = await fetch('/api/documents/generate', {
@@ -258,8 +331,88 @@ export default function EmployeeDetail() {
   const availableDocs = applicableDocs.filter(d => d.available)
   const comingSoonDocs = applicableDocs.filter(d => !d.available)
 
+  const km = keiyakuModal
+  const setKm = (patch: Partial<typeof keiyakuModal>) => setKeiyakuModal(prev => ({ ...prev, ...patch }))
+
   return (
     <div style={{minHeight:"100vh",background:"#f3f2ef",fontFamily:"system-ui,sans-serif"}}>
+
+      {/* 契約終了・新契約届出モーダル */}
+      {km.open && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{background:'#fff',borderRadius:12,padding:'28px 32px',width:480,maxWidth:'90vw',boxShadow:'0 8px 32px rgba(0,0,0,0.18)'}}>
+            <h3 style={{margin:'0 0 20px',fontSize:16,fontWeight:700,color:'#111'}}>契約終了・新契約締結 届出情報</h3>
+
+            {/* A 契約終了 */}
+            <div style={{border:'1px solid #e5e7eb',borderRadius:8,padding:'16px',marginBottom:16}}>
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:km.hasTermination ? 14 : 0}}>
+                <input type="checkbox" id="hasTermination" checked={km.hasTermination}
+                  onChange={e => setKm({ hasTermination: e.target.checked })}
+                  style={{width:16,height:16,cursor:'pointer'}} />
+                <label htmlFor="hasTermination" style={{fontWeight:600,fontSize:14,cursor:'pointer'}}>A. 特定技能雇用契約の終了</label>
+              </div>
+              {km.hasTermination && (
+                <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                  <div>
+                    <label style={{fontSize:12,color:'#555',display:'block',marginBottom:4}}>契約終了年月日</label>
+                    <input type="date" value={km.terminationDate} onChange={e => setKm({ terminationDate: e.target.value })}
+                      style={{border:'1px solid #d0d0d0',borderRadius:6,padding:'7px 10px',fontSize:14,width:'100%',boxSizing:'border-box'}} />
+                  </div>
+                  <div>
+                    <label style={{fontSize:12,color:'#555',display:'block',marginBottom:4}}>終了区分</label>
+                    <select value={km.terminationType} onChange={e => setKm({ terminationType: e.target.value as typeof km.terminationType })}
+                      style={{border:'1px solid #d0d0d0',borderRadius:6,padding:'7px 10px',fontSize:14,width:'100%',boxSizing:'border-box'}}>
+                      <option value="expiry">01. 雇用契約の期間満了</option>
+                      <option value="dismissal">02. 特定技能所属機関の都合による終了（経営上の都合）</option>
+                      <option value="resignation">10. 外国人の都合による終了（自己都合退職）</option>
+                      <option value="other">11. その他</option>
+                    </select>
+                  </div>
+                  {km.terminationType === 'other' && (
+                    <div>
+                      <label style={{fontSize:12,color:'#555',display:'block',marginBottom:4}}>終了理由（その他の場合）</label>
+                      <input type="text" value={km.terminationReason} onChange={e => setKm({ terminationReason: e.target.value })}
+                        placeholder="理由を記入してください"
+                        style={{border:'1px solid #d0d0d0',borderRadius:6,padding:'7px 10px',fontSize:14,width:'100%',boxSizing:'border-box'}} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* B 新規締結 */}
+            <div style={{border:'1px solid #e5e7eb',borderRadius:8,padding:'16px',marginBottom:24}}>
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:km.hasNewContract ? 14 : 0}}>
+                <input type="checkbox" id="hasNewContract" checked={km.hasNewContract}
+                  onChange={e => setKm({ hasNewContract: e.target.checked })}
+                  style={{width:16,height:16,cursor:'pointer'}} />
+                <label htmlFor="hasNewContract" style={{fontWeight:600,fontSize:14,cursor:'pointer'}}>B. 新たな特定技能雇用契約の締結</label>
+              </div>
+              {km.hasNewContract && (
+                <div>
+                  <label style={{fontSize:12,color:'#555',display:'block',marginBottom:4}}>契約締結年月日</label>
+                  <input type="date" value={km.newContractDate} onChange={e => setKm({ newContractDate: e.target.value })}
+                    style={{border:'1px solid #d0d0d0',borderRadius:6,padding:'7px 10px',fontSize:14,width:'100%',boxSizing:'border-box'}} />
+                </div>
+              )}
+            </div>
+
+            <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+              <button onClick={() => setKm({ open: false })}
+                style={{padding:'8px 20px',borderRadius:6,border:'1px solid #ccc',background:'#fff',fontSize:14,cursor:'pointer'}}>
+                キャンセル
+              </button>
+              <button onClick={generateKeiyakuDoc} disabled={docGenerating === 'todoke_keiyaku_shuryo'}
+                style={{padding:'8px 20px',borderRadius:6,border:'none',
+                  background: docGenerating === 'todoke_keiyaku_shuryo' ? '#e5e7eb' : '#0066cc',
+                  color: docGenerating === 'todoke_keiyaku_shuryo' ? '#9ca3af' : '#fff',
+                  fontSize:14,fontWeight:600,cursor:docGenerating === 'todoke_keiyaku_shuryo' ? 'not-allowed' : 'pointer'}}>
+                {docGenerating === 'todoke_keiyaku_shuryo' ? '⏳ 生成中...' : '📄 Excel生成・ダウンロード'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <AppHeader currentPage="employees" />
 
       <div style={{maxWidth:900,margin:"0 auto",padding:"32px 24px"}}>

@@ -3,13 +3,15 @@ import { createClient } from '@supabase/supabase-js'
 import { generateKoyouJoken } from '@/lib/documents/generator'
 import { generateTodokeJokenHenkou } from '@/lib/documents/generatorExcel'
 import { generateShienKeikaku } from '@/lib/documents/generatorShienKeikaku'
+import { generateKeiyakuShuryo } from '@/lib/documents/generatorKeiyakuShuryo'
 import type { KoyouJokenData } from '@/lib/documents/templates/koyouJoken'
 import type { TodokeJokenHenkouData, ChangedSection } from '@/lib/documents/templates/todokeJokenHenkou'
 import type { ShienKeikakuData } from '@/lib/documents/generatorShienKeikaku'
+import type { KeiyakuShuryoData } from '@/lib/documents/generatorKeiyakuShuryo'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { documentId, workerId, changeDate, changedSections } = body
+  const { documentId, workerId, changeDate, changedSections, termination, newContract } = body
 
   if (!documentId || !workerId) {
     return NextResponse.json({ error: 'documentId と workerId は必須です' }, { status: 400 })
@@ -155,6 +157,46 @@ export async function POST(req: NextRequest) {
       })
     } catch (e) {
       console.error('[documents/generate] shien_keikaku error:', e)
+      return NextResponse.json({ error: '文書生成中にエラーが発生しました' }, { status: 500 })
+    }
+  }
+
+  if (documentId === 'todoke_keiyaku_shuryo') {
+    const today = new Date().toISOString().slice(0, 10)
+    const input: KeiyakuShuryoData = {
+      worker: {
+        name_romaji: worker.name_romaji ?? '',
+        date_of_birth: worker.date_of_birth ?? null,
+        nationality: worker.nationality ?? null,
+        residence_card_number: worker.residence_card_number ?? null,
+        gender: worker.gender ?? null,
+      },
+      conditions: conditions ? {
+        industry_field: conditions.industry_field ?? null,
+        job_category: conditions.job_category ?? null,
+      } : null,
+      termination: termination ?? null,
+      new_contract: newContract ?? null,
+      org: org ? {
+        name: org.name ?? '',
+        address: org.address ?? null,
+        phone: org.phone ?? null,
+      } : null,
+      created_date: today,
+    }
+
+    try {
+      const buffer = await generateKeiyakuShuryo(input)
+      const filename = `随時届出_契約終了_${worker.name_romaji}.xlsx`
+
+      return new NextResponse(buffer as unknown as BodyInit, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+        },
+      })
+    } catch (e) {
+      console.error('[documents/generate] todoke_keiyaku_shuryo error:', e)
       return NextResponse.json({ error: '文書生成中にエラーが発生しました' }, { status: 500 })
     }
   }
