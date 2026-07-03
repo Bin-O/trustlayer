@@ -1,53 +1,10 @@
 import ExcelJS from 'exceljs'
-import JSZip from 'jszip'
 import path from 'path'
-import fs from 'fs'
 
 const TEMPLATE_PATH = path.join(process.cwd(), 'lib/documents/templates/keiyaku-shuryo-3-1-2.xlsx')
 
+// 在留カード番号: 英数字のみ抽出して12セル（Row24）に1文字ずつ書き込む
 const CARD_NUMBER_CELLS = ['I24','K24','M24','O24','Q24','S24','U24','W24','Y24','AA24','AC24','AE24']
-
-// ExcelJS はテンプレートの drawing を出力時に除去するため、
-// テンプレートから元の drawing1.xml（※テキストボックス）を取り出して再注入する。
-async function patchDrawing(buffer: Buffer): Promise<Buffer> {
-  const zip = await JSZip.loadAsync(buffer)
-
-  const templateBuf = fs.readFileSync(TEMPLATE_PATH)
-  const templateZip = await JSZip.loadAsync(templateBuf)
-  const drawingXml = await templateZip.file('xl/drawings/drawing1.xml')!.async('string')
-
-  const sheetPath = Object.keys(zip.files).find(f => f.match(/xl\/worksheets\/sheet\d+\.xml$/))
-  if (!sheetPath) return buffer
-  const sheetName = sheetPath.split('/').pop()!
-
-  zip.file('xl/drawings/drawing1.xml', drawingXml)
-
-  const relsPath = `xl/worksheets/_rels/${sheetName}.rels`
-  const relsXml =
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
-    `<Relationship Id="rId1" Target="../printerSettings/printerSettings1.bin" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings"/>` +
-    `<Relationship Id="rId2" Target="../drawings/drawing1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing"/>` +
-    `</Relationships>`
-  zip.file(relsPath, relsXml)
-
-  let sheetXml = await zip.file(sheetPath)!.async('string')
-  if (!sheetXml.includes('drawing r:id')) {
-    sheetXml = sheetXml.replace('</worksheet>', '<drawing r:id="rId2"/></worksheet>')
-    zip.file(sheetPath, sheetXml)
-  }
-
-  let ctXml = await zip.file('[Content_Types].xml')!.async('string')
-  if (!ctXml.includes('drawing+xml')) {
-    ctXml = ctXml.replace(
-      '</Types>',
-      `<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>`
-    )
-    zip.file('[Content_Types].xml', ctXml)
-  }
-
-  return Buffer.from(await zip.generateAsync({ type: 'arraybuffer' }))
-}
 
 export type KeiyakuShuryoData = {
   worker: {
@@ -86,6 +43,7 @@ export async function generateKeiyakuShuryo(data: KeiyakuShuryoData): Promise<Bu
 
   const { worker, conditions, termination, new_contract, org, created_date } = data
 
+  // ① 届出の対象者
   ws.getCell('I16').value = worker.name_romaji
 
   // 性別: AE16:AH17 は「男　・　女」の1結合セル → 値を書き換えて●を付与
@@ -106,7 +64,6 @@ export async function generateKeiyakuShuryo(data: KeiyakuShuryoData): Promise<Bu
     ws.getCell('W19').value = worker.nationality
   }
 
-  // 在留カード番号: 英数字のみ抽出して12セルに1文字ずつ書き込み、コメント（緑三角）を削除
   const cardNumber = (worker.residence_card_number ?? '').replace(/[^A-Za-z0-9]/g, '').slice(0, 12)
   CARD_NUMBER_CELLS.forEach((addr, i) => {
     if (!cardNumber[i]) return
@@ -118,9 +75,11 @@ export async function generateKeiyakuShuryo(data: KeiyakuShuryoData): Promise<Bu
   if (conditions?.industry_field) ws.getCell('I28').value = conditions.industry_field
   if (conditions?.job_category)   ws.getCell('AB28').value = conditions.job_category
 
+  // ② 届出の事由チェック
   if (termination)  ws.getCell('B33').value = '■'
   if (new_contract) ws.getCell('M33').value = '■'
 
+  // A 契約の終了
   if (termination) {
     const [ty, tm, td] = termination.date.split('-').map(Number)
     ws.getCell('M40').value = ty
@@ -146,6 +105,7 @@ export async function generateKeiyakuShuryo(data: KeiyakuShuryoData): Promise<Bu
     }
   }
 
+  // B 新たな契約の締結
   if (new_contract) {
     const [ny, nm, nd] = new_contract.date.split('-').map(Number)
     ws.getCell('M89').value = ny
@@ -153,17 +113,18 @@ export async function generateKeiyakuShuryo(data: KeiyakuShuryoData): Promise<Bu
     ws.getCell('W89').value = nd
   }
 
+  // ③ 届出機関
   if (org) {
     if (org.name)    ws.getCell('I102').value = org.name
     if (org.address) ws.getCell('I105').value = org.address
     if (org.phone)   ws.getCell('AA109').value = org.phone
   }
 
+  // 作成日
   const creDate = new Date(created_date)
   ws.getCell('Y117').value = creDate.getFullYear()
   ws.getCell('AC117').value = creDate.getMonth() + 1
   ws.getCell('AG117').value = creDate.getDate()
 
-  const raw = Buffer.from(await wb.xlsx.writeBuffer() as ArrayBuffer)
-  return patchDrawing(raw)
+  return Buffer.from(await wb.xlsx.writeBuffer() as ArrayBuffer)
 }
