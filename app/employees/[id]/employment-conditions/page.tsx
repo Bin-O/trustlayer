@@ -221,6 +221,7 @@ export default function EmploymentConditionsPage() {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState<Form>(() => ({ ...INIT, effective_date: new Date().toISOString().slice(0, 10) }))
   const [workerName, setWorkerName] = useState('')
+  const [workerStatusType, setWorkerStatusType] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
@@ -235,12 +236,17 @@ export default function EmploymentConditionsPage() {
     const supabase = createClient()
     ;(async () => {
       const [wRes, cRes, ctRes, dRes] = await Promise.all([
-        supabase.from('foreign_workers').select('name_kanji').eq('id', workerId).single(),
+        supabase.from('foreign_workers').select('name_kanji, residence_statuses(status_type, is_active)').eq('id', workerId).single(),
         supabase.from('employment_conditions').select('*').eq('worker_id', workerId).maybeSingle(),
         supabase.from('worker_contracts').select('*').eq('worker_id', workerId).maybeSingle(),
         supabase.from('organization_defaults').select('*').eq('organization_id', ORG_ID).maybeSingle(),
       ])
-      if (wRes.data) setWorkerName(wRes.data.name_kanji)
+      if (wRes.data) {
+        setWorkerName(wRes.data.name_kanji)
+        const statuses = (wRes.data as { residence_statuses?: { status_type: string; is_active: boolean }[] }).residence_statuses ?? []
+        const active = statuses.find(s => s.is_active)
+        setWorkerStatusType(active?.status_type ?? null)
+      }
 
       if (cRes.data || ctRes.data) {
         setIsEditing(true)
@@ -388,7 +394,7 @@ export default function EmploymentConditionsPage() {
       setErrors([r1.error?.message ?? r2.error?.message ?? 'エラーが発生しました'])
     } else {
       setSaved(true)
-      if (isEditing && prevSnapshot) {
+      if (isEditing && prevSnapshot && workerStatusType === '特定技能1号') {
         const diffResult = computeDiff(prevSnapshot, form)
         const sections = [...new Set(diffResult.map(d => d.section))] as ChangedSection[]
         setNotifyModal({ diffItems: diffResult, changedSections: sections })
