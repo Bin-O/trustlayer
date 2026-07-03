@@ -42,6 +42,16 @@ type ShienTemplate = {
   shien_japanese_contact: string
   shien_job_change: string
   shien_regular_meeting: string
+  shien_jizen_guidance_plan: boolean
+  shien_housing_plan: boolean
+  shien_life_support_plan: boolean
+  shien_japanese_plan: boolean
+  shien_consultation_plan: boolean
+  shien_japanese_contact_plan: boolean
+  shien_job_change_plan: boolean
+  shien_regular_meeting_plan: boolean
+  shien_outsource: boolean
+  shien_staff_address: string
 }
 
 const EMPTY_BASIC: OrgBasic = {
@@ -81,6 +91,16 @@ const EMPTY_SHIEN: ShienTemplate = {
   shien_japanese_contact: '',
   shien_job_change: '',
   shien_regular_meeting: '',
+  shien_jizen_guidance_plan: true,
+  shien_housing_plan: true,
+  shien_life_support_plan: true,
+  shien_japanese_plan: true,
+  shien_consultation_plan: true,
+  shien_japanese_contact_plan: true,
+  shien_job_change_plan: true,
+  shien_regular_meeting_plan: true,
+  shien_outsource: false,
+  shien_staff_address: '',
 }
 
 export default function OrganizationSettings() {
@@ -97,7 +117,7 @@ export default function OrganizationSettings() {
     const supabase = createClient()
     const fetchAll = async () => {
       const [orgRes, defRes] = await Promise.all([
-        supabase.from('organizations').select('name,name_kana,address,phone,representative_title,representative_name,corporate_number,industry,support_office_address,support_office_phone,support_supervisor_name,support_supervisor_kana,support_supervisor_title,support_staff_name,support_staff_kana,support_staff_title,shien_jizen_guidance,shien_housing,shien_life_support,shien_japanese,shien_consultation,shien_japanese_contact,shien_job_change,shien_regular_meeting').eq('id', ORG_ID).single(),
+        supabase.from('organizations').select('name,name_kana,address,phone,representative_title,representative_name,corporate_number,industry,support_office_address,support_office_phone,support_supervisor_name,support_supervisor_kana,support_supervisor_title,support_staff_name,support_staff_kana,support_staff_title,shien_jizen_guidance,shien_housing,shien_life_support,shien_japanese,shien_consultation,shien_japanese_contact,shien_job_change,shien_regular_meeting,shien_jizen_guidance_plan,shien_housing_plan,shien_life_support_plan,shien_japanese_plan,shien_consultation_plan,shien_japanese_contact_plan,shien_job_change_plan,shien_regular_meeting_plan,shien_outsource,shien_staff_address').eq('id', ORG_ID).single(),
         supabase.from('organization_defaults').select('*').eq('organization_id', ORG_ID).maybeSingle(),
       ])
       if (orgRes.data) {
@@ -128,6 +148,16 @@ export default function OrganizationSettings() {
           shien_japanese_contact: orgRes.data.shien_japanese_contact ?? '',
           shien_job_change: orgRes.data.shien_job_change ?? '',
           shien_regular_meeting: orgRes.data.shien_regular_meeting ?? '',
+          shien_jizen_guidance_plan: orgRes.data.shien_jizen_guidance_plan ?? true,
+          shien_housing_plan: orgRes.data.shien_housing_plan ?? true,
+          shien_life_support_plan: orgRes.data.shien_life_support_plan ?? true,
+          shien_japanese_plan: orgRes.data.shien_japanese_plan ?? true,
+          shien_consultation_plan: orgRes.data.shien_consultation_plan ?? true,
+          shien_japanese_contact_plan: orgRes.data.shien_japanese_contact_plan ?? true,
+          shien_job_change_plan: orgRes.data.shien_job_change_plan ?? true,
+          shien_regular_meeting_plan: orgRes.data.shien_regular_meeting_plan ?? true,
+          shien_outsource: orgRes.data.shien_outsource ?? false,
+          shien_staff_address: orgRes.data.shien_staff_address ?? '',
         })
       }
       if (defRes.data) {
@@ -220,6 +250,16 @@ export default function OrganizationSettings() {
         shien_japanese_contact: shien.shien_japanese_contact || null,
         shien_job_change: shien.shien_job_change || null,
         shien_regular_meeting: shien.shien_regular_meeting || null,
+        shien_jizen_guidance_plan: shien.shien_jizen_guidance_plan,
+        shien_housing_plan: shien.shien_housing_plan,
+        shien_life_support_plan: shien.shien_life_support_plan,
+        shien_japanese_plan: shien.shien_japanese_plan,
+        shien_consultation_plan: shien.shien_consultation_plan,
+        shien_japanese_contact_plan: shien.shien_japanese_contact_plan,
+        shien_job_change_plan: shien.shien_job_change_plan,
+        shien_regular_meeting_plan: shien.shien_regular_meeting_plan,
+        shien_outsource: shien.shien_outsource,
+        shien_staff_address: shien.shien_staff_address || null,
       })
       .eq('id', ORG_ID)
     if (err) {
@@ -507,39 +547,86 @@ export default function OrganizationSettings() {
                 </p>
 
                 {([
-                  { key: 'shien_jizen_guidance',   label: '① 事前ガイダンス',             placeholder: '入国前・在留資格変更前に実施する生活ガイダンスの内容・実施方法を記入してください。' },
-                  { key: 'shien_housing',           label: '② 住居確保・生活支援',          placeholder: '住居の確保（社宅・物件紹介など）および生活に必要な手続きの支援内容を記入してください。' },
-                  { key: 'shien_life_support',      label: '③ 生活オリエンテーション',       placeholder: '銀行口座開設・携帯電話・ライフライン等の手続き支援の内容・実施方法を記入してください。' },
-                  { key: 'shien_japanese',          label: '④ 日本語習得支援',              placeholder: '日本語教室の紹介・費用補助・学習機会の提供など、日本語習得の支援内容を記入してください。' },
-                  { key: 'shien_consultation',      label: '⑤ 相談・苦情対応',              placeholder: '相談窓口の設置方法・対応言語・対応時間・担当者などの体制を記入してください。' },
-                  { key: 'shien_japanese_contact',  label: '⑥ 日本人との交流促進',          placeholder: '地域住民や日本人社員との交流機会（行事参加・交流会等）の支援内容を記入してください。' },
-                  { key: 'shien_job_change',        label: '⑦ 転職支援（人員整理等の場合）', placeholder: '雇用契約終了時に行う転職先の確保支援（求職活動の補助・情報提供等）の内容を記入してください。' },
-                  { key: 'shien_regular_meeting',   label: '⑧ 定期的な面談の実施',          placeholder: '定期面談の頻度・実施方法・面談者・記録管理の方法などを記入してください。' },
-                ] as { key: keyof ShienTemplate; label: string; placeholder: string }[]).map(({ key, label, placeholder }) => (
-                  <div key={key} style={fieldStyle}>
-                    <label style={labelStyle}>{label}</label>
-                    <textarea
-                      rows={4}
-                      style={{
-                        width: '100%',
-                        border: '1px solid #d0d0d0',
-                        borderRadius: 6,
-                        padding: '9px 12px',
-                        fontSize: 14,
-                        color: '#111',
-                        background: '#fff',
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                        resize: 'vertical',
-                        fontFamily: 'inherit',
-                        lineHeight: 1.6,
-                      }}
-                      value={shien[key]}
-                      onChange={e => setShien(p => ({ ...p, [key]: e.target.value }))}
-                      placeholder={placeholder}
+                  { key: 'shien_jizen_guidance',   planKey: 'shien_jizen_guidance_plan',   label: '① 事前ガイダンス',             placeholder: '入国前・在留資格変更前に実施する生活ガイダンスの内容・実施方法を記入してください。' },
+                  { key: 'shien_housing',           planKey: 'shien_housing_plan',           label: '② 住居確保・生活支援',          placeholder: '住居の確保（社宅・物件紹介など）および生活に必要な手続きの支援内容を記入してください。' },
+                  { key: 'shien_life_support',      planKey: 'shien_life_support_plan',      label: '③ 生活オリエンテーション',       placeholder: '銀行口座開設・携帯電話・ライフライン等の手続き支援の内容・実施方法を記入してください。' },
+                  { key: 'shien_japanese',          planKey: 'shien_japanese_plan',          label: '④ 日本語習得支援',              placeholder: '日本語教室の紹介・費用補助・学習機会の提供など、日本語習得の支援内容を記入してください。' },
+                  { key: 'shien_consultation',      planKey: 'shien_consultation_plan',      label: '⑤ 相談・苦情対応',              placeholder: '相談窓口の設置方法・対応言語・対応時間・担当者などの体制を記入してください。' },
+                  { key: 'shien_japanese_contact',  planKey: 'shien_japanese_contact_plan',  label: '⑥ 日本人との交流促進',          placeholder: '地域住民や日本人社員との交流機会（行事参加・交流会等）の支援内容を記入してください。' },
+                  { key: 'shien_job_change',        planKey: 'shien_job_change_plan',        label: '⑦ 転職支援（人員整理等の場合）', placeholder: '雇用契約終了時に行う転職先の確保支援（求職活動の補助・情報提供等）の内容を記入してください。' },
+                  { key: 'shien_regular_meeting',   planKey: 'shien_regular_meeting_plan',   label: '⑧ 定期的な面談の実施',          placeholder: '定期面談の頻度・実施方法・面談者・記録管理の方法などを記入してください。' },
+                ] as { key: keyof ShienTemplate; planKey: keyof ShienTemplate; label: string; placeholder: string }[]).map(({ key, planKey, label, placeholder }) => {
+                  const plan = shien[planKey] as boolean
+                  return (
+                    <div key={key} style={{ ...fieldStyle, border: '1px solid #ececec', borderRadius: 8, padding: '14px 16px', background: plan ? '#fff' : '#fafafa' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <label style={{ ...labelStyle, marginBottom: 0, fontSize: 13, color: plan ? '#111' : '#999' }}>{label}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 12, color: '#555' }}>実施予定：</span>
+                          {(['有', '無'] as const).map(opt => {
+                            const isActive = opt === '有' ? plan : !plan
+                            return (
+                              <button
+                                key={opt}
+                                onClick={() => setShien(p => ({ ...p, [planKey]: opt === '有' }))}
+                                style={{
+                                  padding: '3px 14px', borderRadius: 4, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                                  border: isActive ? '1.5px solid #0066cc' : '1px solid #ccc',
+                                  background: isActive ? '#e8f0fb' : '#fff',
+                                  color: isActive ? '#0066cc' : '#888',
+                                }}
+                              >{opt}</button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                      <textarea
+                        rows={4}
+                        disabled={!plan}
+                        style={{
+                          width: '100%', border: '1px solid #d0d0d0', borderRadius: 6, padding: '9px 12px',
+                          fontSize: 14, color: plan ? '#111' : '#bbb', background: plan ? '#fff' : '#f5f5f5',
+                          outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.6,
+                        }}
+                        value={shien[key] as string}
+                        onChange={e => setShien(p => ({ ...p, [key]: e.target.value }))}
+                        placeholder={plan ? placeholder : '（実施予定：無）'}
+                      />
+                    </div>
+                  )
+                })}
+
+                {/* 委託・担当者住所 */}
+                <div style={{ borderTop: '1px solid #f0f0f0', marginTop: 8, paddingTop: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>委託の有無</div>
+                      <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>支援業務を外部委託している場合は「有」を選択</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {(['有', '無'] as const).map(opt => {
+                        const isActive = opt === '有' ? shien.shien_outsource : !shien.shien_outsource
+                        return (
+                          <button key={opt} onClick={() => setShien(p => ({ ...p, shien_outsource: opt === '有' }))}
+                            style={{ padding: '3px 14px', borderRadius: 4, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                              border: isActive ? '1.5px solid #0066cc' : '1px solid #ccc',
+                              background: isActive ? '#e8f0fb' : '#fff', color: isActive ? '#0066cc' : '#888' }}
+                          >{opt}</button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  <div style={fieldStyle}>
+                    <label style={labelStyle}>支援担当者の住所</label>
+                    <input
+                      style={inputStyle}
+                      value={shien.shien_staff_address}
+                      onChange={e => setShien(p => ({ ...p, shien_staff_address: e.target.value }))}
+                      placeholder="例：東京都千代田区丸の内1-1-1"
                     />
                   </div>
-                ))}
+                </div>
 
                 <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
                   <button

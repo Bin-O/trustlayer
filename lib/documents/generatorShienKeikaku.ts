@@ -98,6 +98,18 @@ export type ShienKeikakuData = {
     shien_japanese_contact?: string | null
     shien_job_change?: string | null
     shien_regular_meeting?: string | null
+    // 実施予定 有/無
+    shien_jizen_guidance_plan?: boolean | null
+    shien_housing_plan?: boolean | null
+    shien_life_support_plan?: boolean | null
+    shien_japanese_plan?: boolean | null
+    shien_consultation_plan?: boolean | null
+    shien_japanese_contact_plan?: boolean | null
+    shien_job_change_plan?: boolean | null
+    shien_regular_meeting_plan?: boolean | null
+    // 委託・担当者
+    shien_outsource?: boolean | null
+    shien_staff_address?: string | null
   } | null
   created_date: string
 }
@@ -189,21 +201,41 @@ export async function generateShienKeikaku(data: ShienKeikakuData): Promise<Buff
 
     // Section IV 各支援活動の自由記入欄（テンプレートの「（自由記入）」ラベルを上書き）
     // 各セルはテンプレートで既にマージ済み。トップ左セルに書き込む。
-    const shienFields: Array<{ cell: string; value: string | null | undefined }> = [
-      { cell: 'G225', value: org.shien_jizen_guidance },    // 1. 事前ガイダンス G225:R226
-      { cell: 'G306', value: org.shien_housing },           // 3. 住居確保 G306:R307
-      { cell: 'G413', value: org.shien_life_support },      // 4. 生活オリエンテーション G413:R414
-      { cell: 'E460', value: org.shien_japanese },          // 5. 日本語学習 E460:R461
-      { cell: 'G490', value: org.shien_consultation },      // 6. 相談・苦情 G490:R491
-      { cell: 'E580', value: org.shien_japanese_contact },  // 7. 日本人との交流 E580:R581
-      { cell: 'E647', value: org.shien_job_change },        // 8. 転職支援 E647:R648
-      { cell: 'G701', value: org.shien_regular_meeting },   // 9. 定期面談 G701:R702
+    const shienItems: Array<{
+      textCell: string; value: string | null | undefined
+      planYCell: string; planNCell: string; plan: boolean | null | undefined
+      outsourceCell: string
+      addrCell: string
+    }> = [
+      { textCell: 'G225', value: org.shien_jizen_guidance,   planYCell: 'S225', planNCell: 'S228', plan: org.shien_jizen_guidance_plan,   outsourceCell: 'AC225', addrCell: 'AO225' },
+      { textCell: 'G306', value: org.shien_housing,          planYCell: 'S306', planNCell: 'S309', plan: org.shien_housing_plan,          outsourceCell: 'AC306', addrCell: 'AO308' },
+      { textCell: 'G413', value: org.shien_life_support,     planYCell: 'S413', planNCell: 'S416', plan: org.shien_life_support_plan,     outsourceCell: 'AC413', addrCell: 'AO415' },
+      { textCell: 'E460', value: org.shien_japanese,         planYCell: 'S460', planNCell: 'S463', plan: org.shien_japanese_plan,         outsourceCell: 'AC460', addrCell: 'AO462' },
+      { textCell: 'G490', value: org.shien_consultation,     planYCell: 'S490', planNCell: 'S493', plan: org.shien_consultation_plan,     outsourceCell: 'AC490', addrCell: 'AO492' },
+      { textCell: 'E580', value: org.shien_japanese_contact, planYCell: 'S580', planNCell: 'S583', plan: org.shien_japanese_contact_plan, outsourceCell: 'AC580', addrCell: 'AO582' },
+      { textCell: 'E647', value: org.shien_job_change,       planYCell: 'S647', planNCell: 'S650', plan: org.shien_job_change_plan,       outsourceCell: 'AC647', addrCell: 'AO649' },
+      { textCell: 'G701', value: org.shien_regular_meeting,  planYCell: 'S701', planNCell: 'S704', plan: org.shien_regular_meeting_plan,  outsourceCell: 'AC701', addrCell: 'AO703' },
     ]
-    for (const { cell, value } of shienFields) {
-      if (value) {
-        const c = ws.getCell(cell)
-        c.value = value
+    for (const item of shienItems) {
+      // 自由記入テキスト
+      if (item.value) {
+        const c = ws.getCell(item.textCell)
+        c.value = item.value
         c.alignment = { wrapText: true, vertical: 'top' }
+      }
+      // 実施予定 有/無 チェック（●）
+      if (item.plan !== null && item.plan !== undefined) {
+        ws.getCell(item.plan ? item.planYCell : item.planNCell).value = '●'
+      }
+      // 委託有無
+      if (org.shien_outsource !== null && org.shien_outsource !== undefined) {
+        ws.getCell(item.outsourceCell).value = org.shien_outsource ? '有' : '無'
+      }
+      // 支援担当者住所
+      if (org.shien_staff_address) {
+        const ac = ws.getCell(item.addrCell)
+        ac.value = org.shien_staff_address
+        ac.alignment = { wrapText: true, vertical: 'top' }
       }
     }
   }
