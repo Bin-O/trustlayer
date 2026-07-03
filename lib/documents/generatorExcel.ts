@@ -52,6 +52,9 @@ export async function generateTodokeJokenHenkou(data: TodokeJokenHenkouData): Pr
   await wb.xlsx.readFile(TEMPLATE_PATH)
   const ws = wb.worksheets[0]
 
+  // テンプレートが pageBreakPreview で保存されているため通常表示にリセット
+  ws.views = [{ state: 'normal' }]
+
   const { worker, conditions, change, org, created_date } = data
 
   // ① 届出の対象者
