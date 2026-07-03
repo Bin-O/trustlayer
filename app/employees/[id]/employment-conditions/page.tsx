@@ -120,6 +120,63 @@ function validate(step: number, f: Form): string[] {
 
 const hhmm = (t: string | null | undefined) => (t ?? '').slice(0, 5)
 
+type ChangedSection = 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI' | 'VII' | 'VIII' | 'IX'
+type DiffItem = { label: string; before: string; after: string }
+
+const DIFF_FIELDS: { key: keyof Form; label: string; section: ChangedSection; format?: (v: unknown) => string }[] = [
+  { key: 'industry_field', label: '業務の種類・分野', section: 'I' },
+  { key: 'job_category', label: '従事すべき業務の内容', section: 'I' },
+  { key: 'workplace_type', label: '派遣形態', section: 'II', format: v => ({ direct: '直接雇用', dispatch: '派遣' }[v as string] ?? String(v ?? '')) },
+  { key: 'workplace_name', label: '就業場所名称', section: 'II' },
+  { key: 'workplace_address', label: '就業場所住所', section: 'II' },
+  { key: 'work_start_time', label: '始業時刻', section: 'III' },
+  { key: 'work_end_time', label: '終業時刻', section: 'III' },
+  { key: 'daily_scheduled_hours', label: '1日の所定時間（時）', section: 'III' },
+  { key: 'weekly_scheduled_hours', label: '週所定時間（時）', section: 'III' },
+  { key: 'weekly_scheduled_days', label: '週所定日数', section: 'III' },
+  { key: 'overtime_exists', label: '時間外労働（36協定）', section: 'IV', format: v => v ? 'あり' : 'なし' },
+  { key: 'break_minutes', label: '休憩時間（分）', section: 'V' },
+  { key: 'regular_holiday_days', label: '所定休日', section: 'V' },
+  { key: 'annual_holiday_days', label: '年間休日日数', section: 'V' },
+  { key: 'annual_paid_leave_days', label: '年次有給休暇日数', section: 'V' },
+  { key: 'wage_type', label: '賃金形態', section: 'VI', format: v => ({ monthly: '月給', daily: '日給', hourly: '時間給' }[v as string] ?? String(v ?? '')) },
+  { key: 'basic_wage', label: '基本給（円）', section: 'VI', format: v => v != null ? `${Number(v).toLocaleString('ja-JP')} 円` : '—' },
+  { key: 'allowance_1_name', label: '手当A名称', section: 'VI' },
+  { key: 'allowance_1_amount', label: '手当A金額', section: 'VI', format: v => v != null ? `${Number(v).toLocaleString('ja-JP')} 円` : '—' },
+  { key: 'allowance_2_name', label: '手当B名称', section: 'VI' },
+  { key: 'allowance_2_amount', label: '手当B金額', section: 'VI', format: v => v != null ? `${Number(v).toLocaleString('ja-JP')} 円` : '—' },
+  { key: 'deduction_food', label: '食費控除（円）', section: 'VII', format: v => v != null ? `${Number(v).toLocaleString('ja-JP')} 円` : '—' },
+  { key: 'deduction_housing', label: '住居費控除（円）', section: 'VII', format: v => v != null ? `${Number(v).toLocaleString('ja-JP')} 円` : '—' },
+  { key: 'insurance_kosei_nenkin', label: '厚生年金保険', section: 'VIII', format: v => v ? '加入' : '未加入' },
+  { key: 'insurance_kenko', label: '健康保険', section: 'VIII', format: v => v ? '加入' : '未加入' },
+  { key: 'insurance_koyo', label: '雇用保険', section: 'VIII', format: v => v ? '加入' : '未加入' },
+]
+
+function normForCmp(v: unknown): string {
+  if (v === null || v === undefined || v === '') return ''
+  const s = String(v)
+  if (/^\d{2}:\d{2}:\d{2}$/.test(s)) return s.slice(0, 5)
+  return s
+}
+
+function fmtDiffVal(v: unknown, format?: (v: unknown) => string): string {
+  if (format) return format(v)
+  if (v === null || v === undefined || v === '') return '—'
+  return String(v)
+}
+
+function computeDiff(prev: Record<string, unknown>, next: Form): { item: DiffItem; section: ChangedSection }[] {
+  const results: { item: DiffItem; section: ChangedSection }[] = []
+  for (const { key, label, section, format } of DIFF_FIELDS) {
+    const pv = prev[key as string]
+    const nv = next[key]
+    if (normForCmp(pv) !== normForCmp(nv)) {
+      results.push({ item: { label, before: fmtDiffVal(pv, format), after: fmtDiffVal(nv, format) }, section })
+    }
+  }
+  return results
+}
+
 export default function EmploymentConditionsPage() {
   const params = useParams()
   const router = useRouter()
@@ -133,8 +190,10 @@ export default function EmploymentConditionsPage() {
   const [errors, setErrors] = useState<string[]>([])
   const [saved, setSaved] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  const [notifyModal, setNotifyModal] = useState<{ diffItems: { item: DiffItem; section: ChangedSection }[]; changedSections: ChangedSection[] } | null>(null)
+  const [generatingDoc, setGeneratingDoc] = useState(false)
 
-  const s = <K extends keyof Form>(k: K, v: Form[K]) => setForm(p => ({ ...p, [k]: v }))
+  const s =<K extends keyof Form>(k: K, v: Form[K]) => setForm(p => ({ ...p, [k]: v }))
 
   useEffect(() => {
     const supabase = createClient()
@@ -208,6 +267,8 @@ export default function EmploymentConditionsPage() {
     setSaving(true)
     const supabase = createClient()
 
+    let prevSnapshot: Record<string, unknown> | null = null
+
     // 既存レコードがある場合はUPSERT前にスナップショットを保存
     if (isEditing) {
       const [prevCond, prevContract] = await Promise.all([
@@ -215,6 +276,7 @@ export default function EmploymentConditionsPage() {
         supabase.from('worker_contracts').select('*').eq('worker_id', workerId).maybeSingle(),
       ])
       if (prevCond.data) {
+        prevSnapshot = prevCond.data as Record<string, unknown>
         await supabase.from('employment_condition_history').insert({
           worker_id: workerId,
           change_reason: form.change_reason || null,
@@ -290,9 +352,51 @@ export default function EmploymentConditionsPage() {
       setErrors([r1.error?.message ?? r2.error?.message ?? 'エラーが発生しました'])
     } else {
       setSaved(true)
-      setTimeout(() => router.push(`/employees/${workerId}`), 1500)
+      if (isEditing && prevSnapshot) {
+        const diffResult = computeDiff(prevSnapshot, form)
+        const sections = [...new Set(diffResult.map(d => d.section))] as ChangedSection[]
+        setNotifyModal({ diffItems: diffResult, changedSections: sections })
+      } else {
+        setTimeout(() => router.push(`/employees/${workerId}`), 1500)
+      }
     }
     setSaving(false)
+  }
+
+  const handleGenerateDoc = async () => {
+    if (!notifyModal) return
+    setGeneratingDoc(true)
+    try {
+      const today = new Date().toISOString().slice(0, 10)
+      const res = await fetch('/api/documents/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          documentId: 'todoke_joken_henkou',
+          workerId,
+          changeDate: form.effective_date || today,
+          changedSections: notifyModal.changedSections,
+        }),
+      })
+      if (!res.ok) {
+        const { error } = await res.json()
+        alert(`書類生成エラー: ${error}`)
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `随時届出_条件変更_${workerName || workerId}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+      setNotifyModal(null)
+      router.push(`/employees/${workerId}`)
+    } catch {
+      alert('書類生成中にエラーが発生しました')
+    } finally {
+      setGeneratingDoc(false)
+    }
   }
 
   // ── Shared UI helpers ───────────────────────────────────────────
@@ -688,6 +792,76 @@ export default function EmploymentConditionsPage() {
           </div>
         )}
       </div>
+
+      {/* ── 随時届出ポップアップ ── */}
+      {notifyModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 14, padding: '28px 32px', width: 620, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 40px rgba(0,0,0,0.18)' }}>
+            {/* ヘッダー */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 20 }}>
+              <div style={{ fontSize: 30, lineHeight: 1 }}>⚠️</div>
+              <div>
+                <h3 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700, color: '#b45309' }}>随時届出が必要です</h3>
+                <p style={{ margin: 0, fontSize: 13, color: '#555', lineHeight: 1.7 }}>
+                  雇用条件を変更しました。<br />
+                  <strong>14日以内に随時届出（参考様式第3-1-1号）</strong>の提出が必要です。
+                </p>
+              </div>
+            </div>
+
+            {/* 変更差分 */}
+            {notifyModal.diffItems.length > 0 ? (
+              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '14px 16px', marginBottom: 24 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#92400e', marginBottom: 10 }}>変更内容</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #fde68a' }}>
+                      <th style={{ textAlign: 'left', padding: '4px 8px', color: '#555', fontWeight: 600, width: '36%' }}>項目</th>
+                      <th style={{ textAlign: 'left', padding: '4px 8px', color: '#dc2626', fontWeight: 600, width: '30%' }}>変更前</th>
+                      <th style={{ textAlign: 'left', padding: '4px 8px', color: '#16a34a', fontWeight: 600, width: '34%' }}>変更後</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {notifyModal.diffItems.map(({ item }, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid #fef3c7' }}>
+                        <td style={{ padding: '6px 8px', color: '#374151', fontWeight: 500 }}>{item.label}</td>
+                        <td style={{ padding: '6px 8px', color: '#dc2626' }}>{item.before}</td>
+                        <td style={{ padding: '6px 8px', color: '#16a34a', fontWeight: 600 }}>{item.after}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 18px', marginBottom: 24, fontSize: 13, color: '#666' }}>
+                変更内容を自動検出できませんでした。届出書で内容を確認してください。
+              </div>
+            )}
+
+            {/* ボタン */}
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => { setNotifyModal(null); router.push(`/employees/${workerId}`) }}
+                style={{ padding: '10px 22px', borderRadius: 8, border: '1px solid #d0d0d0', background: '#fff', color: '#555', fontSize: 14, cursor: 'pointer', fontWeight: 500 }}
+              >
+                後で作成
+              </button>
+              <button
+                onClick={handleGenerateDoc}
+                disabled={generatingDoc}
+                style={{
+                  padding: '10px 22px', borderRadius: 8, border: 'none',
+                  background: generatingDoc ? '#e5e7eb' : '#0066cc',
+                  color: generatingDoc ? '#9ca3af' : '#fff',
+                  fontSize: 14, cursor: generatingDoc ? 'not-allowed' : 'pointer', fontWeight: 700,
+                }}
+              >
+                {generatingDoc ? '⏳ 生成中...' : '📄 今すぐ届出書を作成'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
