@@ -545,6 +545,20 @@ export default function EmployeeDetail() {
           </button>
         </div>
 
+        {/* 賃金台帳 */}
+        <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:600,color:"#000",marginBottom:2}}>賃金台帳</div>
+            <div style={{fontSize:13,color:"#888"}}>給与明細をAIで読み取り、月別に記録します</div>
+          </div>
+          <button
+            onClick={() => router.push(`/employees/${worker.id}/payroll`)}
+            style={{background:"#7c3aed",border:"none",borderRadius:6,padding:"9px 18px",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer",flexShrink:0}}
+          >
+            ✨ 賃金台帳を開く
+          </button>
+        </div>
+
         {/* 書類生成セクション — 在留資格に応じて動的に表示 */}
         {applicableDocs.length > 0 && (
           <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
