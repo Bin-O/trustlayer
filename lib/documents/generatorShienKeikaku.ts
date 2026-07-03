@@ -89,6 +89,15 @@ export type ShienKeikakuData = {
     support_staff_name?: string | null
     support_staff_kana?: string | null
     support_staff_title?: string | null
+    // Section IV 自由記入（会社共通テンプレート）
+    shien_jizen_guidance?: string | null
+    shien_housing?: string | null
+    shien_life_support?: string | null
+    shien_japanese?: string | null
+    shien_consultation?: string | null
+    shien_japanese_contact?: string | null
+    shien_job_change?: string | null
+    shien_regular_meeting?: string | null
   } | null
   created_date: string
 }
@@ -176,6 +185,26 @@ export async function generateShienKeikaku(data: ShienKeikakuData): Promise<Buff
     }
     if (org.support_supervisor_title) {
       ws.getCell('BE58').value = org.support_supervisor_title
+    }
+
+    // Section IV 各支援活動の自由記入欄（テンプレートの「（自由記入）」ラベルを上書き）
+    // 各セルはテンプレートで既にマージ済み。トップ左セルに書き込む。
+    const shienFields: Array<{ cell: string; value: string | null | undefined }> = [
+      { cell: 'G225', value: org.shien_jizen_guidance },    // 1. 事前ガイダンス G225:R226
+      { cell: 'G306', value: org.shien_housing },           // 3. 住居確保 G306:R307
+      { cell: 'G413', value: org.shien_life_support },      // 4. 生活オリエンテーション G413:R414
+      { cell: 'E460', value: org.shien_japanese },          // 5. 日本語学習 E460:R461
+      { cell: 'G490', value: org.shien_consultation },      // 6. 相談・苦情 G490:R491
+      { cell: 'E580', value: org.shien_japanese_contact },  // 7. 日本人との交流 E580:R581
+      { cell: 'E647', value: org.shien_job_change },        // 8. 転職支援 E647:R648
+      { cell: 'G701', value: org.shien_regular_meeting },   // 9. 定期面談 G701:R702
+    ]
+    for (const { cell, value } of shienFields) {
+      if (value) {
+        const c = ws.getCell(cell)
+        c.value = value
+        c.alignment = { wrapText: true, vertical: 'top' }
+      }
     }
   }
 

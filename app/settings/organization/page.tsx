@@ -33,6 +33,17 @@ type OrgDefaults = {
   social_insurance_enrolled: boolean
 }
 
+type ShienTemplate = {
+  shien_jizen_guidance: string
+  shien_housing: string
+  shien_life_support: string
+  shien_japanese: string
+  shien_consultation: string
+  shien_japanese_contact: string
+  shien_job_change: string
+  shien_regular_meeting: string
+}
+
 const EMPTY_BASIC: OrgBasic = {
   name: '',
   name_kana: '',
@@ -61,10 +72,22 @@ const EMPTY_DEFAULTS: OrgDefaults = {
   social_insurance_enrolled: true,
 }
 
+const EMPTY_SHIEN: ShienTemplate = {
+  shien_jizen_guidance: '',
+  shien_housing: '',
+  shien_life_support: '',
+  shien_japanese: '',
+  shien_consultation: '',
+  shien_japanese_contact: '',
+  shien_job_change: '',
+  shien_regular_meeting: '',
+}
+
 export default function OrganizationSettings() {
-  const [tab, setTab] = useState<'basic' | 'defaults'>('basic')
+  const [tab, setTab] = useState<'basic' | 'defaults' | 'shien'>('basic')
   const [basic, setBasic] = useState<OrgBasic>(EMPTY_BASIC)
   const [defaults, setDefaults] = useState<OrgDefaults>(EMPTY_DEFAULTS)
+  const [shien, setShien] = useState<ShienTemplate>(EMPTY_SHIEN)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -74,7 +97,7 @@ export default function OrganizationSettings() {
     const supabase = createClient()
     const fetchAll = async () => {
       const [orgRes, defRes] = await Promise.all([
-        supabase.from('organizations').select('name,name_kana,address,phone,representative_title,representative_name,corporate_number,industry,support_office_address,support_office_phone,support_supervisor_name,support_supervisor_kana,support_supervisor_title,support_staff_name,support_staff_kana,support_staff_title').eq('id', ORG_ID).single(),
+        supabase.from('organizations').select('name,name_kana,address,phone,representative_title,representative_name,corporate_number,industry,support_office_address,support_office_phone,support_supervisor_name,support_supervisor_kana,support_supervisor_title,support_staff_name,support_staff_kana,support_staff_title,shien_jizen_guidance,shien_housing,shien_life_support,shien_japanese,shien_consultation,shien_japanese_contact,shien_job_change,shien_regular_meeting').eq('id', ORG_ID).single(),
         supabase.from('organization_defaults').select('*').eq('organization_id', ORG_ID).maybeSingle(),
       ])
       if (orgRes.data) {
@@ -95,6 +118,16 @@ export default function OrganizationSettings() {
           support_staff_name: orgRes.data.support_staff_name ?? '',
           support_staff_kana: orgRes.data.support_staff_kana ?? '',
           support_staff_title: orgRes.data.support_staff_title ?? '',
+        })
+        setShien({
+          shien_jizen_guidance: orgRes.data.shien_jizen_guidance ?? '',
+          shien_housing: orgRes.data.shien_housing ?? '',
+          shien_life_support: orgRes.data.shien_life_support ?? '',
+          shien_japanese: orgRes.data.shien_japanese ?? '',
+          shien_consultation: orgRes.data.shien_consultation ?? '',
+          shien_japanese_contact: orgRes.data.shien_japanese_contact ?? '',
+          shien_job_change: orgRes.data.shien_job_change ?? '',
+          shien_regular_meeting: orgRes.data.shien_regular_meeting ?? '',
         })
       }
       if (defRes.data) {
@@ -172,6 +205,33 @@ export default function OrganizationSettings() {
     setSaving(false)
   }
 
+  const saveShien = async () => {
+    setSaving(true)
+    setError(null)
+    const supabase = createClient()
+    const { error: err } = await supabase
+      .from('organizations')
+      .update({
+        shien_jizen_guidance: shien.shien_jizen_guidance || null,
+        shien_housing: shien.shien_housing || null,
+        shien_life_support: shien.shien_life_support || null,
+        shien_japanese: shien.shien_japanese || null,
+        shien_consultation: shien.shien_consultation || null,
+        shien_japanese_contact: shien.shien_japanese_contact || null,
+        shien_job_change: shien.shien_job_change || null,
+        shien_regular_meeting: shien.shien_regular_meeting || null,
+      })
+      .eq('id', ORG_ID)
+    if (err) {
+      console.error('saveShien error:', err)
+      setError(err.message)
+    } else {
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    }
+    setSaving(false)
+  }
+
   const inputStyle: React.CSSProperties = {
     width: '100%',
     border: '1px solid #d0d0d0',
@@ -234,8 +294,8 @@ export default function OrganizationSettings() {
 
         {/* Tab bar */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e0e0e0', marginBottom: 24 }}>
-          {(['basic', 'defaults'] as const).map(t => {
-            const labels = { basic: '基本情報', defaults: 'デフォルト設定' }
+          {(['basic', 'defaults', 'shien'] as const).map(t => {
+            const labels = { basic: '基本情報', defaults: 'デフォルト設定', shien: '支援計画書テンプレート' }
             const active = tab === t
             return (
               <button
@@ -425,6 +485,65 @@ export default function OrganizationSettings() {
                 <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 20, marginTop: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
                   <button
                     onClick={saveDefaults}
+                    disabled={saving}
+                    style={{ background: '#0066cc', border: 'none', borderRadius: 6, padding: '10px 28px', color: '#fff', fontWeight: 600, fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
+                  >
+                    {saving ? '保存中...' : '保存'}
+                  </button>
+                  {saved && <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 600 }}>✓ 保存しました</span>}
+                  {error && <span style={{ fontSize: 13, color: '#dc2626' }}>{error}</span>}
+                </div>
+              </>
+            )}
+
+            {/* ── Tab C: 支援計画書テンプレート ── */}
+            {tab === 'shien' && (
+              <>
+                <p style={{ margin: '0 0 6px', fontSize: 13, color: '#888' }}>
+                  参考様式第1-17号（第III章）の各支援活動の実施方法を入力してください。
+                </p>
+                <p style={{ margin: '0 0 24px', fontSize: 13, color: '#0066cc', fontWeight: 600 }}>
+                  一度設定すれば全従業員の支援計画書に自動反映されます。
+                </p>
+
+                {([
+                  { key: 'shien_jizen_guidance',   label: '① 事前ガイダンス',             placeholder: '入国前・在留資格変更前に実施する生活ガイダンスの内容・実施方法を記入してください。' },
+                  { key: 'shien_housing',           label: '② 住居確保・生活支援',          placeholder: '住居の確保（社宅・物件紹介など）および生活に必要な手続きの支援内容を記入してください。' },
+                  { key: 'shien_life_support',      label: '③ 生活オリエンテーション',       placeholder: '銀行口座開設・携帯電話・ライフライン等の手続き支援の内容・実施方法を記入してください。' },
+                  { key: 'shien_japanese',          label: '④ 日本語習得支援',              placeholder: '日本語教室の紹介・費用補助・学習機会の提供など、日本語習得の支援内容を記入してください。' },
+                  { key: 'shien_consultation',      label: '⑤ 相談・苦情対応',              placeholder: '相談窓口の設置方法・対応言語・対応時間・担当者などの体制を記入してください。' },
+                  { key: 'shien_japanese_contact',  label: '⑥ 日本人との交流促進',          placeholder: '地域住民や日本人社員との交流機会（行事参加・交流会等）の支援内容を記入してください。' },
+                  { key: 'shien_job_change',        label: '⑦ 転職支援（人員整理等の場合）', placeholder: '雇用契約終了時に行う転職先の確保支援（求職活動の補助・情報提供等）の内容を記入してください。' },
+                  { key: 'shien_regular_meeting',   label: '⑧ 定期的な面談の実施',          placeholder: '定期面談の頻度・実施方法・面談者・記録管理の方法などを記入してください。' },
+                ] as { key: keyof ShienTemplate; label: string; placeholder: string }[]).map(({ key, label, placeholder }) => (
+                  <div key={key} style={fieldStyle}>
+                    <label style={labelStyle}>{label}</label>
+                    <textarea
+                      rows={4}
+                      style={{
+                        width: '100%',
+                        border: '1px solid #d0d0d0',
+                        borderRadius: 6,
+                        padding: '9px 12px',
+                        fontSize: 14,
+                        color: '#111',
+                        background: '#fff',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        resize: 'vertical',
+                        fontFamily: 'inherit',
+                        lineHeight: 1.6,
+                      }}
+                      value={shien[key]}
+                      onChange={e => setShien(p => ({ ...p, [key]: e.target.value }))}
+                      placeholder={placeholder}
+                    />
+                  </div>
+                ))}
+
+                <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <button
+                    onClick={saveShien}
                     disabled={saving}
                     style={{ background: '#0066cc', border: 'none', borderRadius: 6, padding: '10px 28px', color: '#fff', fontWeight: 600, fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
                   >
