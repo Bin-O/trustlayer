@@ -588,20 +588,6 @@ export default function EmployeeDetail() {
             ))}
           </div>
 
-          {/* 連絡先 */}
-          <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
-            <h2 style={{margin:"0 0 16px",fontSize:15,fontWeight:600,color:"#000"}}>連絡先</h2>
-            {[
-              {label:"使用言語", value:worker.preferred_language === 'vi' ? 'ベトナム語' : worker.preferred_language === 'zh' ? '中国語' : worker.preferred_language === 'en' ? '英語' : '日本語'},
-              {label:"在留カード番号", value:worker.residence_card_number},
-            ].map((item,i)=>(
-              <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<1?"1px solid #f0f0f0":"none"}}>
-                <span style={{fontSize:13,color:"#666"}}>{item.label}</span>
-                <span style={{fontSize:13,color:"#000",fontWeight:500}}>{item.value}</span>
-              </div>
-            ))}
-          </div>
-
           {/* 信頼スコア内訳 */}
           <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
