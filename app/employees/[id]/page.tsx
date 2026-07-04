@@ -582,8 +582,9 @@ export default function EmployeeDetail() {
               {label:"国籍", value:worker.nationality},
               {label:"性別", value:worker.gender === 'male' ? '男性' : worker.gender === 'female' ? '女性' : '-'},
               {label:"パスポート番号", value:worker.passport_number},
+              {label:"在留カード番号", value:activeStatus?.card_number || '-'},
             ].map((item,i)=>(
-              <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<3?"1px solid #f0f0f0":"none"}}>
+              <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<5?"1px solid #f0f0f0":"none"}}>
                 <span style={{fontSize:13,color:"#666"}}>{item.label}</span>
                 <span style={{fontSize:13,color:"#000",fontWeight:500}}>{item.value}</span>
               </div>
