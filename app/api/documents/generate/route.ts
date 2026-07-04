@@ -131,12 +131,32 @@ export async function POST(req: NextRequest) {
     }
     const allIds = [...gou1Ids, ...gou2Ids]
 
-    // 年度内の payroll_records を一括取得
-    const { data: records } = await supabase
-      .from('payroll_records')
-      .select('worker_id,target_year,target_month,working_days,scheduled_hours,overtime_hours,bonus_pay,gross_pay,overtime_pay,late_night_pay,commuting_allowance,income_tax,resident_tax,health_insurance,pension,employment_insurance,other_deduction')
-      .or(`and(target_year.eq.${fy},target_month.gte.4),and(target_year.eq.${fy + 1},target_month.lte.3)`)
-      .in('worker_id', allIds.length ? allIds : ['00000000-0000-0000-0000-000000000000'])
+    const DUMMY_ID = '00000000-0000-0000-0000-000000000000'
+    const targetIds = allIds.length ? allIds : [DUMMY_ID]
+
+    // 年度内の payroll_records・employment_conditions を並列取得
+    const [{ data: records }, { data: allConditions }] = await Promise.all([
+      supabase
+        .from('payroll_records')
+        .select('worker_id,target_year,target_month,working_days,scheduled_hours,overtime_hours,bonus_pay,gross_pay,overtime_pay,late_night_pay,commuting_allowance,income_tax,resident_tax,health_insurance,pension,employment_insurance,other_deduction')
+        .or(`and(target_year.eq.${fy},target_month.gte.4),and(target_year.eq.${fy + 1},target_month.lte.3)`)
+        .in('worker_id', targetIds),
+      supabase
+        .from('employment_conditions')
+        .select('worker_id, industry_field')
+        .in('worker_id', targetIds),
+    ])
+
+    // 従業員個別の industry_field を集約（全員一致→その値、不一致→複数分野表記、未設定→org フォールバック）
+    const uniqueFields = [...new Set(
+      (allConditions ?? [])
+        .map((c: { industry_field: string | null }) => c.industry_field)
+        .filter((f): f is string => !!f && f.trim() !== '')
+    )]
+    const derivedIndustryField: string | null =
+      uniqueFields.length === 1 ? uniqueFields[0]
+      : uniqueFields.length > 1 ? '複数分野（詳細は個別書類参照）'
+      : (org?.industry_field ?? null)
 
     const recs = (records ?? []) as Record<string, unknown>[]
     const gou1 = calcStats(recs, gou1Ids, fy)
@@ -150,7 +170,7 @@ export async function POST(req: NextRequest) {
     const input: TeikiHokokuData = {
       org: org ? {
         legal_person_number: org.legal_person_number ?? null,
-        industry_field:      org.industry_field ?? null,
+        industry_field:      derivedIndustryField,
         name_kana:           org.name_kana ?? null,
         name:                org.name ?? '',
         postal_code:         org.postal_code ?? null,
