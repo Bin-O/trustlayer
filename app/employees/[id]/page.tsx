@@ -16,6 +16,7 @@ type Worker = {
   preferred_language: string
   status: string
   residence_statuses: {
+    id: string
     status_type: string
     expiry_date: string
     issued_date: string
@@ -121,9 +122,16 @@ export default function EmployeeDetail() {
   const [worker, setWorker] = useState<Worker | null>(null)
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null)
   const [loading, setLoading] = useState(true)
-  const [generating, setGenerating] = useState(false)
-  const [generatedDoc, setGeneratedDoc] = useState<string | null>(null)
   const [docGenerating, setDocGenerating] = useState<string | null>(null)
+  const [editStatusModal, setEditStatusModal] = useState<{
+    open: boolean
+    status_type: string
+    expiry_date: string
+    issued_date: string
+    card_number: string
+    saving: boolean
+  }>({ open: false, status_type: '', expiry_date: '', issued_date: '', card_number: '', saving: false })
+
   const [keiyakuModal, setKeiyakuModal] = useState<{
     open: boolean
     hasTermination: boolean
@@ -175,41 +183,32 @@ export default function EmployeeDetail() {
     fetchEvaluation()
   }, [params.id])
 
-  const generateRenewalDoc = async () => {
-    if (!worker) return
-    setGenerating(true)
-    setGeneratedDoc(null)
-    const activeStatus = worker.residence_statuses?.find(s => s.is_active)
-
-    const prompt = `以下の外国人労働者の情報をもとに、在留資格更新許可申請書の下書きを日本語で作成してください。
-
-【申請者情報】
-氏名（漢字）: ${worker.name_kanji}
-氏名（ローマ字）: ${worker.name_romaji}
-国籍: ${worker.nationality}
-生年月日: ${worker.date_of_birth}
-パスポート番号: ${worker.passport_number}
-在留カード番号: ${worker.residence_card_number}
-在留資格: ${activeStatus?.status_type || '不明'}
-在留期限: ${activeStatus?.expiry_date || '不明'}
-
-申請書の形式で、申請理由・就労状況・今後の活動予定を含む文書を作成してください。`
-
-    try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
-      })
-      const data = await res.json()
-      setGeneratedDoc(data.text || 'エラーが発生しました')
-    } catch (e) {
-      console.error('[generate] error:', e)
-      setGeneratedDoc('通信エラーが発生しました。もう一度お試しください。')
-    } finally {
-      setGenerating(false)
-    }
-  }
+  // TODO: 在留資格更新許可申請書の自動生成（正式様式対応）が実装されたら復元する
+  // const generateRenewalDoc = async () => {
+  //   if (!worker) return
+  //   setGenerating(true)
+  //   setGeneratedDoc(null)
+  //   const activeStatus = worker.residence_statuses?.find(s => s.is_active)
+  //   const prompt = `以下の外国人労働者の情報をもとに、在留資格更新許可申請書の下書きを日本語で作成してください。
+  // 【申請者情報】
+  // 氏名（漢字）: ${worker.name_kanji}
+  // ...
+  // 申請書の形式で、申請理由・就労状況・今後の活動予定を含む文書を作成してください。`
+  //   try {
+  //     const res = await fetch('/api/generate', {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({ prompt })
+  //     })
+  //     const data = await res.json()
+  //     setGeneratedDoc(data.text || 'エラーが発生しました')
+  //   } catch (e) {
+  //     console.error('[generate] error:', e)
+  //     setGeneratedDoc('通信エラーが発生しました。もう一度お試しください。')
+  //   } finally {
+  //     setGenerating(false)
+  //   }
+  // }
 
   const generateKeiyakuDoc = async () => {
     if (!worker) return
@@ -297,6 +296,58 @@ export default function EmployeeDetail() {
     }
   }
 
+  const VISA_TYPES = [
+    '特定技能1号', '特定技能2号',
+    '技術・人文知識・国際業務', '高度専門職1号', '高度専門職2号',
+    '技能実習1号イ', '技能実習2号イ', '技能実習3号イ',
+    '特定活動', 'その他',
+  ]
+
+  const handleOpenEditStatus = () => {
+    const s = worker?.residence_statuses?.find(rs => rs.is_active)
+    setEditStatusModal({
+      open: true,
+      status_type: s?.status_type ?? '特定技能1号',
+      expiry_date: s?.expiry_date ?? '',
+      issued_date: s?.issued_date ?? '',
+      card_number: s?.card_number ?? '',
+      saving: false,
+    })
+  }
+
+  const handleSaveStatus = async () => {
+    if (!worker) return
+    const s = worker.residence_statuses?.find(rs => rs.is_active)
+    setEditStatusModal(prev => ({ ...prev, saving: true }))
+    try {
+      if (s?.id) {
+        const { error: updateError } = await supabase.from('residence_statuses').update({
+          status_type: editStatusModal.status_type,
+          expiry_date: editStatusModal.expiry_date || null,
+          issued_date: editStatusModal.issued_date || null,
+          card_number: editStatusModal.card_number || null,
+        }).eq('id', s.id)
+        if (updateError) throw updateError
+      } else {
+        const { error: insertError } = await supabase.from('residence_statuses').insert({
+          worker_id: worker.id,
+          status_type: editStatusModal.status_type,
+          expiry_date: editStatusModal.expiry_date || null,
+          issued_date: editStatusModal.issued_date || null,
+          card_number: editStatusModal.card_number || null,
+          is_active: true,
+        })
+        if (insertError) throw insertError
+      }
+      const { data } = await supabase.from('foreign_workers').select('*, residence_statuses(*)').eq('id', params.id).single()
+      if (data) setWorker(data)
+      setEditStatusModal(prev => ({ ...prev, open: false, saving: false }))
+    } catch (err) {
+      console.error('[handleSaveStatus]', err)
+      setEditStatusModal(prev => ({ ...prev, saving: false }))
+    }
+  }
+
   const getDaysUntil = (dateStr: string) => {
     const diff = new Date(dateStr).getTime() - new Date().getTime()
     return Math.ceil(diff / (1000 * 60 * 60 * 24))
@@ -336,6 +387,60 @@ export default function EmployeeDetail() {
 
   return (
     <div style={{minHeight:"100vh",background:"#f3f2ef",fontFamily:"system-ui,sans-serif"}}>
+
+      {/* 在留情報編集モーダル */}
+      {editStatusModal.open && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{background:'#fff',borderRadius:12,padding:'28px 32px',width:440,maxWidth:'90vw',boxShadow:'0 8px 32px rgba(0,0,0,0.18)'}}>
+            <h3 style={{margin:'0 0 20px',fontSize:16,fontWeight:700,color:'#111'}}>在留情報を編集</h3>
+
+            <div style={{marginBottom:16}}>
+              <label style={{display:'block',fontSize:13,fontWeight:600,color:'#333',marginBottom:6}}>在留資格 <span style={{color:'#dc2626'}}>*</span></label>
+              <select value={editStatusModal.status_type}
+                onChange={e => setEditStatusModal(prev => ({ ...prev, status_type: e.target.value }))}
+                style={{width:'100%',boxSizing:'border-box',border:'1px solid #d1d5db',borderRadius:6,padding:'9px 12px',fontSize:14,color:'#111',background:'#fff'}}>
+                {VISA_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
+
+            <div style={{marginBottom:16}}>
+              <label style={{display:'block',fontSize:13,fontWeight:600,color:'#333',marginBottom:6}}>在留期限</label>
+              <input type="date" value={editStatusModal.expiry_date}
+                onChange={e => setEditStatusModal(prev => ({ ...prev, expiry_date: e.target.value }))}
+                style={{width:'100%',boxSizing:'border-box',border:'1px solid #d1d5db',borderRadius:6,padding:'9px 12px',fontSize:14,color:'#111',background:'#fff'}} />
+            </div>
+
+            <div style={{marginBottom:16}}>
+              <label style={{display:'block',fontSize:13,fontWeight:600,color:'#333',marginBottom:6}}>交付日</label>
+              <input type="date" value={editStatusModal.issued_date}
+                onChange={e => setEditStatusModal(prev => ({ ...prev, issued_date: e.target.value }))}
+                style={{width:'100%',boxSizing:'border-box',border:'1px solid #d1d5db',borderRadius:6,padding:'9px 12px',fontSize:14,color:'#111',background:'#fff'}} />
+            </div>
+
+            <div style={{marginBottom:24}}>
+              <label style={{display:'block',fontSize:13,fontWeight:600,color:'#333',marginBottom:6}}>在留カード番号</label>
+              <input type="text" value={editStatusModal.card_number}
+                onChange={e => setEditStatusModal(prev => ({ ...prev, card_number: e.target.value }))}
+                placeholder="例: AB12345678CD"
+                style={{width:'100%',boxSizing:'border-box',border:'1px solid #d1d5db',borderRadius:6,padding:'9px 12px',fontSize:14,color:'#111',background:'#fff'}} />
+            </div>
+
+            <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+              <button onClick={() => setEditStatusModal(prev => ({ ...prev, open: false }))}
+                style={{padding:'8px 20px',borderRadius:6,border:'1px solid #ccc',background:'#fff',fontSize:14,cursor:'pointer'}}>
+                キャンセル
+              </button>
+              <button onClick={handleSaveStatus} disabled={editStatusModal.saving}
+                style={{padding:'8px 20px',borderRadius:6,border:'none',
+                  background: editStatusModal.saving ? '#e5e7eb' : '#0066cc',
+                  color: editStatusModal.saving ? '#9ca3af' : '#fff',
+                  fontSize:14,fontWeight:600,cursor: editStatusModal.saving ? 'not-allowed' : 'pointer'}}>
+                {editStatusModal.saving ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 契約終了・新契約届出モーダル */}
       {km.open && (
@@ -441,7 +546,13 @@ export default function EmployeeDetail() {
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
           {/* 在留情報 */}
           <div style={{background:"#fff",border:urgent?"1px solid #fecaca":"1px solid #e0e0e0",borderRadius:12,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
-            <h2 style={{margin:"0 0 16px",fontSize:15,fontWeight:600,color:"#000"}}>在留情報</h2>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <h2 style={{margin:0,fontSize:15,fontWeight:600,color:"#000"}}>在留情報</h2>
+              <button onClick={handleOpenEditStatus}
+                style={{background:"none",border:"1px solid #d0d0d0",borderRadius:6,padding:"4px 12px",fontSize:12,cursor:"pointer",color:"#555"}}>
+                ✏️ 編集
+              </button>
+            </div>
             {[
               {label:"在留資格", value:activeStatus?.status_type || '-'},
               {label:"在留期限", value:activeStatus?.expiry_date || '-'},
@@ -454,11 +565,10 @@ export default function EmployeeDetail() {
               </div>
             ))}
             <button
-              onClick={generateRenewalDoc}
-              disabled={generating}
-              style={{marginTop:16,background:generating?"#999":"#dc2626",border:"none",borderRadius:6,padding:"10px 16px",color:"#fff",fontSize:13,fontWeight:600,cursor:generating?"not-allowed":"pointer",width:"100%"}}
+              onClick={() => alert('この機能は準備中です。今後、在留資格更新申請書の自動生成に対応予定です。')}
+              style={{marginTop:16,background:"#f3f4f6",border:"1px solid #d1d5db",borderRadius:6,padding:"10px 16px",color:"#6b7280",fontSize:13,fontWeight:600,cursor:"pointer",width:"100%"}}
             >
-              {generating ? '⏳ AI生成中...' : '更新申請書を生成 →'}
+              更新申請書を生成（準備中）
             </button>
           </div>
 
@@ -490,7 +600,6 @@ export default function EmployeeDetail() {
                 <span style={{fontSize:13,color:"#000",fontWeight:500}}>{item.value}</span>
               </div>
             ))}
-            <button style={{marginTop:16,background:"#00b300",border:"none",borderRadius:6,padding:"10px 16px",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer",width:"100%"}}>LINEで通知を送る</button>
           </div>
 
           {/* 信頼スコア内訳 */}
@@ -621,19 +730,7 @@ export default function EmployeeDetail() {
           </div>
         )}
 
-        {/* AI生成結果（在留資格更新申請書） */}
-        {generatedDoc && (
-          <div style={{background:"#fff",border:"1px solid #0066cc",borderRadius:12,padding:"24px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-              <h2 style={{margin:0,fontSize:15,fontWeight:600,color:"#000"}}>✨ AI生成：在留資格更新許可申請書</h2>
-              <button
-                onClick={()=>navigator.clipboard.writeText(generatedDoc)}
-                style={{background:"#f0f0f0",border:"none",borderRadius:6,padding:"6px 12px",fontSize:12,cursor:"pointer",color:"#333"}}
-              >コピー</button>
-            </div>
-            <pre style={{margin:0,fontSize:13,lineHeight:1.8,color:"#333",whiteSpace:"pre-wrap",fontFamily:"system-ui,sans-serif"}}>{generatedDoc}</pre>
-          </div>
-        )}
+
       </div>
     </div>
   )
