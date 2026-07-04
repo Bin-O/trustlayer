@@ -14,6 +14,7 @@ type Worker = {
   passport_number: string
   residence_card_number: string
   preferred_language: string
+  gender: string | null
   status: string
   residence_statuses: {
     id: string
@@ -579,6 +580,7 @@ export default function EmployeeDetail() {
               {label:"氏名（ローマ字）", value:worker.name_romaji},
               {label:"生年月日", value:worker.date_of_birth},
               {label:"国籍", value:worker.nationality},
+              {label:"性別", value:worker.gender === 'male' ? '男性' : worker.gender === 'female' ? '女性' : '-'},
               {label:"パスポート番号", value:worker.passport_number},
             ].map((item,i)=>(
               <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<3?"1px solid #f0f0f0":"none"}}>
