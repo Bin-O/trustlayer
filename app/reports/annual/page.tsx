@@ -39,6 +39,7 @@ export default function AnnualReportPage() {
   const [fy, setFy] = useState(currentFiscalYear())
   const [statuses, setStatuses] = useState<WorkerStatus[]>([])
   const [loading, setLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -96,6 +97,33 @@ export default function AnnualReportPage() {
 
   const allReady = statuses.length > 0 && statuses.every(s => s.missing.length === 0)
 
+  const handleGenerate = async () => {
+    setGenerating(true)
+    try {
+      const res = await fetch('/api/documents/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: 'teiki_hokoku', fiscalYear: fy }),
+      })
+      if (!res.ok) {
+        const { error } = await res.json()
+        alert(`生成エラー: ${error}`)
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `定期届出_${fy}年度.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert('生成中にエラーが発生しました')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
   const getStatusType = (w: Worker) =>
     w.residence_statuses?.find(s => s.is_active)?.status_type ?? '—'
 
@@ -138,15 +166,16 @@ export default function AnnualReportPage() {
         {/* 一括生成ボタン */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
           <button
-            disabled={!allReady || loading}
-            onClick={() => alert('定期届出書一括生成機能は準備中です')}
+            disabled={!allReady || loading || generating}
+            onClick={handleGenerate}
             style={{
-              padding: '11px 24px', borderRadius: 8, border: 'none', fontSize: 14, fontWeight: 700, cursor: allReady ? 'pointer' : 'not-allowed',
-              background: allReady ? '#0066cc' : '#e5e7eb',
-              color: allReady ? '#fff' : '#9ca3af',
+              padding: '11px 24px', borderRadius: 8, border: 'none', fontSize: 14, fontWeight: 700,
+              cursor: allReady && !generating ? 'pointer' : 'not-allowed',
+              background: allReady && !generating ? '#0066cc' : '#e5e7eb',
+              color: allReady && !generating ? '#fff' : '#9ca3af',
               transition: 'background 0.2s',
             }}>
-            📄 定期届出書を一括生成
+            {generating ? '⏳ 生成中...' : '📄 定期届出書を一括生成'}
           </button>
         </div>
 

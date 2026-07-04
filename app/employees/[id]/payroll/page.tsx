@@ -8,6 +8,10 @@ type PayrollRecord = {
   id: string
   target_year: number
   target_month: number
+  working_days: number | null
+  scheduled_hours: number | null
+  overtime_hours: number | null
+  bonus_pay: number | null
   basic_salary: number | null
   overtime_pay: number | null
   late_night_pay: number | null
@@ -29,21 +33,25 @@ type ExtractedData = Omit<PayrollRecord, 'id'> & { raw?: string }
 const MONTHS = [1,2,3,4,5,6,7,8,9,10,11,12]
 const MONTH_LABELS = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月']
 
-const FIELDS: { key: keyof ExtractedData; label: string; section: 'pay' | 'ded' }[] = [
-  { key: 'basic_salary',         label: '基本給',       section: 'pay' },
-  { key: 'overtime_pay',         label: '時間外手当',   section: 'pay' },
-  { key: 'late_night_pay',       label: '深夜手当',     section: 'pay' },
-  { key: 'commuting_allowance',  label: '通勤手当',     section: 'pay' },
-  { key: 'other_allowance',      label: 'その他手当',   section: 'pay' },
-  { key: 'gross_pay',            label: '支給合計',     section: 'pay' },
-  { key: 'health_insurance',     label: '健康保険',     section: 'ded' },
-  { key: 'pension',              label: '厚生年金',     section: 'ded' },
-  { key: 'employment_insurance', label: '雇用保険',     section: 'ded' },
-  { key: 'income_tax',           label: '所得税',       section: 'ded' },
-  { key: 'resident_tax',         label: '住民税',       section: 'ded' },
-  { key: 'other_deduction',      label: 'その他控除',   section: 'ded' },
-  { key: 'total_deduction',      label: '控除合計',     section: 'ded' },
-  { key: 'net_pay',              label: '差引支給額',   section: 'pay' },
+const FIELDS: { key: keyof ExtractedData; label: string; section: 'labor' | 'pay' | 'ded'; unit?: string; decimal?: boolean }[] = [
+  { key: 'working_days',         label: '実労働日数',           section: 'labor', unit: '日' },
+  { key: 'scheduled_hours',      label: '所定内実労働時間',     section: 'labor', unit: '時間', decimal: true },
+  { key: 'overtime_hours',       label: '超過実労働時間',       section: 'labor', unit: '時間', decimal: true },
+  { key: 'bonus_pay',            label: '賞与等特別給与額',     section: 'labor', unit: '円' },
+  { key: 'basic_salary',         label: '基本給',               section: 'pay',   unit: '円' },
+  { key: 'overtime_pay',         label: '時間外手当',           section: 'pay',   unit: '円' },
+  { key: 'late_night_pay',       label: '深夜手当',             section: 'pay',   unit: '円' },
+  { key: 'commuting_allowance',  label: '通勤手当',             section: 'pay',   unit: '円' },
+  { key: 'other_allowance',      label: 'その他手当',           section: 'pay',   unit: '円' },
+  { key: 'gross_pay',            label: '支給合計',             section: 'pay',   unit: '円' },
+  { key: 'health_insurance',     label: '健康保険',             section: 'ded',   unit: '円' },
+  { key: 'pension',              label: '厚生年金',             section: 'ded',   unit: '円' },
+  { key: 'employment_insurance', label: '雇用保険',             section: 'ded',   unit: '円' },
+  { key: 'income_tax',           label: '所得税',               section: 'ded',   unit: '円' },
+  { key: 'resident_tax',         label: '住民税',               section: 'ded',   unit: '円' },
+  { key: 'other_deduction',      label: 'その他控除',           section: 'ded',   unit: '円' },
+  { key: 'total_deduction',      label: '控除合計',             section: 'ded',   unit: '円' },
+  { key: 'net_pay',              label: '差引支給額',           section: 'pay',   unit: '円' },
 ]
 
 function fmt(n: number | null | undefined) {
@@ -153,6 +161,10 @@ export default function PayrollPage() {
           worker_id: workerId,
           target_year: year,
           target_month: modal.month,
+          working_days: extracted.working_days,
+          scheduled_hours: extracted.scheduled_hours,
+          overtime_hours: extracted.overtime_hours,
+          bonus_pay: extracted.bonus_pay,
           basic_salary: extracted.basic_salary,
           overtime_pay: extracted.overtime_pay,
           late_night_pay: extracted.late_night_pay,
@@ -186,10 +198,11 @@ export default function PayrollPage() {
     }
   }
 
-  const setField = (key: keyof ExtractedData, val: string) => {
+  const setField = (key: keyof ExtractedData, val: string, decimal = false) => {
     if (!extracted) return
-    const num = val === '' ? null : parseInt(val.replace(/[^0-9]/g, ''), 10)
-    setExtracted(prev => prev ? { ...prev, [key]: isNaN(num as number) ? null : num } : prev)
+    if (val === '') { setExtracted(prev => prev ? { ...prev, [key]: null } : prev); return }
+    const num = decimal ? parseFloat(val) : parseInt(val.replace(/[^0-9]/g, ''), 10)
+    setExtracted(prev => prev ? { ...prev, [key]: isNaN(num) ? null : num } : prev)
   }
 
   const inputStyle: React.CSSProperties = {
@@ -361,26 +374,28 @@ export default function PayrollPage() {
                   ✅ 読み取り完了 — 内容を確認・編集してください
                 </div>
 
-                {(['pay', 'ded'] as const).map(section => {
+                {(['labor', 'pay', 'ded'] as const).map(section => {
                   const sectionFields = FIELDS.filter(f => f.section === section && f.key !== 'net_pay')
-                  const title = section === 'pay' ? '【支給】' : '【控除】'
-                  const color = section === 'pay' ? '#1d4ed8' : '#dc2626'
+                  const title = section === 'labor' ? '【勤怠・賞与】' : section === 'pay' ? '【支給】' : '【控除】'
+                  const color = section === 'labor' ? '#059669' : section === 'pay' ? '#1d4ed8' : '#dc2626'
                   return (
                     <div key={section} style={{ marginBottom: 16 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color, marginBottom: 8, paddingBottom: 4, borderBottom: `2px solid ${color}` }}>
                         {title}
+                        {section === 'labor' && <span style={{ fontSize: 11, fontWeight: 400, color: '#888', marginLeft: 8 }}>定期届出（第3-6号）の集計に使用</span>}
                       </div>
-                      {sectionFields.map(({ key, label }) => (
+                      {sectionFields.map(({ key, label, unit, decimal }) => (
                         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                          <label style={{ fontSize: 13, color: '#555', width: 120, flexShrink: 0 }}>{label}</label>
+                          <label style={{ fontSize: 13, color: '#555', width: 130, flexShrink: 0 }}>{label}</label>
                           <input
-                            type="text"
+                            type="number"
+                            step={decimal ? '0.5' : '1'}
                             value={extracted[key] != null ? String(extracted[key]) : ''}
-                            onChange={e => setField(key, e.target.value)}
+                            onChange={e => setField(key, e.target.value, decimal)}
                             placeholder="未取得"
                             style={inputStyle}
                           />
-                          <span style={{ fontSize: 12, color: '#888', flexShrink: 0 }}>円</span>
+                          <span style={{ fontSize: 12, color: '#888', flexShrink: 0 }}>{unit}</span>
                         </div>
                       ))}
                     </div>
