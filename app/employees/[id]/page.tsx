@@ -133,6 +133,17 @@ export default function EmployeeDetail() {
     saving: boolean
   }>({ open: false, status_type: '', expiry_date: '', issued_date: '', card_number: '', saving: false })
 
+  const [editWorkerModal, setEditWorkerModal] = useState<{
+    open: boolean
+    name_kanji: string
+    name_romaji: string
+    date_of_birth: string
+    nationality: string
+    passport_number: string
+    gender: string
+    saving: boolean
+  }>({ open: false, name_kanji: '', name_romaji: '', date_of_birth: '', nationality: '', passport_number: '', gender: '', saving: false })
+
   const [keiyakuModal, setKeiyakuModal] = useState<{
     open: boolean
     hasTermination: boolean
@@ -297,6 +308,44 @@ export default function EmployeeDetail() {
     }
   }
 
+  const NATIONALITIES = ['ベトナム', 'フィリピン', '中国', 'バングラデシュ', '韓国', 'インドネシア', 'ミャンマー', 'タイ', 'インド', 'その他']
+
+  const handleOpenEditWorker = () => {
+    if (!worker) return
+    setEditWorkerModal({
+      open: true,
+      name_kanji: worker.name_kanji ?? '',
+      name_romaji: worker.name_romaji ?? '',
+      date_of_birth: worker.date_of_birth ?? '',
+      nationality: worker.nationality ?? '',
+      passport_number: worker.passport_number ?? '',
+      gender: worker.gender ?? '',
+      saving: false,
+    })
+  }
+
+  const handleSaveWorker = async () => {
+    if (!worker) return
+    setEditWorkerModal(prev => ({ ...prev, saving: true }))
+    try {
+      const { error } = await supabase.from('foreign_workers').update({
+        name_kanji: editWorkerModal.name_kanji || null,
+        name_romaji: editWorkerModal.name_romaji || null,
+        date_of_birth: editWorkerModal.date_of_birth || null,
+        nationality: editWorkerModal.nationality || null,
+        passport_number: editWorkerModal.passport_number || null,
+        gender: editWorkerModal.gender || null,
+      }).eq('id', worker.id)
+      if (error) throw error
+      const { data } = await supabase.from('foreign_workers').select('*, residence_statuses(*)').eq('id', params.id).single()
+      if (data) setWorker(data)
+      setEditWorkerModal(prev => ({ ...prev, open: false, saving: false }))
+    } catch (err) {
+      console.error('[handleSaveWorker]', err)
+      setEditWorkerModal(prev => ({ ...prev, saving: false }))
+    }
+  }
+
   const VISA_TYPES = [
     '特定技能1号', '特定技能2号',
     '技術・人文知識・国際業務', '高度専門職1号', '高度専門職2号',
@@ -388,6 +437,64 @@ export default function EmployeeDetail() {
 
   return (
     <div style={{minHeight:"100vh",background:"#f3f2ef",fontFamily:"system-ui,sans-serif"}}>
+
+      {/* 基本情報編集モーダル */}
+      {editWorkerModal.open && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{background:'#fff',borderRadius:12,padding:'28px 32px',width:440,maxWidth:'90vw',boxShadow:'0 8px 32px rgba(0,0,0,0.18)'}}>
+            <h3 style={{margin:'0 0 20px',fontSize:16,fontWeight:700,color:'#111'}}>基本情報を編集</h3>
+
+            {([
+              {key:'name_kanji',  label:'氏名（漢字）',     type:'text',   placeholder:'山田 太郎'},
+              {key:'name_romaji', label:'氏名（ローマ字）', type:'text',   placeholder:'YAMADA TARO'},
+              {key:'date_of_birth',label:'生年月日',        type:'date',   placeholder:''},
+              {key:'passport_number',label:'パスポート番号',type:'text',   placeholder:'TK1234567'},
+            ] as {key: keyof typeof editWorkerModal; label: string; type: string; placeholder: string}[]).map(f => (
+              <div key={f.key} style={{marginBottom:16}}>
+                <label style={{display:'block',fontSize:13,fontWeight:600,color:'#333',marginBottom:6}}>{f.label}</label>
+                <input type={f.type} value={editWorkerModal[f.key] as string} placeholder={f.placeholder}
+                  onChange={e => setEditWorkerModal(prev => ({ ...prev, [f.key]: e.target.value }))}
+                  style={{width:'100%',boxSizing:'border-box',border:'1px solid #d1d5db',borderRadius:6,padding:'9px 12px',fontSize:14,color:'#111',background:'#fff'}} />
+              </div>
+            ))}
+
+            <div style={{marginBottom:16}}>
+              <label style={{display:'block',fontSize:13,fontWeight:600,color:'#333',marginBottom:6}}>国籍</label>
+              <select value={editWorkerModal.nationality}
+                onChange={e => setEditWorkerModal(prev => ({ ...prev, nationality: e.target.value }))}
+                style={{width:'100%',boxSizing:'border-box',border:'1px solid #d1d5db',borderRadius:6,padding:'9px 12px',fontSize:14,color:'#111',background:'#fff'}}>
+                <option value="">選択してください</option>
+                {NATIONALITIES.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+
+            <div style={{marginBottom:24}}>
+              <label style={{display:'block',fontSize:13,fontWeight:600,color:'#333',marginBottom:6}}>性別</label>
+              <select value={editWorkerModal.gender}
+                onChange={e => setEditWorkerModal(prev => ({ ...prev, gender: e.target.value }))}
+                style={{width:'100%',boxSizing:'border-box',border:'1px solid #d1d5db',borderRadius:6,padding:'9px 12px',fontSize:14,color:'#111',background:'#fff'}}>
+                <option value="">未設定</option>
+                <option value="male">男性</option>
+                <option value="female">女性</option>
+              </select>
+            </div>
+
+            <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+              <button onClick={() => setEditWorkerModal(prev => ({ ...prev, open: false }))}
+                style={{padding:'8px 20px',borderRadius:6,border:'1px solid #ccc',background:'#fff',fontSize:14,cursor:'pointer'}}>
+                キャンセル
+              </button>
+              <button onClick={handleSaveWorker} disabled={editWorkerModal.saving}
+                style={{padding:'8px 20px',borderRadius:6,border:'none',
+                  background: editWorkerModal.saving ? '#e5e7eb' : '#0066cc',
+                  color: editWorkerModal.saving ? '#9ca3af' : '#fff',
+                  fontSize:14,fontWeight:600,cursor: editWorkerModal.saving ? 'not-allowed' : 'pointer'}}>
+                {editWorkerModal.saving ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 在留情報編集モーダル */}
       {editStatusModal.open && (
@@ -575,7 +682,13 @@ export default function EmployeeDetail() {
 
           {/* 基本情報 */}
           <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
-            <h2 style={{margin:"0 0 16px",fontSize:15,fontWeight:600,color:"#000"}}>基本情報</h2>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <h2 style={{margin:0,fontSize:15,fontWeight:600,color:"#000"}}>基本情報</h2>
+              <button onClick={handleOpenEditWorker}
+                style={{background:"none",border:"1px solid #d0d0d0",borderRadius:6,padding:"4px 12px",fontSize:12,cursor:"pointer",color:"#555"}}>
+                ✏️ 編集
+              </button>
+            </div>
             {[
               {label:"氏名（ローマ字）", value:worker.name_romaji},
               {label:"生年月日", value:worker.date_of_birth},
