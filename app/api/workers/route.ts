@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const {
-      name_kanji, name_romaji, nationality, date_of_birth,
+      name_kanji, name_kana, name_romaji, nationality, date_of_birth,
       passport_number, residence_card_number, preferred_language,
       status_type, issued_date, expiry_date, gender,
     } = body
@@ -24,10 +24,11 @@ export async function POST(req: NextRequest) {
       .insert({
         org_id: ORG_ID,
         name_kanji,
+        name_kana: name_kana ?? null,
         name_romaji,
         nationality,
         date_of_birth,
-        passport_number,
+        passport_number: passport_number || null,
         residence_card_number,
         preferred_language,
         status: 'active',
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
         worker_id: worker.id,
         status_type,
         card_number: residence_card_number,
-        issued_date,
+        issued_date: issued_date || null,
         expiry_date,
         is_active: true,
         source: 'manual',

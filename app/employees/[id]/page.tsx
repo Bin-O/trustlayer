@@ -694,12 +694,16 @@ export default function EmployeeDetail() {
               {label:"生年月日", value:worker.date_of_birth},
               {label:"国籍", value:worker.nationality},
               {label:"性別", value:worker.gender === 'male' ? '男性' : worker.gender === 'female' ? '女性' : '-'},
-              {label:"パスポート番号", value:worker.passport_number},
+              {label:"パスポート番号", value:worker.passport_number, missingBadge:!worker.passport_number},
               {label:"在留カード番号", value:activeStatus?.card_number || '-'},
             ].map((item,i)=>(
               <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<5?"1px solid #f0f0f0":"none"}}>
                 <span style={{fontSize:13,color:"#666"}}>{item.label}</span>
-                <span style={{fontSize:13,color:"#000",fontWeight:500}}>{item.value}</span>
+                {item.missingBadge ? (
+                  <span style={{fontSize:11,fontWeight:600,color:"#92400e",background:"#fef3c7",border:"1px solid #fde68a",borderRadius:9999,padding:"2px 10px"}}>⚠️ 未入力</span>
+                ) : (
+                  <span style={{fontSize:13,color:"#000",fontWeight:500}}>{item.value}</span>
+                )}
               </div>
             ))}
           </div>

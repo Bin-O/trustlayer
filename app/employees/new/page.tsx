@@ -2,23 +2,32 @@
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 import AppHeader from '@/components/AppHeader'
+import { COUNTRIES, NATIONALITY_TO_LANGUAGE } from '@/lib/countries'
 
-const NATIONALITIES = ['ベトナム', 'フィリピン', '中国', 'バングラデシュ', '韓国', 'インドネシア', 'ミャンマー', 'タイ', 'インド', 'その他']
 const LANGUAGES = [
   { value: 'vi', label: 'ベトナム語' },
   { value: 'en', label: '英語' },
   { value: 'zh', label: '中国語' },
   { value: 'ja', label: '日本語' },
+  { value: 'tl', label: 'タガログ語' },
+  { value: 'id', label: 'インドネシア語' },
+  { value: 'my', label: 'ミャンマー語' },
+  { value: 'ne', label: 'ネパール語' },
+  { value: 'th', label: 'タイ語' },
+  { value: 'km', label: 'クメール語' },
 ]
 const VISA_TYPES = [
   '特定技能1号', '特定技能2号',
   '技術・人文知識・国際業務', '高度専門職1号', '高度専門職2号',
-  '技能実習1号イ', '技能実習2号イ', '技能実習3号イ',
-  '特定活動', 'その他',
+  '技能実習1号イ', '技能実習1号ロ', '技能実習2号イ', '技能実習2号ロ',
+  '技能実習3号イ', '技能実習3号ロ',
+  '永住者', '永住者の配偶者等', '日本人の配偶者等', '定住者',
+  '特定活動', '留学', '家族滞在', 'その他',
 ]
 
 type Form = {
   name_kanji: string
+  name_kana: string
   name_romaji: string
   nationality: string
   date_of_birth: string
@@ -32,7 +41,7 @@ type Form = {
 }
 
 const EMPTY: Form = {
-  name_kanji: '', name_romaji: '', nationality: 'ベトナム',
+  name_kanji: '', name_kana: '', name_romaji: '', nationality: 'ベトナム',
   date_of_birth: '', passport_number: '', residence_card_number: '',
   preferred_language: 'vi', status_type: '特定技能1号',
   issued_date: '', expiry_date: '', gender: '',
@@ -41,6 +50,7 @@ const EMPTY: Form = {
 type CardExtracted = {
   name_romaji: string | null
   name_kanji: string | null
+  name_kana: string | null
   date_of_birth: string | null
   gender: string | null
   nationality: string | null
@@ -75,10 +85,19 @@ export default function NewEmployee() {
   const [error, setError] = useState<string | null>(null)
   const [extracting, setExtracting] = useState(false)
   const [extractNote, setExtractNote] = useState<{ workRestriction: string | null } | null>(null)
+  const [kanaFromAI, setKanaFromAI] = useState(false)
+  const [langTouched, setLangTouched] = useState(false)
   const cardInputRef = useRef<HTMLInputElement>(null)
 
   const set = (key: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [key]: e.target.value }))
+
+  // 国籍変更時、使用言語が手動変更されていなければ初期値を自動設定
+  const setNationality = (value: string) =>
+    setForm(f => {
+      const lang = NATIONALITY_TO_LANGUAGE[value]
+      return { ...f, nationality: value, preferred_language: !langTouched && lang ? lang : f.preferred_language }
+    })
 
   const handleCardFile = async (file: File) => {
     setExtracting(true)
@@ -94,18 +113,25 @@ export default function NewEmployee() {
         return
       }
       const d = json.extracted as CardExtracted
-      setForm(f => ({
-        ...f,
-        name_romaji: d.name_romaji ?? f.name_romaji,
-        name_kanji: d.name_kanji ?? f.name_kanji,
-        date_of_birth: d.date_of_birth ?? f.date_of_birth,
-        gender: d.gender === 'male' || d.gender === 'female' ? d.gender : f.gender,
-        nationality: d.nationality ? (NATIONALITIES.includes(d.nationality) ? d.nationality : 'その他') : f.nationality,
-        status_type: d.status_type ? (VISA_TYPES.includes(d.status_type) ? d.status_type : 'その他') : f.status_type,
-        expiry_date: d.expiry_date ?? f.expiry_date,
-        residence_card_number: d.residence_card_number ?? f.residence_card_number,
-        issued_date: d.issued_date ?? f.issued_date,
-      }))
+      setForm(f => {
+        const nationality = d.nationality ? (COUNTRIES.includes(d.nationality) ? d.nationality : 'その他') : f.nationality
+        const lang = NATIONALITY_TO_LANGUAGE[nationality]
+        return {
+          ...f,
+          name_romaji: d.name_romaji ?? f.name_romaji,
+          name_kanji: d.name_kanji ?? f.name_kanji,
+          name_kana: d.name_kana ?? f.name_kana,
+          date_of_birth: d.date_of_birth ?? f.date_of_birth,
+          gender: d.gender === 'male' || d.gender === 'female' ? d.gender : f.gender,
+          nationality,
+          preferred_language: !langTouched && lang ? lang : f.preferred_language,
+          status_type: d.status_type ? (VISA_TYPES.includes(d.status_type) ? d.status_type : 'その他') : f.status_type,
+          expiry_date: d.expiry_date ?? f.expiry_date,
+          residence_card_number: d.residence_card_number ?? f.residence_card_number,
+          issued_date: d.issued_date ?? f.issued_date,
+        }
+      })
+      if (d.name_kana) setKanaFromAI(true)
       setExtractNote({ workRestriction: d.work_restriction })
     } catch {
       setError('在留カードの読み取り中に通信エラーが発生しました。')
@@ -116,11 +142,11 @@ export default function NewEmployee() {
   }
 
   const validate = () => {
-    const required: (keyof Form)[] = ['name_kanji', 'name_romaji', 'nationality', 'date_of_birth', 'passport_number', 'residence_card_number', 'status_type', 'issued_date', 'expiry_date']
+    const required: (keyof Form)[] = ['name_kanji', 'name_romaji', 'nationality', 'date_of_birth', 'residence_card_number', 'status_type', 'expiry_date']
     for (const k of required) {
       if (!form[k].trim()) return `${k} は必須です`
     }
-    if (new Date(form.expiry_date) <= new Date(form.issued_date)) return '在留期限は発行日より後の日付を入力してください'
+    if (form.issued_date && new Date(form.expiry_date) <= new Date(form.issued_date)) return '在留期限は発行日より後の日付を入力してください'
     return null
   }
 
@@ -136,7 +162,13 @@ export default function NewEmployee() {
       const res = await fetch('/api/workers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        // 任意項目の空文字はnullに変換して送る（date型カラムは''を受け付けない）
+        body: JSON.stringify({
+          ...form,
+          passport_number: form.passport_number.trim() || null,
+          issued_date: form.issued_date || null,
+          name_kana: form.name_kana.trim() || null,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || '登録に失敗しました')
@@ -207,15 +239,23 @@ export default function NewEmployee() {
               <Field label="氏名（ローマ字）" required>
                 <input style={inputStyle} value={form.name_romaji} onChange={set('name_romaji')} placeholder="NGUYEN VAN AN" />
               </Field>
+              <Field label="氏名（カタカナ）">
+                <input style={inputStyle} value={form.name_kana} onChange={e => { setKanaFromAI(false); set('name_kana')(e) }} placeholder="グエン・ヴァン・アン" />
+                {kanaFromAI && (
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#d97706' }}>⚠️ AI推定です。必ず確認してください</p>
+                )}
+              </Field>
               <Field label="国籍" required>
-                <select style={inputStyle} value={form.nationality} onChange={set('nationality')}>
-                  {NATIONALITIES.map(n => <option key={n} value={n}>{n}</option>)}
-                </select>
+                <input style={inputStyle} list="nationality-options" value={form.nationality}
+                  onChange={e => setNationality(e.target.value)} placeholder="入力して検索（例: ベトナム）" />
+                <datalist id="nationality-options">
+                  {COUNTRIES.map(n => <option key={n} value={n} />)}
+                </datalist>
               </Field>
               <Field label="生年月日" required>
                 <input style={inputStyle} type="date" value={form.date_of_birth} onChange={set('date_of_birth')} />
               </Field>
-              <Field label="パスポート番号" required>
+              <Field label="パスポート番号">
                 <input style={inputStyle} value={form.passport_number} onChange={set('passport_number')} placeholder="B12345678" />
               </Field>
               <Field label="在留カード番号" required>
@@ -229,7 +269,7 @@ export default function NewEmployee() {
                 </select>
               </Field>
               <Field label="使用言語" required>
-                <select style={inputStyle} value={form.preferred_language} onChange={set('preferred_language')}>
+                <select style={inputStyle} value={form.preferred_language} onChange={e => { setLangTouched(true); set('preferred_language')(e) }}>
                   {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                 </select>
               </Field>
@@ -246,8 +286,9 @@ export default function NewEmployee() {
                 </select>
               </Field>
               <div /> {/* spacer */}
-              <Field label="在留カード発行日" required>
+              <Field label="在留カード発行日（交付年月日）">
                 <input style={inputStyle} type="date" value={form.issued_date} onChange={set('issued_date')} />
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>新様式のカードには記載がないため任意です</p>
               </Field>
               <Field label="在留期限" required>
                 <input style={inputStyle} type="date" value={form.expiry_date} onChange={set('expiry_date')} />
