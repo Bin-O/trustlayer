@@ -1,6 +1,6 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import AppHeader from '@/components/AppHeader'
 
 const NATIONALITIES = ['ベトナム', 'フィリピン', '中国', 'バングラデシュ', '韓国', 'インドネシア', 'ミャンマー', 'タイ', 'インド', 'その他']
@@ -38,6 +38,19 @@ const EMPTY: Form = {
   issued_date: '', expiry_date: '', gender: '',
 }
 
+type CardExtracted = {
+  name_romaji: string | null
+  name_kanji: string | null
+  date_of_birth: string | null
+  gender: string | null
+  nationality: string | null
+  status_type: string | null
+  expiry_date: string | null
+  residence_card_number: string | null
+  issued_date: string | null
+  work_restriction: string | null
+}
+
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 16 }}>
@@ -60,9 +73,47 @@ export default function NewEmployee() {
   const [form, setForm] = useState<Form>(EMPTY)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [extracting, setExtracting] = useState(false)
+  const [extractNote, setExtractNote] = useState<{ workRestriction: string | null } | null>(null)
+  const cardInputRef = useRef<HTMLInputElement>(null)
 
   const set = (key: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [key]: e.target.value }))
+
+  const handleCardFile = async (file: File) => {
+    setExtracting(true)
+    setError(null)
+    setExtractNote(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/residence-card/extract', { method: 'POST', body: fd })
+      const json = await res.json()
+      if (!res.ok) {
+        setError(`在留カードの読み取りエラー: ${json.error}`)
+        return
+      }
+      const d = json.extracted as CardExtracted
+      setForm(f => ({
+        ...f,
+        name_romaji: d.name_romaji ?? f.name_romaji,
+        name_kanji: d.name_kanji ?? f.name_kanji,
+        date_of_birth: d.date_of_birth ?? f.date_of_birth,
+        gender: d.gender === 'male' || d.gender === 'female' ? d.gender : f.gender,
+        nationality: d.nationality ? (NATIONALITIES.includes(d.nationality) ? d.nationality : 'その他') : f.nationality,
+        status_type: d.status_type ? (VISA_TYPES.includes(d.status_type) ? d.status_type : 'その他') : f.status_type,
+        expiry_date: d.expiry_date ?? f.expiry_date,
+        residence_card_number: d.residence_card_number ?? f.residence_card_number,
+        issued_date: d.issued_date ?? f.issued_date,
+      }))
+      setExtractNote({ workRestriction: d.work_restriction })
+    } catch {
+      setError('在留カードの読み取り中に通信エラーが発生しました。')
+    } finally {
+      setExtracting(false)
+      if (cardInputRef.current) cardInputRef.current.value = ''
+    }
+  }
 
   const validate = () => {
     const required: (keyof Form)[] = ['name_kanji', 'name_romaji', 'nationality', 'date_of_birth', 'passport_number', 'residence_card_number', 'status_type', 'issued_date', 'expiry_date']
@@ -114,6 +165,36 @@ export default function NewEmployee() {
             ⚠️ {error}
           </div>
         )}
+
+        {/* 在留カードAIリーダー */}
+        <div style={{ background: '#fff', border: '1px dashed #93c5fd', borderRadius: 12, padding: 20, marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+            <div>
+              <h2 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: '#000' }}>📷 在留カードをアップロードして自動入力</h2>
+              <p style={{ margin: 0, fontSize: 12, color: '#666' }}>在留カード表面の画像（またはPDF）をAIが読み取り、下のフォームに自動反映します。反映後、内容を確認・修正してから登録してください。</p>
+            </div>
+            <button
+              type="button"
+              disabled={extracting}
+              onClick={() => cardInputRef.current?.click()}
+              style={{ background: extracting ? '#9ca3af' : '#0066cc', border: 'none', borderRadius: 6, padding: '10px 20px', fontSize: 14, color: '#fff', cursor: extracting ? 'not-allowed' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+            >
+              {extracting ? 'AI読み取り中...' : '画像を選択'}
+            </button>
+            <input ref={cardInputRef} type="file" accept=".pdf,image/*" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleCardFile(f) }} />
+          </div>
+          {extractNote && (
+            <div style={{ marginTop: 12, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#1d4ed8' }}>
+              ✅ 読み取り結果をフォームに反映しました。内容を確認・修正してください。
+              {extractNote.workRestriction && (
+                <span style={{ display: 'block', marginTop: 4, color: '#374151' }}>
+                  就労制限の有無：{extractNote.workRestriction}（参考表示のみ・保存されません）
+                </span>
+              )}
+            </div>
+          )}
+        </div>
 
         <form onSubmit={handleSubmit}>
           {/* 基本情報 */}
