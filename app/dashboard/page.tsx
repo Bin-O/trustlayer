@@ -6,7 +6,8 @@ import AppHeader from '@/components/AppHeader'
 
 type Worker = {
   id: string
-  name_kanji: string
+  name_kanji: string | null
+  name_romaji: string
   nationality: string
   status: string
   residence_statuses: {
@@ -93,13 +94,13 @@ export default function Dashboard() {
           derivedTasks.push({
             id: w.id,
             urgent: true,
-            name: w.name_kanji,
+            name: w.name_kanji || w.name_romaji,
             msg: `在留期限が${Math.abs(days)}日超過しています`,
             action: '更新申請を作成',
             workerId: w.id,
           })
           derivedNotifications.push({
-            name: w.name_kanji,
+            name: w.name_kanji || w.name_romaji,
             msg: `在留期限切れ通知を送信 (${active.expiry_date})`,
             time: getRelativeTime(active.expiry_date),
             ok: false,
@@ -109,13 +110,13 @@ export default function Dashboard() {
           derivedTasks.push({
             id: w.id,
             urgent: days <= 30,
-            name: w.name_kanji,
+            name: w.name_kanji || w.name_romaji,
             msg: `在留期限まで${days}日`,
             action: days <= 30 ? '申請書を作成' : '期限を確認',
             workerId: w.id,
           })
           derivedNotifications.push({
-            name: w.name_kanji,
+            name: w.name_kanji || w.name_romaji,
             msg: `在留期限${days}日前通知を送信`,
             time: getRelativeTime(new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString()),
             ok: true,

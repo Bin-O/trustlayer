@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       .from('foreign_workers')
       .insert({
         org_id: ORG_ID,
-        name_kanji,
+        name_kanji: name_kanji || null,
         name_kana: name_kana ?? null,
         name_romaji,
         nationality,

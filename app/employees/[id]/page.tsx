@@ -636,7 +636,7 @@ export default function EmployeeDetail() {
           <div style={{fontSize:56}}>{getFlag(worker.nationality)}</div>
           <div style={{flex:1}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
-              <h1 style={{margin:0,fontSize:22,fontWeight:700,color:"#000"}}>{worker.name_kanji}</h1>
+              <h1 style={{margin:0,fontSize:22,fontWeight:700,color:"#000"}}>{worker.name_kanji || worker.name_romaji}</h1>
               {urgent && <span style={{background:"#fee2e2",color:"#dc2626",fontSize:11,padding:"2px 10px",borderRadius:4,fontWeight:600}}>期限間近</span>}
               <span style={{background:"#f0f0f0",color:"#666",fontSize:11,padding:"2px 10px",borderRadius:4}}>{worker.status === 'active' ? '在籍中' : worker.status}</span>
             </div>

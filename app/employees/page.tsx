@@ -7,7 +7,8 @@ import EmploymentConditionsWizard from '@/components/EmploymentConditionsWizard'
 
 type Worker = {
   id: string
-  name_kanji: string
+  name_kanji: string | null
+  name_romaji: string
   nationality: string
   status: string
   residence_statuses: {
@@ -157,7 +158,7 @@ export default function Employees() {
                     <div style={{fontSize:28}}>{getFlag(w.nationality)}</div>
                     <div style={{flex:1}}>
                       <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-                        <span style={{fontWeight:600,fontSize:15,color:'#000'}}>{w.name_kanji}</span>
+                        <span style={{fontWeight:600,fontSize:15,color:'#000'}}>{w.name_kanji || w.name_romaji}</span>
                         {urgent && <span style={{background:'#fee2e2',color:'#dc2626',fontSize:11,padding:'2px 8px',borderRadius:4,fontWeight:600}}>期限間近</span>}
                         <span style={{background:'#f0f0f0',color:'#666',fontSize:11,padding:'2px 8px',borderRadius:4}}>{w.status === 'active' ? '在籍中' : w.status}</span>
                       </div>
@@ -184,7 +185,7 @@ export default function Employees() {
           <div style={{color:'#fff',fontSize:14,fontWeight:600}}>
             {selected.size}名を選択中
             <span style={{color:'#94a3b8',fontWeight:400,marginLeft:8,fontSize:13}}>
-              {selectedWorkers.map(w => w.name_kanji).join('、')}
+              {selectedWorkers.map(w => w.name_kanji || w.name_romaji).join('、')}
             </span>
           </div>
           <div style={{display:'flex',gap:10}}>
@@ -210,7 +211,7 @@ export default function Employees() {
             <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,padding:'10px 14px',marginBottom:20}}>
               {selectedWorkers.map(w => (
                 <div key={w.id} style={{fontSize:13,color:'#374151',padding:'3px 0',borderBottom:'1px solid #f1f5f9'}}>
-                  {w.name_kanji}
+                  {w.name_kanji || w.name_romaji}
                   <span style={{color:'#94a3b8',marginLeft:8,fontSize:12}}>{w.residence_statuses?.find(s => s.is_active)?.status_type || '—'}</span>
                 </div>
               ))}

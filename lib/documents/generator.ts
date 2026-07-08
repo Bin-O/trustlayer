@@ -225,7 +225,7 @@ export async function generateKoyouJoken(data: KoyouJokenData): Promise<Buffer> 
           children: [run(dateStr)],
           spacing: { after: 120 },
         }),
-        para([run(`${worker.name_kanji}　殿`, { bold: true, size: SIZE_HEADING })]),
+        para([run(`${worker.name_kanji || worker.name_romaji}　殿`, { bold: true, size: SIZE_HEADING })]),
         emptyLine(),
 
         // ── 特定技能所属機関情報 ──────────────────────

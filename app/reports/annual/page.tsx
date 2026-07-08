@@ -6,7 +6,8 @@ import AppHeader from '@/components/AppHeader'
 
 type Worker = {
   id: string
-  name_kanji: string
+  name_kanji: string | null
+  name_romaji: string
   nationality: string
   residence_statuses: { status_type: string; is_active: boolean }[]
 }
@@ -48,7 +49,7 @@ export default function AnnualReportPage() {
       // 特定技能1号/2号のアクティブ在留資格を持つ従業員
       const { data: workers } = await supabase
         .from('foreign_workers')
-        .select('id, name_kanji, nationality, residence_statuses(status_type, is_active)')
+        .select('id, name_kanji, name_romaji, nationality, residence_statuses(status_type, is_active)')
         .order('name_kanji')
 
       const targets = (workers ?? []).filter((w: Worker) =>
@@ -215,7 +216,7 @@ export default function AnnualReportPage() {
                     {/* 従業員情報 */}
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                        <span style={{ fontWeight: 700, fontSize: 15, color: '#000' }}>{worker.name_kanji}</span>
+                        <span style={{ fontWeight: 700, fontSize: 15, color: '#000' }}>{worker.name_kanji || worker.name_romaji}</span>
                         <span style={{ background: '#f0f4ff', color: '#3b5bdb', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>
                           {getStatusType(worker)}
                         </span>

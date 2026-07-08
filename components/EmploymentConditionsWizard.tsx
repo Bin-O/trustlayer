@@ -243,13 +243,13 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
       if (!isBulk) {
         // 単独: 既存データ・在留資格・会社デフォルトを読み込む
         const [wRes, cRes, ctRes, dRes] = await Promise.all([
-          supabase.from('foreign_workers').select('name_kanji, residence_statuses(status_type, is_active)').eq('id', primaryId).single(),
+          supabase.from('foreign_workers').select('name_kanji, name_romaji, residence_statuses(status_type, is_active)').eq('id', primaryId).single(),
           supabase.from('employment_conditions').select('*').eq('worker_id', primaryId).maybeSingle(),
           supabase.from('worker_contracts').select('*').eq('worker_id', primaryId).maybeSingle(),
           supabase.from('organization_defaults').select('*').eq('organization_id', ORG_ID).maybeSingle(),
         ])
         if (wRes.data) {
-          setWorkerName(wRes.data.name_kanji)
+          setWorkerName(wRes.data.name_kanji || wRes.data.name_romaji)
           const statuses = (wRes.data as { residence_statuses?: { status_type: string; is_active: boolean }[] }).residence_statuses ?? []
           const active = statuses.find(s => s.is_active)
           setWorkerStatusType(active?.status_type ?? null)

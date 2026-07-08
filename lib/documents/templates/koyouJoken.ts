@@ -16,7 +16,7 @@ export const KOYOU_JOKEN_META = {
 export type KoyouJokenData = {
   worker: {
     id: string
-    name_kanji: string
+    name_kanji: string | null
     name_romaji: string
     nationality: string
     date_of_birth: string

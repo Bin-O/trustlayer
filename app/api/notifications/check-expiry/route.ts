@@ -10,7 +10,8 @@ type ResidenceStatus = {
 
 type Worker = {
   id: string
-  name_kanji: string
+  name_kanji: string | null
+  name_romaji: string
   nationality: string
   residence_statuses: ResidenceStatus[]
 }
@@ -25,12 +26,12 @@ function daysUntil(dateStr: string): number {
 
 function buildMessage(worker: Worker, days: number, expiryDate: string, statusType: string): string {
   if (days < 0) {
-    return `【期限切れ】${worker.name_kanji}さんの在留資格（${statusType}）は ${Math.abs(days)} 日前に期限が切れています。\n期限日：${expiryDate}`
+    return `【期限切れ】${worker.name_kanji || worker.name_romaji}さんの在留資格（${statusType}）は ${Math.abs(days)} 日前に期限が切れています。\n期限日：${expiryDate}`
   }
   if (days <= 30) {
-    return `【期限間近・30日以内】${worker.name_kanji}さんの在留資格（${statusType}）の期限まで残り ${days} 日です。\n期限日：${expiryDate}`
+    return `【期限間近・30日以内】${worker.name_kanji || worker.name_romaji}さんの在留資格（${statusType}）の期限まで残り ${days} 日です。\n期限日：${expiryDate}`
   }
-  return `【期限間近・90日以内】${worker.name_kanji}さんの在留資格（${statusType}）の期限まで残り ${days} 日です。\n期限日：${expiryDate}`
+  return `【期限間近・90日以内】${worker.name_kanji || worker.name_romaji}さんの在留資格（${statusType}）の期限まで残り ${days} 日です。\n期限日：${expiryDate}`
 }
 
 export async function POST(req: NextRequest) {
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
 
   const { data: workers, error } = await supabase
     .from('foreign_workers')
-    .select('id, name_kanji, nationality, residence_statuses(*)')
+    .select('id, name_kanji, name_romaji, nationality, residence_statuses(*)')
     .eq('status', 'active')
 
   if (error) {
@@ -63,10 +64,10 @@ export async function POST(req: NextRequest) {
 
     try {
       await sendLineNotification(message)
-      results.push({ name: w.name_kanji, days, sent: true })
+      results.push({ name: w.name_kanji || w.name_romaji, days, sent: true })
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      results.push({ name: w.name_kanji, days, sent: false, error: msg })
+      results.push({ name: w.name_kanji || w.name_romaji, days, sent: false, error: msg })
     }
   }
 

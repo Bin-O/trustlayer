@@ -2,7 +2,7 @@
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 import AppHeader from '@/components/AppHeader'
-import { COUNTRIES, NATIONALITY_TO_LANGUAGE } from '@/lib/countries'
+import { COUNTRIES, NATIONALITY_TO_LANGUAGE, normalizeNationality } from '@/lib/countries'
 
 const LANGUAGES = [
   { value: 'vi', label: 'ベトナム語' },
@@ -114,7 +114,7 @@ export default function NewEmployee() {
       }
       const d = json.extracted as CardExtracted
       setForm(f => {
-        const nationality = d.nationality ? (COUNTRIES.includes(d.nationality) ? d.nationality : 'その他') : f.nationality
+        const nationality = d.nationality ? (normalizeNationality(d.nationality) ?? 'その他') : f.nationality
         const lang = NATIONALITY_TO_LANGUAGE[nationality]
         return {
           ...f,
@@ -142,7 +142,7 @@ export default function NewEmployee() {
   }
 
   const validate = () => {
-    const required: (keyof Form)[] = ['name_kanji', 'name_romaji', 'nationality', 'date_of_birth', 'residence_card_number', 'status_type', 'expiry_date']
+    const required: (keyof Form)[] = ['name_romaji', 'nationality', 'date_of_birth', 'residence_card_number', 'status_type', 'expiry_date']
     for (const k of required) {
       if (!form[k].trim()) return `${k} は必須です`
     }
@@ -165,6 +165,7 @@ export default function NewEmployee() {
         // 任意項目の空文字はnullに変換して送る（date型カラムは''を受け付けない）
         body: JSON.stringify({
           ...form,
+          name_kanji: form.name_kanji.trim() || null,
           passport_number: form.passport_number.trim() || null,
           issued_date: form.issued_date || null,
           name_kana: form.name_kana.trim() || null,
@@ -233,8 +234,8 @@ export default function NewEmployee() {
           <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 12, padding: 24, marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <h2 style={{ margin: '0 0 20px', fontSize: 15, fontWeight: 600, color: '#000' }}>基本情報</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
-              <Field label="氏名（漢字・カタカナ）" required>
-                <input style={inputStyle} value={form.name_kanji} onChange={set('name_kanji')} placeholder="グエン・ヴァン・アン" />
+              <Field label="氏名（漢字）">
+                <input style={inputStyle} value={form.name_kanji} onChange={set('name_kanji')} placeholder="漢字併記がある場合のみ（例: 阮 文 安）" />
               </Field>
               <Field label="氏名（ローマ字）" required>
                 <input style={inputStyle} value={form.name_romaji} onChange={set('name_romaji')} placeholder="NGUYEN VAN AN" />
