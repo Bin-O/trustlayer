@@ -3,6 +3,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Settings } from 'lucide-react'
+import LogoMark from '@/components/LogoMark'
 
 const ORG_ID = '11111111-1111-1111-1111-111111111111'
 
@@ -47,7 +48,7 @@ export default function AppHeader({ currentPage }: { currentPage: Page }) {
   return (
     <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, position: 'sticky', top: 0, zIndex: 100 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg,#0066cc,#004499)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🌐</div>
+        <LogoMark size={34} />
         <div>
           <div style={{ fontWeight: 700, fontSize: 16, color: '#000', lineHeight: 1.2 }}>TrustLayer</div>
           {orgName && <div style={{ fontSize: 11, color: '#888', lineHeight: 1.2 }}>{orgName}</div>}

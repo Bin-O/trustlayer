@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <!-- TrustLayer ロゴマーク: 積み木で組んだ「TL」。ブロック=Layer（信頼の積み重ね）、傾き=成長中、金の底棒=信頼の土台 -->
+  <rect x="18" y="20" width="16" height="66" rx="8" fill="#1d4ed8"/>
+  <rect x="2" y="6" width="48" height="16" rx="8" fill="#60a5fa" transform="rotate(-3 26 14)"/>
+  <rect x="58" y="14" width="16" height="58" rx="8" fill="#1d4ed8"/>
+  <rect x="54" y="70" width="40" height="16" rx="8" fill="#fbbf24" transform="rotate(2 74 78)"/>
+</svg>

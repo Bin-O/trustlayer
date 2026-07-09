@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import LogoMark from '@/components/LogoMark'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -27,7 +28,7 @@ export default function LoginPage() {
     <div style={{minHeight:'100vh',background:'#f9fafb',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'system-ui,sans-serif'}}>
       <div style={{background:'#fff',borderRadius:12,padding:'48px',width:'100%',maxWidth:420,border:'1px solid #e0e0e0',boxShadow:'0 4px 20px rgba(0,0,0,0.08)'}}>
         <div style={{textAlign:'center',marginBottom:32}}>
-          <div style={{width:48,height:48,borderRadius:12,background:'linear-gradient(135deg,#0066cc,#004499)',margin:'0 auto 16px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>🌐</div>
+          <div style={{margin:'0 auto 16px',display:'flex',justifyContent:'center'}}><LogoMark size={48} /></div>
           <h1 style={{color:'#000',fontSize:22,fontWeight:700,margin:0}}>TrustLayer</h1>
           <p style={{color:'#666',fontSize:13,marginTop:4}}>外国人材プラットフォーム</p>
         </div>
