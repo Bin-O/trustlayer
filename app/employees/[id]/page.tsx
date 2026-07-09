@@ -563,6 +563,8 @@ export default function EmployeeDetail() {
   if (!worker) return <div style={{padding:40,textAlign:"center",color:"#666"}}>データが見つかりません</div>
 
   const activeStatus = worker.residence_statuses?.find(s => s.is_active)
+  // 3-1-2号（特定技能雇用契約の終了）は特定技能専属の随時届出。他の在留資格には案内しない
+  const isTokuteiGinou = activeStatus?.status_type === '特定技能1号' || activeStatus?.status_type === '特定技能2号'
   const retired = worker.status === 'retired'
   const days = activeStatus ? getDaysUntil(activeStatus.expiry_date) : 999
   const urgent = !retired && days <= 30
@@ -717,7 +719,9 @@ export default function EmployeeDetail() {
                 style={{width:'100%',boxSizing:'border-box',border:'1px solid #d1d5db',borderRadius:6,padding:'9px 12px',fontSize:14,color:'#111',background:'#fff'}} />
             </div>
             <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:6,padding:'10px 12px',marginBottom:20,fontSize:12,color:'#92400e',lineHeight:1.6}}>
-              確定後、参考様式第3-1-2号（特定技能雇用契約の終了）の届出が必要です。確定すると作成への案内を表示します。
+              {isTokuteiGinou
+                ? '確定後、参考様式第3-1-2号（特定技能雇用契約の終了）の届出が必要です。確定すると作成への案内を表示します。'
+                : '退職時の届出義務は在留資格により異なります。ハローワークへの外国人雇用状況届出（離職時）が必要です。'}
             </div>
             <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
               <button onClick={() => setRetireModal({ open: false, retireDate: '', saving: false })}
@@ -872,18 +876,24 @@ export default function EmployeeDetail() {
       <div style={{maxWidth:900,margin:"0 auto",padding:"32px 24px"}}>
         <button onClick={()=>router.push('/employees')} style={{background:"none",border:"none",color:"#0066cc",fontSize:13,cursor:"pointer",marginBottom:20,padding:0}}>← 一覧に戻る</button>
 
-        {/* 退職処理完了 → 3-1-2号届出の案内 */}
+        {/* 退職処理完了 → 届出案内（3-1-2号は特定技能のみ） */}
         {retireDone && (
           <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'14px 18px',marginBottom:16,display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
             <div style={{flex:1,minWidth:260}}>
               <div style={{fontSize:14,fontWeight:700,color:'#92400e',marginBottom:2}}>✓ 退職処理が完了しました</div>
-              <div style={{fontSize:13,color:'#92400e'}}>参考様式第3-1-2号（特定技能雇用契約の終了）の届出が必要です。</div>
+              <div style={{fontSize:13,color:'#92400e'}}>
+                {isTokuteiGinou
+                  ? '参考様式第3-1-2号（特定技能雇用契約の終了）の届出が必要です。'
+                  : '退職時の届出義務は在留資格により異なります。ハローワークへの外国人雇用状況届出（離職時）が必要です。'}
+              </div>
             </div>
-            <button
-              onClick={() => setKeiyakuModal(prev => ({ ...prev, open: true, hasTermination: true, terminationDate: contract?.termination_date ?? prev.terminationDate }))}
-              style={{background:'#d97706',border:'none',borderRadius:6,padding:'9px 18px',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',flexShrink:0}}>
-              3-1-2号届出を作成 →
-            </button>
+            {isTokuteiGinou && (
+              <button
+                onClick={() => setKeiyakuModal(prev => ({ ...prev, open: true, hasTermination: true, terminationDate: contract?.termination_date ?? prev.terminationDate }))}
+                style={{background:'#d97706',border:'none',borderRadius:6,padding:'9px 18px',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',flexShrink:0}}>
+                3-1-2号届出を作成 →
+              </button>
+            )}
           </div>
         )}
 
