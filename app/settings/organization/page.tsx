@@ -328,14 +328,14 @@ export default function OrganizationSettings() {
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px' }}>
         {/* Page title */}
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: '#000' }}>会社情報・設定</h1>
-          <p style={{ margin: 0, fontSize: 14, color: '#666' }}>雇用条件書や書類に使用する会社情報を管理します</p>
+          <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: '#000' }}>設定</h1>
+          <p style={{ margin: 0, fontSize: 14, color: '#666' }}>会社情報・新規登録時の初期値・支援計画テンプレートを管理します</p>
         </div>
 
         {/* Tab bar */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e0e0e0', marginBottom: 24 }}>
           {(['basic', 'defaults', 'shien'] as const).map(t => {
-            const labels = { basic: '基本情報', defaults: 'デフォルト設定', shien: '支援計画書テンプレート' }
+            const labels = { basic: '会社情報', defaults: '新規登録時の初期値', shien: '支援計画テンプレート（特定技能）' }
             const active = tab === t
             return (
               <button
@@ -368,7 +368,7 @@ export default function OrganizationSettings() {
             {tab === 'basic' && (
               <>
                 <p style={{ margin: '0 0 24px', fontSize: 13, color: '#888' }}>
-                  雇用条件書の「甲（会社）」欄およびヘッダーに表示されます
+                  雇用条件書や各種届出など、生成する書類に記載される会社の基本情報と支援担当者を登録します。
                 </p>
 
                 <div style={fieldStyle}>
@@ -483,7 +483,7 @@ export default function OrganizationSettings() {
             {tab === 'defaults' && (
               <>
                 <p style={{ margin: '0 0 24px', fontSize: 13, color: '#888' }}>
-                  雇用条件入力フォームの初期値として自動入力されます
+                  従業員の雇用条件を新しく登録するとき、自動で入力される初期値です。従業員ごとにあとから変更できます。
                 </p>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
@@ -540,7 +540,7 @@ export default function OrganizationSettings() {
             {tab === 'shien' && (
               <>
                 <p style={{ margin: '0 0 6px', fontSize: 13, color: '#888' }}>
-                  参考様式第1-17号（第III章）の各支援活動の実施方法を入力してください。
+                  特定技能1号の従業員の支援計画書（参考様式第1-17号）に自動反映される支援内容のテンプレートです。
                 </p>
                 <p style={{ margin: '0 0 24px', fontSize: 13, color: '#0066cc', fontWeight: 600 }}>
                   一度設定すれば全従業員の支援計画書に自動反映されます。

@@ -106,6 +106,14 @@ export async function POST(req: NextRequest) {
     { auth: { persistSession: false } }
   )
 
+  // 生成履歴を記録（未対応の届出判定に使用）。失敗しても文書生成自体は成功として返す
+  const recordGeneration = async (docId: string, wId: string | null) => {
+    const { error } = await supabase
+      .from('document_generations')
+      .insert({ document_id: docId, worker_id: wId })
+    if (error) console.error(`[documents/generate] 生成履歴の記録に失敗 (${docId}):`, error.message)
+  }
+
   // ── 定期届出（teiki_hokoku）は機関全体レポートのため workerId 不要 ──
   if (documentId === 'teiki_hokoku') {
     const fy = Number(fiscalYear)
@@ -189,6 +197,7 @@ export async function POST(req: NextRequest) {
 
     try {
       const buffer = await generateTeikiHokoku(input)
+      await recordGeneration('teiki_hokoku', null)
       const filename = `定期届出_${fy}年度.xlsx`
       return new NextResponse(buffer as unknown as BodyInit, {
         headers: {
@@ -224,6 +233,7 @@ export async function POST(req: NextRequest) {
 
     try {
       const buffer = await generateKoyouJoken(input)
+      await recordGeneration('koyou_joken', workerId)
       const filename = `雇用条件書_${worker.name_romaji}.docx`
 
       return new NextResponse(buffer as unknown as BodyInit, {
@@ -266,6 +276,7 @@ export async function POST(req: NextRequest) {
 
     try {
       const buffer = await generateTodokeJokenHenkou(input)
+      await recordGeneration('todoke_joken_henkou', workerId)
       const filename = `随時届出_条件変更_${worker.name_romaji}.xlsx`
 
       return new NextResponse(buffer as unknown as BodyInit, {
@@ -327,6 +338,7 @@ export async function POST(req: NextRequest) {
 
     try {
       const buffer = await generateShienKeikaku(input)
+      await recordGeneration('shien_keikaku', workerId)
       const filename = `支援計画書_${worker.name_kanji ?? worker.name_romaji}.xlsx`
 
       return new NextResponse(buffer as unknown as BodyInit, {
@@ -367,6 +379,7 @@ export async function POST(req: NextRequest) {
 
     try {
       const buffer = await generateKeiyakuShuryo(input)
+      await recordGeneration('todoke_keiyaku_shuryo', workerId)
       const filename = `随時届出_契約終了_${worker.name_romaji}.xlsx`
 
       return new NextResponse(buffer as unknown as BodyInit, {
