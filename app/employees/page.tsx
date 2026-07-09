@@ -22,6 +22,7 @@ export default function Employees() {
   const router = useRouter()
   const [workers, setWorkers] = useState<Worker[]>([])
   const [loading, setLoading] = useState(true)
+  const [includeRetired, setIncludeRetired] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [confirmModal, setConfirmModal] = useState(false)
   const [bulkWizard, setBulkWizard] = useState(false)
@@ -57,12 +58,16 @@ export default function Employees() {
     return {bg:'#dcfce7',color:'#16a34a',text:`残り${days}日`}
   }
 
-  const allSelected = workers.length > 0 && workers.every(w => selected.has(w.id))
+  const activeWorkers = workers.filter(w => w.status === 'active')
+  const retiredCount = workers.length - activeWorkers.length
+  const displayWorkers = includeRetired ? workers : activeWorkers
+
+  const allSelected = displayWorkers.length > 0 && displayWorkers.every(w => selected.has(w.id))
   const toggleAll = () => {
     if (allSelected) {
       setSelected(new Set())
     } else {
-      setSelected(new Set(workers.map(w => w.id)))
+      setSelected(new Set(displayWorkers.map(w => w.id)))
     }
   }
   const toggleOne = (id: string) => {
@@ -111,7 +116,9 @@ export default function Employees() {
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
           <div>
             <h1 style={{margin:'0 0 4px',fontSize:22,fontWeight:700,color:'#000'}}>在留情報一覧</h1>
-            <p style={{margin:0,fontSize:14,color:'#666'}}>登録外国人材：{workers.length}名</p>
+            <p style={{margin:0,fontSize:14,color:'#666'}}>
+              在職：{activeWorkers.length}名{retiredCount > 0 && `　退職：${retiredCount}名`}
+            </p>
           </div>
           <button onClick={()=>router.push('/employees/new')} style={{background:'#0066cc',border:'none',borderRadius:6,padding:'10px 20px',color:'#fff',fontWeight:600,fontSize:13,cursor:'pointer'}}>＋ 新規登録</button>
         </div>
@@ -124,7 +131,7 @@ export default function Employees() {
 
         {loading ? (
           <div style={{textAlign:'center',padding:60,color:'#666'}}>読み込み中...</div>
-        ) : workers.length === 0 ? (
+        ) : displayWorkers.length === 0 ? (
           <div style={{textAlign:'center',padding:60,color:'#666'}}>データがありません</div>
         ) : (
           <>
@@ -137,14 +144,24 @@ export default function Employees() {
                 style={{width:16,height:16,cursor:'pointer',accentColor:'#0066cc'}}
               />
               <span style={{fontSize:13,fontWeight:600,color:'#555'}}>全選択</span>
+              <label style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:6,fontSize:13,color:'#555',cursor:'pointer'}}>
+                <input
+                  type="checkbox"
+                  checked={includeRetired}
+                  onChange={e => setIncludeRetired(e.target.checked)}
+                  style={{width:15,height:15,cursor:'pointer',accentColor:'#0066cc'}}
+                />
+                退職者を含む{retiredCount > 0 && `（${retiredCount}名）`}
+              </label>
             </div>
 
             <div style={{display:'flex',flexDirection:'column',gap:8}}>
-              {workers.map(w => {
+              {displayWorkers.map(w => {
                 const active = w.residence_statuses?.find(s => s.is_active)
+                const retired = w.status === 'retired'
                 const days = active ? getDays(active.expiry_date) : 999
                 const badge = getDaysBadge(days)
-                const urgent = days <= 30
+                const urgent = !retired && days <= 30
                 const isChecked = selected.has(w.id)
                 return (
                   <div key={w.id} style={{background:'#fff',border:isChecked?'1px solid #0066cc':urgent?'1px solid #fecaca':'1px solid #e0e0e0',borderRadius:12,padding:'16px 20px',display:'flex',alignItems:'center',gap:16,boxShadow: isChecked ? '0 0 0 2px rgba(0,102,204,0.15)' : '0 1px 3px rgba(0,0,0,0.06)',transition:'border-color 0.15s'}}>
@@ -160,7 +177,11 @@ export default function Employees() {
                       <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
                         <span style={{fontWeight:600,fontSize:15,color:'#000'}}>{w.name_kanji || w.name_romaji}</span>
                         {urgent && <span style={{background:'#fee2e2',color:'#dc2626',fontSize:11,padding:'2px 8px',borderRadius:4,fontWeight:600}}>期限間近</span>}
-                        <span style={{background:'#f0f0f0',color:'#666',fontSize:11,padding:'2px 8px',borderRadius:4}}>{w.status === 'active' ? '在籍中' : w.status}</span>
+                        {retired ? (
+                          <span style={{background:'#475569',color:'#fff',fontSize:11,padding:'2px 8px',borderRadius:4,fontWeight:600}}>退職</span>
+                        ) : (
+                          <span style={{background:'#f0f0f0',color:'#666',fontSize:11,padding:'2px 8px',borderRadius:4}}>{w.status === 'active' ? '在籍中' : w.status}</span>
+                        )}
                       </div>
                       <div style={{fontSize:13,color:'#666'}}>{active?.status_type || '未登録'}</div>
                     </div>

@@ -117,6 +117,7 @@ export async function POST(req: NextRequest) {
       supabase.from('organizations').select('*').eq('id', ORG_ID).maybeSingle(),
       supabase.from('foreign_workers')
         .select('id, residence_statuses(status_type, is_active)')
+        .eq('status', 'active')
         .order('name_kanji'),
     ])
 

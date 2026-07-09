@@ -50,6 +50,7 @@ export default function AnnualReportPage() {
       const { data: workers } = await supabase
         .from('foreign_workers')
         .select('id, name_kanji, name_romaji, nationality, residence_statuses(status_type, is_active)')
+        .eq('status', 'active')
         .order('name_kanji')
 
       const targets = (workers ?? []).filter((w: Worker) =>

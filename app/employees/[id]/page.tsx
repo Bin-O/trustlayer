@@ -1,6 +1,6 @@
 'use client'
 import { useRouter, useParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getDocumentsForStatus, type DocumentDef } from '@/lib/documents/statusDocumentMap'
 import AppHeader from '@/components/AppHeader'
@@ -23,7 +23,23 @@ type Worker = {
     issued_date: string
     card_number: string
     is_active: boolean
+    source: string | null
+    created_at: string
   }[]
+}
+
+type CardExtracted = {
+  name_romaji: string | null
+  name_kanji: string | null
+  name_kana: string | null
+  date_of_birth: string | null
+  gender: string | null
+  nationality: string | null
+  status_type: string | null
+  expiry_date: string | null
+  residence_card_number: string | null
+  issued_date: string | null
+  work_restriction: string | null
 }
 
 type Evaluation = {
@@ -161,6 +177,17 @@ export default function EmployeeDetail() {
     hasNewContract: false,
     newContractDate: '',
   })
+  const [contract, setContract] = useState<{ termination_date: string | null } | null>(null)
+
+  const [retireModal, setRetireModal] = useState<{ open: boolean; retireDate: string; saving: boolean }>({
+    open: false, retireDate: '', saving: false,
+  })
+  const [retireDone, setRetireDone] = useState(false)
+
+  const [cardUpdate, setCardUpdate] = useState<{ open: boolean; extracting: boolean; extracted: CardExtracted | null; saving: boolean }>({
+    open: false, extracting: false, extracted: null, saving: false,
+  })
+  const cardFileRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -174,6 +201,19 @@ export default function EmployeeDetail() {
       setLoading(false)
     }
     fetchWorker()
+  }, [params.id])
+
+  useEffect(() => {
+    if (!params.id) return
+    const fetchContract = async () => {
+      const { data } = await supabase
+        .from('worker_contracts')
+        .select('termination_date')
+        .eq('worker_id', params.id)
+        .maybeSingle()
+      if (data) setContract(data)
+    }
+    fetchContract()
   }, [params.id])
 
   useEffect(() => {
@@ -398,6 +438,114 @@ export default function EmployeeDetail() {
     }
   }
 
+  const handleRetire = async () => {
+    if (!worker) return
+    if (!retireModal.retireDate) {
+      alert('退職日を入力してください。')
+      return
+    }
+    setRetireModal(prev => ({ ...prev, saving: true }))
+    try {
+      // RLS無音失敗対策：更新行数を検証する
+      const { data: updated, error: updateErr } = await supabase
+        .from('foreign_workers')
+        .update({ status: 'retired' })
+        .eq('id', worker.id)
+        .select('id')
+      if (updateErr) throw updateErr
+      if (!updated || updated.length !== 1) {
+        throw new Error(`在職ステータスの更新に失敗しました（更新行数: ${updated?.length ?? 0}）`)
+      }
+
+      const { error: contractErr } = await supabase
+        .from('worker_contracts')
+        .upsert({ worker_id: worker.id, termination_date: retireModal.retireDate }, { onConflict: 'worker_id' })
+      if (contractErr) throw contractErr
+
+      setContract({ termination_date: retireModal.retireDate })
+      setWorker(prev => prev ? { ...prev, status: 'retired' } : prev)
+      setRetireModal({ open: false, retireDate: '', saving: false })
+      setRetireDone(true)
+    } catch (err) {
+      console.error('[handleRetire]', err)
+      alert(err instanceof Error ? err.message : '退職処理に失敗しました。')
+      setRetireModal(prev => ({ ...prev, saving: false }))
+    }
+  }
+
+  const handleCardUpdateFile = async (file: File) => {
+    setCardUpdate({ open: false, extracting: true, extracted: null, saving: false })
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/residence-card/extract', { method: 'POST', body: fd })
+      const json = await res.json()
+      if (!res.ok) {
+        alert(`在留カードの読み取りエラー: ${json.error || '不明なエラー'}`)
+        setCardUpdate(prev => ({ ...prev, extracting: false }))
+        return
+      }
+      setCardUpdate({ open: true, extracting: false, extracted: json.extracted as CardExtracted, saving: false })
+    } catch (e) {
+      console.error('[handleCardUpdateFile]', e)
+      alert('通信エラーが発生しました。')
+      setCardUpdate(prev => ({ ...prev, extracting: false }))
+    }
+  }
+
+  const handleConfirmCardUpdate = async () => {
+    if (!worker || !cardUpdate.extracted) return
+    const d = cardUpdate.extracted
+    const current = worker.residence_statuses?.find(s => s.is_active)
+    // 読み取れなかった項目は現在の値を引き継ぐ
+    const newRow = {
+      worker_id: worker.id,
+      status_type: d.status_type ?? current?.status_type ?? null,
+      expiry_date: d.expiry_date ?? current?.expiry_date ?? null,
+      issued_date: d.issued_date ?? current?.issued_date ?? null,
+      card_number: d.residence_card_number ?? current?.card_number ?? null,
+      is_active: true,
+      source: 'card_update',
+    }
+    if (!newRow.status_type || !newRow.expiry_date) {
+      alert('在留資格または在留期限が読み取れませんでした。カード画像を確認してください。')
+      return
+    }
+    setCardUpdate(prev => ({ ...prev, saving: true }))
+    try {
+      const { data: inserted, error: insertErr } = await supabase
+        .from('residence_statuses')
+        .insert(newRow)
+        .select('id')
+        .single()
+      if (insertErr || !inserted) throw insertErr ?? new Error('新しい在留資格行の登録に失敗しました')
+
+      // 旧アクティブ行を無効化（RLS無音失敗対策：更新行数を検証、失敗時は新行を削除して巻き戻す）
+      const oldIds = (worker.residence_statuses ?? []).filter(s => s.is_active).map(s => s.id)
+      if (oldIds.length > 0) {
+        const { data: deactivated, error: deactivateErr } = await supabase
+          .from('residence_statuses')
+          .update({ is_active: false })
+          .in('id', oldIds)
+          .select('id')
+        if (deactivateErr || !deactivated || deactivated.length !== oldIds.length) {
+          await supabase.from('residence_statuses').delete().eq('id', inserted.id)
+          throw deactivateErr ?? new Error(
+            `既存の在留資格行の無効化に失敗しました（期待 ${oldIds.length} 行 / 実際 ${deactivated?.length ?? 0} 行）。変更を取り消しました。`
+          )
+        }
+      }
+
+      const { data } = await supabase.from('foreign_workers').select('*, residence_statuses(*)').eq('id', params.id).single()
+      if (data) setWorker(data)
+      setCardUpdate({ open: false, extracting: false, extracted: null, saving: false })
+    } catch (err) {
+      console.error('[handleConfirmCardUpdate]', err)
+      alert(err instanceof Error ? err.message : '在留カード情報の更新に失敗しました。')
+      setCardUpdate(prev => ({ ...prev, saving: false }))
+    }
+  }
+
   const getDaysUntil = (dateStr: string) => {
     const diff = new Date(dateStr).getTime() - new Date().getTime()
     return Math.ceil(diff / (1000 * 60 * 60 * 24))
@@ -415,8 +563,11 @@ export default function EmployeeDetail() {
   if (!worker) return <div style={{padding:40,textAlign:"center",color:"#666"}}>データが見つかりません</div>
 
   const activeStatus = worker.residence_statuses?.find(s => s.is_active)
+  const retired = worker.status === 'retired'
   const days = activeStatus ? getDaysUntil(activeStatus.expiry_date) : 999
-  const urgent = days <= 30
+  const urgent = !retired && days <= 30
+  const statusHistory = [...(worker.residence_statuses ?? [])]
+    .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
   const score = calcTrustScore(worker, evaluation)
   const scoreColor = score.total >= 80 ? '#16a34a' : score.total >= 50 ? '#d97706' : '#dc2626'
 
@@ -550,6 +701,96 @@ export default function EmployeeDetail() {
         </div>
       )}
 
+      {/* 退職処理モーダル */}
+      {retireModal.open && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{background:'#fff',borderRadius:12,padding:'28px 32px',width:440,maxWidth:'90vw',boxShadow:'0 8px 32px rgba(0,0,0,0.18)'}}>
+            <h3 style={{margin:'0 0 12px',fontSize:16,fontWeight:700,color:'#111'}}>退職処理</h3>
+            <p style={{margin:'0 0 16px',fontSize:13,color:'#555',lineHeight:1.7}}>
+              {worker.name_kanji || worker.name_romaji} さんの在職ステータスを「退職」に変更します。<br />
+              データは削除されず、詳細ページ・過去の文書・履歴は引き続き参照できます。
+            </p>
+            <div style={{marginBottom:16}}>
+              <label style={{display:'block',fontSize:13,fontWeight:600,color:'#333',marginBottom:6}}>退職日 <span style={{color:'#dc2626'}}>*</span></label>
+              <input type="date" value={retireModal.retireDate}
+                onChange={e => setRetireModal(prev => ({ ...prev, retireDate: e.target.value }))}
+                style={{width:'100%',boxSizing:'border-box',border:'1px solid #d1d5db',borderRadius:6,padding:'9px 12px',fontSize:14,color:'#111',background:'#fff'}} />
+            </div>
+            <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:6,padding:'10px 12px',marginBottom:20,fontSize:12,color:'#92400e',lineHeight:1.6}}>
+              確定後、参考様式第3-1-2号（特定技能雇用契約の終了）の届出が必要です。確定すると作成への案内を表示します。
+            </div>
+            <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+              <button onClick={() => setRetireModal({ open: false, retireDate: '', saving: false })}
+                style={{padding:'8px 20px',borderRadius:6,border:'1px solid #ccc',background:'#fff',fontSize:14,cursor:'pointer'}}>
+                キャンセル
+              </button>
+              <button onClick={handleRetire} disabled={retireModal.saving}
+                style={{padding:'8px 20px',borderRadius:6,border:'none',
+                  background: retireModal.saving ? '#e5e7eb' : '#dc2626',
+                  color: retireModal.saving ? '#9ca3af' : '#fff',
+                  fontSize:14,fontWeight:600,cursor: retireModal.saving ? 'not-allowed' : 'pointer'}}>
+                {retireModal.saving ? '処理中...' : '退職処理を確定'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 在留カード更新 確認モーダル（現在の値との差分比較） */}
+      {cardUpdate.open && cardUpdate.extracted && (() => {
+        const d = cardUpdate.extracted
+        const rows = [
+          { label: '在留資格', current: activeStatus?.status_type ?? null, next: d.status_type ?? activeStatus?.status_type ?? null },
+          { label: '在留期限', current: activeStatus?.expiry_date ?? null, next: d.expiry_date ?? activeStatus?.expiry_date ?? null },
+          { label: '交付日', current: activeStatus?.issued_date ?? null, next: d.issued_date ?? activeStatus?.issued_date ?? null },
+          { label: '在留カード番号', current: activeStatus?.card_number ?? null, next: d.residence_card_number ?? activeStatus?.card_number ?? null },
+        ]
+        return (
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <div style={{background:'#fff',borderRadius:12,padding:'28px 32px',width:560,maxWidth:'90vw',boxShadow:'0 8px 32px rgba(0,0,0,0.18)'}}>
+              <h3 style={{margin:'0 0 8px',fontSize:16,fontWeight:700,color:'#111'}}>在留カード読み取り結果の確認</h3>
+              <p style={{margin:'0 0 18px',fontSize:13,color:'#555',lineHeight:1.7}}>
+                確定すると新しい在留資格情報が登録され、現在の情報は履歴として保持されます。
+              </p>
+
+              <div style={{border:'1px solid #e5e7eb',borderRadius:8,overflow:'hidden',marginBottom:20}}>
+                <div style={{display:'grid',gridTemplateColumns:'120px 1fr 1fr',background:'#f8fafc',borderBottom:'1px solid #e5e7eb',fontSize:12,fontWeight:600,color:'#64748b'}}>
+                  <div style={{padding:'8px 12px'}}>項目</div>
+                  <div style={{padding:'8px 12px'}}>現在</div>
+                  <div style={{padding:'8px 12px'}}>新しいカード</div>
+                </div>
+                {rows.map((r, i) => {
+                  const changed = (r.current ?? '') !== (r.next ?? '')
+                  return (
+                    <div key={r.label} style={{display:'grid',gridTemplateColumns:'120px 1fr 1fr',borderBottom:i<rows.length-1?'1px solid #f1f5f9':'none',fontSize:13}}>
+                      <div style={{padding:'10px 12px',color:'#666'}}>{r.label}</div>
+                      <div style={{padding:'10px 12px',color:'#334155'}}>{r.current ?? '-'}</div>
+                      <div style={{padding:'10px 12px',fontWeight:changed?700:400,color:changed?'#0066cc':'#94a3b8',background:changed?'#eff6ff':'transparent'}}>
+                        {r.next ?? '-'}{changed && ' ←変更'}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+                <button onClick={() => setCardUpdate({ open: false, extracting: false, extracted: null, saving: false })}
+                  style={{padding:'8px 20px',borderRadius:6,border:'1px solid #ccc',background:'#fff',fontSize:14,cursor:'pointer'}}>
+                  キャンセル
+                </button>
+                <button onClick={handleConfirmCardUpdate} disabled={cardUpdate.saving}
+                  style={{padding:'8px 20px',borderRadius:6,border:'none',
+                    background: cardUpdate.saving ? '#e5e7eb' : '#0066cc',
+                    color: cardUpdate.saving ? '#9ca3af' : '#fff',
+                    fontSize:14,fontWeight:600,cursor: cardUpdate.saving ? 'not-allowed' : 'pointer'}}>
+                  {cardUpdate.saving ? '更新中...' : 'この内容で更新'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* 契約終了・新契約届出モーダル */}
       {km.open && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -631,6 +872,21 @@ export default function EmployeeDetail() {
       <div style={{maxWidth:900,margin:"0 auto",padding:"32px 24px"}}>
         <button onClick={()=>router.push('/employees')} style={{background:"none",border:"none",color:"#0066cc",fontSize:13,cursor:"pointer",marginBottom:20,padding:0}}>← 一覧に戻る</button>
 
+        {/* 退職処理完了 → 3-1-2号届出の案内 */}
+        {retireDone && (
+          <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'14px 18px',marginBottom:16,display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
+            <div style={{flex:1,minWidth:260}}>
+              <div style={{fontSize:14,fontWeight:700,color:'#92400e',marginBottom:2}}>✓ 退職処理が完了しました</div>
+              <div style={{fontSize:13,color:'#92400e'}}>参考様式第3-1-2号（特定技能雇用契約の終了）の届出が必要です。</div>
+            </div>
+            <button
+              onClick={() => setKeiyakuModal(prev => ({ ...prev, open: true, hasTermination: true, terminationDate: contract?.termination_date ?? prev.terminationDate }))}
+              style={{background:'#d97706',border:'none',borderRadius:6,padding:'9px 18px',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',flexShrink:0}}>
+              3-1-2号届出を作成 →
+            </button>
+          </div>
+        )}
+
         {/* Profile header */}
         <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"24px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)",display:"flex",alignItems:"center",gap:20}}>
           <div style={{fontSize:56}}>{getFlag(worker.nationality)}</div>
@@ -638,7 +894,19 @@ export default function EmployeeDetail() {
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
               <h1 style={{margin:0,fontSize:22,fontWeight:700,color:"#000"}}>{worker.name_kanji || worker.name_romaji}</h1>
               {urgent && <span style={{background:"#fee2e2",color:"#dc2626",fontSize:11,padding:"2px 10px",borderRadius:4,fontWeight:600}}>期限間近</span>}
-              <span style={{background:"#f0f0f0",color:"#666",fontSize:11,padding:"2px 10px",borderRadius:4}}>{worker.status === 'active' ? '在籍中' : worker.status}</span>
+              {retired ? (
+                <span style={{background:"#475569",color:"#fff",fontSize:11,padding:"2px 10px",borderRadius:4,fontWeight:600}}>
+                  退職{contract?.termination_date ? `（${contract.termination_date}）` : ''}
+                </span>
+              ) : (
+                <span style={{background:"#f0f0f0",color:"#666",fontSize:11,padding:"2px 10px",borderRadius:4}}>{worker.status === 'active' ? '在籍中' : worker.status}</span>
+              )}
+              {worker.status === 'active' && (
+                <button onClick={() => setRetireModal({ open: true, retireDate: '', saving: false })}
+                  style={{marginLeft:'auto',background:'#fff',border:'1px solid #dc2626',borderRadius:6,padding:'5px 14px',color:'#dc2626',fontSize:12,fontWeight:600,cursor:'pointer',flexShrink:0}}>
+                  退職処理
+                </button>
+              )}
             </div>
             <div style={{fontSize:13,color:"#666"}}>{worker.nationality} ／ {activeStatus?.status_type || '未登録'}</div>
           </div>
@@ -672,9 +940,27 @@ export default function EmployeeDetail() {
                 <span style={{fontSize:13,color:"#000",fontWeight:500}}>{item.value}</span>
               </div>
             ))}
+            <input
+              ref={cardFileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              style={{display:'none'}}
+              onChange={e => {
+                const file = e.target.files?.[0]
+                if (file) handleCardUpdateFile(file)
+                e.target.value = ''
+              }}
+            />
+            <button
+              onClick={() => cardFileRef.current?.click()}
+              disabled={cardUpdate.extracting}
+              style={{marginTop:16,background:cardUpdate.extracting?"#e5e7eb":"#0066cc",border:"none",borderRadius:6,padding:"10px 16px",color:cardUpdate.extracting?"#9ca3af":"#fff",fontSize:13,fontWeight:600,cursor:cardUpdate.extracting?"not-allowed":"pointer",width:"100%"}}
+            >
+              {cardUpdate.extracting ? '⏳ AI読み取り中...' : '📷 新しい在留カードを読み取って更新'}
+            </button>
             <button
               onClick={() => alert('この機能は準備中です。今後、在留資格更新申請書の自動生成に対応予定です。')}
-              style={{marginTop:16,background:"#f3f4f6",border:"1px solid #d1d5db",borderRadius:6,padding:"10px 16px",color:"#6b7280",fontSize:13,fontWeight:600,cursor:"pointer",width:"100%"}}
+              style={{marginTop:8,background:"#f3f4f6",border:"1px solid #d1d5db",borderRadius:6,padding:"10px 16px",color:"#6b7280",fontSize:13,fontWeight:600,cursor:"pointer",width:"100%"}}
             >
               更新申請書を生成（準備中）
             </button>
@@ -836,6 +1122,31 @@ export default function EmployeeDetail() {
           </div>
         )}
 
+        {/* 在留資格履歴（時系列） */}
+        {statusHistory.length > 0 && (
+          <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+            <h2 style={{margin:"0 0 14px",fontSize:15,fontWeight:600,color:"#000"}}>在留資格履歴</h2>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {statusHistory.map(s => (
+                <div key={s.id} style={{display:'flex',alignItems:'center',gap:12,border:s.is_active?'1px solid #bfdbfe':'1px solid #f0f0f0',background:s.is_active?'#eff6ff':'#fafafa',borderRadius:8,padding:'10px 14px'}}>
+                  <span style={{fontSize:11,fontWeight:600,padding:'2px 10px',borderRadius:9999,flexShrink:0,
+                    background:s.is_active?'#0066cc':'#e5e7eb',color:s.is_active?'#fff':'#6b7280'}}>
+                    {s.is_active ? '現在' : '過去'}
+                  </span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:600,color:'#111'}}>{s.status_type || '-'}</div>
+                    <div style={{fontSize:12,color:'#888'}}>
+                      期限：{s.expiry_date || '-'}　交付日：{s.issued_date || '-'}　カード番号：{s.card_number || '-'}
+                    </div>
+                  </div>
+                  <div style={{fontSize:11,color:'#aaa',flexShrink:0}}>
+                    登録日 {s.created_at ? s.created_at.slice(0, 10) : '-'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
