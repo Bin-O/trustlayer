@@ -211,7 +211,7 @@ export default function PayrollPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f3f2ef', fontFamily: 'system-ui,sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#f9fafb', fontFamily: 'system-ui,sans-serif' }}>
       <AppHeader currentPage="employees" />
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>

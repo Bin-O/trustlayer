@@ -181,7 +181,7 @@ export default function NewEmployee() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f3f2ef', fontFamily: 'system-ui,sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#f9fafb', fontFamily: 'system-ui,sans-serif' }}>
       {/* Header */}
       <AppHeader currentPage="employees" />
 

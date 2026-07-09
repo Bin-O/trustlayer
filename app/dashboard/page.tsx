@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/AppHeader'
 import { getActiveAnnouncements } from '@/lib/announcements'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
+import { Megaphone } from 'lucide-react'
 
 const TOKUTEI_TYPES = ['特定技能1号', '特定技能2号']
 
@@ -257,7 +258,7 @@ function buildSnapshot(
     expiryDist: [
       { label: '30日以内', count: expiry30, color: URGENCY_COLOR.red },
       { label: '31〜60日', count: expiry60, color: URGENCY_COLOR.amber },
-      { label: '61〜90日', count: expiry90, color: '#94a3b8' },
+      { label: '61〜90日', count: expiry90, color: '#3b82f6' },
       { label: '91日以上', count: expiryOver90, color: URGENCY_COLOR.green },
       { label: '期限未登録', count: expiryUnknown, color: '#e2e8f0' },
     ],
@@ -275,7 +276,6 @@ const cardStyle: React.CSSProperties = {
   border: '1px solid #e5e7eb',
   borderRadius: 12,
   padding: '18px 20px',
-  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
   textAlign: 'left',
 }
 
@@ -283,7 +283,12 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#6b7280', letterSpacing: '0.02em' }}>{children}</h2>
 }
 
-const CHART_COLORS = ['#2563eb', '#60a5fa', '#93c5fd', '#a5b4fc', '#94a3b8', '#cbd5e1']
+const CHART_COLORS = ['#1e40af', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#dbeafe']
+
+/** 凡例が長い在留資格名の略称（title属性で全文を保持） */
+const LEGEND_ABBREV: Record<string, string> = {
+  '技術・人文知識・国際業務': '技人国',
+}
 
 function CompositionCard({ title, dist }: { title: string; dist: Dist[] }) {
   const top = dist.slice(0, 5)
@@ -291,7 +296,7 @@ function CompositionCard({ title, dist }: { title: string; dist: Dist[] }) {
   const data = rest > 0 ? [...top, { name: 'その他', value: rest }] : top
   return (
     <div style={cardStyle}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', marginBottom: 10 }}>{title}</div>
+      <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em', marginBottom: 10 }}>{title}</div>
       {data.length === 0 ? (
         <div style={{ fontSize: 13, color: '#9ca3af', padding: '24px 0', textAlign: 'center' }}>データがありません</div>
       ) : (
@@ -309,7 +314,7 @@ function CompositionCard({ title, dist }: { title: string; dist: Dist[] }) {
             {data.map((d, i) => (
               <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                 <span style={{ width: 8, height: 8, borderRadius: 2, background: CHART_COLORS[i % CHART_COLORS.length], flexShrink: 0 }} />
-                <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{d.name}</span>
+                <span title={d.name} style={{ color: '#374151', flex: 1, lineHeight: 1.35 }}>{LEGEND_ABBREV[d.name] ?? d.name}</span>
                 <span style={{ color: '#111', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{d.value}</span>
               </div>
             ))}
@@ -378,6 +383,7 @@ export default function Dashboard() {
 
   const filteredTimeline = (snap?.timeline ?? []).filter(t => tlFilter === 'all' || t.kind === tlFilter)
   const today = new Date()
+  const todayStr = fmtDate(today)
   const todayLabel = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`
 
   const alertCardBtn: React.CSSProperties = {
@@ -399,8 +405,17 @@ export default function Dashboard() {
   })
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f3f2ef', fontFamily: 'system-ui,sans-serif' }}>
-      <style>{`@keyframes dashPulse { 0%,100% { opacity: .5 } 50% { opacity: 1 } }`}</style>
+    <div style={{ minHeight: '100vh', background: '#f9fafb', fontFamily: 'system-ui,sans-serif' }}>
+      <style>{`
+        @keyframes dashPulse { 0%,100% { opacity: .5 } 50% { opacity: 1 } }
+        .tl-action {
+          border: 1px solid #e5e7eb; border-radius: 6px; padding: 7px 14px;
+          font-size: 12px; font-weight: 600; cursor: pointer; flex-shrink: 0;
+          background: #fff; color: #6b7280; font-family: inherit; white-space: nowrap;
+          transition: border-color .15s ease, color .15s ease, background .15s ease;
+        }
+        .tl-action:hover { border-color: #9ca3af; color: #111827; background: #f9fafb; }
+      `}</style>
       <AppHeader currentPage="dashboard" />
 
       <div style={{ maxWidth: 1080, margin: '0 auto', padding: '28px 24px 48px' }}>
@@ -410,7 +425,7 @@ export default function Dashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
             {announcements.map(a => (
               <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '11px 16px' }}>
-                <span style={{ fontSize: 15, flexShrink: 0 }}>📣</span>
+                <Megaphone size={16} strokeWidth={2} color="#1e40af" style={{ flexShrink: 0 }} />
                 <span style={{ fontSize: 13, color: '#1e40af', fontWeight: 500, lineHeight: 1.5 }}>
                   <span style={{ fontWeight: 700, marginRight: 8 }}>制度改正</span>
                   {a.message}
@@ -438,7 +453,7 @@ export default function Dashboard() {
             <>
               {/* 在留期限警告 */}
               <button data-testid="card-expiry" onClick={() => focusTimeline('expiry')} style={alertCardBtn}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#6b7280' }}>在留期限の警告</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em' }}>在留期限の警告</div>
                 <div style={{ display: 'flex', gap: 18 }}>
                   {[
                     { label: '30日以内', n: snap.expiry30, color: snap.expiry30 > 0 ? URGENCY_COLOR.red : '#d1d5db' },
@@ -456,7 +471,7 @@ export default function Dashboard() {
 
               {/* 未対応の届出 */}
               <button data-testid="card-todoke" onClick={() => focusTimeline('todoke')} style={alertCardBtn}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#6b7280' }}>未対応の届出</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em' }}>未対応の届出</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                   <div style={bigNum(snap.todokeCount, snap.todokeCount > 0 ? URGENCY_COLOR.red : URGENCY_COLOR.green)}>{snap.todokeCount}</div>
                   <span style={{ fontSize: 12, color: '#6b7280' }}>件</span>
@@ -467,7 +482,7 @@ export default function Dashboard() {
 
               {/* 支援計画の実施予定 */}
               <button data-testid="card-mendan" onClick={() => focusTimeline('mendan')} style={alertCardBtn}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#6b7280' }}>支援計画の実施予定（今月）</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em' }}>支援計画の実施予定（今月）</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                   <div style={bigNum(snap.mendanCount, snap.mendanCount > 0 ? '#2563eb' : '#d1d5db')}>{snap.mendanCount}</div>
                   <span style={{ fontSize: 12, color: '#6b7280' }}>名</span>
@@ -477,7 +492,7 @@ export default function Dashboard() {
 
               {/* 賃金台帳 */}
               <button data-testid="card-payroll" onClick={() => router.push('/reports/annual')} style={alertCardBtn}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#6b7280' }}>賃金台帳の未登録</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em' }}>賃金台帳の未登録</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                   <div style={bigNum(snap.payrollMissingCount, snap.payrollMissingCount > 0 ? URGENCY_COLOR.amber : URGENCY_COLOR.green)}>{snap.payrollMissingCount}</div>
                   <span style={{ fontSize: 12, color: '#6b7280' }}>名</span>
@@ -523,6 +538,9 @@ export default function Dashboard() {
                 <div key={t.key} data-testid={`tl-${t.kind}`}
                   style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 18px', borderBottom: i < filteredTimeline.length - 1 ? '1px solid #f3f4f6' : 'none', flexWrap: 'wrap' }}>
                   <span style={{ width: 9, height: 9, borderRadius: '50%', background: URGENCY_COLOR[t.urgency], flexShrink: 0 }} />
+                  {t.due < todayStr && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fee2e2', borderRadius: 4, padding: '2px 6px', flexShrink: 0, letterSpacing: '0.05em' }}>超過</span>
+                  )}
                   <div style={{ width: 76, flexShrink: 0 }}>
                     <div style={{ fontSize: t.due.slice(0, 4) === String(today.getFullYear()) ? 13 : 12, fontWeight: 700, color: '#111', fontVariantNumeric: 'tabular-nums' }}>
                       {t.due.slice(0, 4) === String(today.getFullYear())
@@ -535,12 +553,7 @@ export default function Dashboard() {
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>{t.title}</div>
                     <div style={{ fontSize: 12, color: t.urgency === 'red' ? URGENCY_COLOR.red : '#6b7280', marginTop: 1 }}>{t.detail}</div>
                   </div>
-                  <button onClick={() => router.push(t.href)}
-                    style={{
-                      border: 'none', borderRadius: 6, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0,
-                      background: t.urgency === 'red' ? URGENCY_COLOR.red : '#f3f4f6',
-                      color: t.urgency === 'red' ? '#fff' : '#374151',
-                    }}>
+                  <button className="tl-action" onClick={() => router.push(t.href)}>
                     {t.actionLabel} →
                   </button>
                 </div>
@@ -560,7 +573,7 @@ export default function Dashboard() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
               {/* 在職者数 */}
               <div style={cardStyle}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', marginBottom: 10 }}>在職者数</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em', marginBottom: 10 }}>在職者数</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                   <div style={bigNum(snap.headcount, '#111')}>{snap.headcount}</div>
                   <span style={{ fontSize: 12, color: '#6b7280' }}>名</span>
@@ -577,7 +590,7 @@ export default function Dashboard() {
 
               {/* 期限ステータス分布 */}
               <div style={cardStyle}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', marginBottom: 12 }}>在留期限ステータス分布</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em', marginBottom: 12 }}>在留期限ステータス分布</div>
                 {snap.headcount === 0 ? (
                   <div style={{ fontSize: 13, color: '#9ca3af', padding: '24px 0', textAlign: 'center' }}>データがありません</div>
                 ) : (

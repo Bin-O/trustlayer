@@ -133,7 +133,7 @@ export default function AnnualReportPage() {
     keys.map(k => `${k.year}年${MONTH_LABELS[k.month]}`).join('、')
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f3f2ef', fontFamily: 'system-ui,sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#f9fafb', fontFamily: 'system-ui,sans-serif' }}>
       <AppHeader currentPage="reports" />
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>

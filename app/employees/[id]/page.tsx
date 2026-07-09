@@ -589,7 +589,7 @@ export default function EmployeeDetail() {
   const setKm = (patch: Partial<typeof keiyakuModal>) => setKeiyakuModal(prev => ({ ...prev, ...patch }))
 
   return (
-    <div style={{minHeight:"100vh",background:"#f3f2ef",fontFamily:"system-ui,sans-serif"}}>
+    <div style={{minHeight:"100vh",background:"#f9fafb",fontFamily:"system-ui,sans-serif"}}>
 
       {/* 基本情報編集モーダル */}
       {editWorkerModal.open && (
