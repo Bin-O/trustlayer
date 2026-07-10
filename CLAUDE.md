@@ -4,7 +4,7 @@
 
 ## プロジェクト概要
 特定技能外国人の雇用コンプライアンス管理SaaS。自社支援企業向け。
-Next.js 15 + TypeScript + Supabase (Tokyo, 無料枠) + Vercel。
+Next.js 16 + TypeScript + Supabase (Tokyo, 無料枠) + Vercel。
 投資家デモに向けて開発中。品質基準はStripe/Linear水準のUI。
 
 ## 絶対ルール(違反禁止)
