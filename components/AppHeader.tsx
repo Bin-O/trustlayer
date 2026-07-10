@@ -2,7 +2,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Settings } from 'lucide-react'
+import { LogOut, Settings } from 'lucide-react'
 import LogoMark from '@/components/LogoMark'
 
 const ORG_ID = '11111111-1111-1111-1111-111111111111'
@@ -103,6 +103,24 @@ export default function AppHeader({ currentPage }: { currentPage: Page }) {
                 >
                   <Settings size={15} strokeWidth={2} />
                   設定
+                </button>
+                <div style={{ height: 1, background: '#f3f4f6', margin: '4px 0' }} />
+                <button
+                  onClick={async () => {
+                    setMenuOpen(false)
+                    await createClient().auth.signOut()
+                    // フルリロードでクライアント側の状態とルーターキャッシュを破棄する
+                    window.location.href = '/'
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                    background: 'none', border: 'none', borderRadius: 6, padding: '8px 10px',
+                    fontSize: 13, fontWeight: 500, color: '#dc2626',
+                    cursor: 'pointer', textAlign: 'left',
+                  }}
+                >
+                  <LogOut size={15} strokeWidth={2} />
+                  ログアウト
                 </button>
               </div>
             </>
