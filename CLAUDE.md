@@ -24,6 +24,9 @@ Next.js 16 + TypeScript + Supabase (Tokyo, 無料枠) + Vercel。
   が期待値であることをテストで確認する
 - worker_contracts には anon の DELETE ポリシーがない(直接DELETEは
   0行になる)。削除は親 foreign_workers のFK CASCADEに任せる
+- residence_statuses の FK は CASCADE なし。親(foreign_workers)削除前に
+  子(residence_statuses)を先に削除する必要あり(409エラー)。
+  worker_contracts とは挙動が異なる
 - Reactサブコンポーネントは必ずモジュールスコープで定義(関数内定義は
   入力フォーカス喪失バグを起こす)
 - moj.go.jp は非日本IPをブロックするため、公式様式のダウンロードは
