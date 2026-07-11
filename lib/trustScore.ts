@@ -5,10 +5,16 @@
  * - 届出期限遵守(8点)は「生成義務のある届出のうち生成済みの割合 × 8点」に簡略化
  *   （document_generations を根拠とし、提出日トラッキングは将来対応）
  * - evaluator_role が NULL の既存 evaluations は面談時評価の集計から除外
+ *
+ * formula_version 2:
+ * - 有効な評価が0件のとき面談時評価は0点（ベイズ収縮の prior は1件以上でのみ適用）
+ * - 届出義務が0件かつ在職実データ（worker_contracts / payroll_records いずれか1行以上）
+ *   も無い場合、届出遵守8点を与えない
+ * - 各内訳項目に hasData を追加（データ未蓄積のUI表示用）
  */
 import { createClient } from '@/lib/supabase/client'
 
-export const FORMULA_VERSION = 1
+export const FORMULA_VERSION = 2
 
 /** データ充足度がこの値未満の場合、総合点の数値ではなく「実績蓄積中」と表示する */
 export const SUFFICIENCY_DISPLAY_THRESHOLD = 0.5
@@ -21,7 +27,9 @@ export type BreakdownItem = {
   score: number
   max: number
   badge: Badge
-  detail?: { interview: number; behavioral: number }
+  /** 算出の根拠データが1件以上あるか。false のときUIは「データ未蓄積」を表示 */
+  hasData: boolean
+  detail?: { interview: number; behavioral: number; interviewCount: number }
 }
 
 export type TrustScoreResult = {
@@ -159,9 +167,17 @@ function calcCompliance(
     obligations++
     if (gens.some(g => g.document_id === 'teiki_hokoku' && g.generated_at.slice(0, 10) >= windowStart)) generated++
   }
-  const filingScore = (obligations > 0 ? generated / obligations : 1) * 8
+  // 義務0件のとき: 在職実データ（契約 or 賃金台帳が1行以上）があれば「違反なし」として
+  // 満点、実データが皆無なら加点しない（formula_version 2）
+  const hasEmploymentData = contract !== null || payroll.length > 0
+  const filingRatio = obligations > 0 ? generated / obligations : (hasEmploymentData ? 1 : 0)
+  const filingScore = filingRatio * 8
 
-  return { score: Math.round(payrollScore + filingScore), payrollRatio }
+  return {
+    score: Math.round(payrollScore + filingScore),
+    payrollRatio,
+    hasData: hasEmploymentData || obligations > 0,
+  }
 }
 
 /** §2-3 支援実施・参加(15点) */
@@ -253,6 +269,9 @@ function calcInterviewScore(evals: EvaluationRow[], now: Date) {
     }
   }
 
+  // 有効な評価が0件なら0点。prior による中間点の付与はしない（formula_version 2）
+  if (weighted.length === 0) return { score: 0, count: 0 }
+
   let wSum = 0
   let wrSum = 0
   for (const w of weighted) {
@@ -260,13 +279,13 @@ function calcInterviewScore(evals: EvaluationRow[], now: Date) {
     wSum += w.weight * scale
     wrSum += w.rating * w.weight * scale
   }
-  const rawMean = wSum > 0 ? wrSum / wSum : 0
+  const rawMean = wrSum / wSum
 
-  // ベイズ収縮: n=評価件数, k=4, prior=3.5
+  // ベイズ収縮: n=評価件数, k=4, prior=3.5（1件以上のときのみ適用）
   const n = weighted.length
   const K = 4
   const PRIOR = 3.5
-  const adjusted = (n * (n > 0 ? rawMean : 0) + K * PRIOR) / (n + K)
+  const adjusted = (n * rawMean + K * PRIOR) / (n + K)
 
   return { score: ((adjusted - 1) / 4) * 15, count: n }
 }
@@ -345,13 +364,15 @@ export async function calculateTrustScore(workerId: string): Promise<TrustScoreR
   const evaluationScore = Math.round(Math.min(interview.score + behavioral, 30))
 
   const items: BreakdownItem[] = [
-    { key: 'continuity', label: '就労継続性', score: continuity.score, max: 20, badge: 'verified' },
-    { key: 'compliance', label: '賃金・届出コンプラ', score: compliance.score, max: 20, badge: 'verified' },
-    { key: 'support', label: '支援実施・参加', score: supportCalc.score, max: 15, badge: 'verified' },
-    { key: 'qualification', label: '資格・日本語', score: qualification.score, max: 15, badge: qualification.badge },
+    { key: 'continuity', label: '就労継続性', score: continuity.score, max: 20, badge: 'verified', hasData: continuity.hasData },
+    { key: 'compliance', label: '賃金・届出コンプラ', score: compliance.score, max: 20, badge: 'verified', hasData: compliance.hasData },
+    { key: 'support', label: '支援実施・参加', score: supportCalc.score, max: 15, badge: 'verified', hasData: supportCalc.hasData },
+    { key: 'qualification', label: '資格・日本語', score: qualification.score, max: 15, badge: qualification.badge, hasData: qualification.hasData },
     {
       key: 'evaluation', label: '雇用主評価', score: evaluationScore, max: 30, badge: 'subjective',
-      detail: { interview: Math.round(interview.score), behavioral: Math.round(behavioral) },
+      // 行動シグナルの算定基盤（契約 or 賃金台帳）があれば評価未入力でもデータありとみなす
+      hasData: interview.count > 0 || contract !== null || payroll.length > 0,
+      detail: { interview: Math.round(interview.score), behavioral: Math.round(behavioral), interviewCount: interview.count },
     },
   ]
 

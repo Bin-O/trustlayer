@@ -31,8 +31,11 @@ const RADAR_LABEL: Record<string, string> = {
   qualification: '資格',
 }
 
-function BadgeChip({ badge }: { badge: Badge }) {
-  const s = BADGE_STYLE[badge]
+function BadgeChip({ badge, hasData }: { badge: Badge; hasData: boolean }) {
+  // 根拠データが無い項目は種別バッジではなく「データ未蓄積」を表示
+  const s = hasData
+    ? BADGE_STYLE[badge]
+    : { label: 'データ未蓄積', color: '#9ca3af', bg: '#f9fafb', border: '#e5e7eb' }
   return (
     <span style={{ fontSize: 10, fontWeight: 600, color: s.color, background: s.bg, border: `1px solid ${s.border}`, borderRadius: 9999, padding: '1px 8px', whiteSpace: 'nowrap' }}>
       {s.label}
@@ -125,7 +128,7 @@ export default function TrustScoreCard({ result, snapshots }: {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, gap: 8 }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                 <span style={{ fontSize: 12, color: '#555' }}>{item.label}</span>
-                <BadgeChip badge={item.badge} />
+                <BadgeChip badge={item.badge} hasData={item.hasData} />
               </span>
               <span style={{ fontSize: 12, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap' }}>
                 {Math.round(item.score)} / {item.max}
@@ -134,7 +137,7 @@ export default function TrustScoreCard({ result, snapshots }: {
             <ItemBar score={item.score} max={item.max} />
             {item.detail && (
               <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 3 }}>
-                面談時評価 {item.detail.interview}/15 ・ 行動シグナル {item.detail.behavioral}/15
+                面談時評価 {item.detail.interviewCount > 0 ? `${item.detail.interview}/15` : '未評価'} ・ 行動シグナル {item.detail.behavioral}/15
               </div>
             )}
           </div>

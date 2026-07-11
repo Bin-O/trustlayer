@@ -262,7 +262,51 @@ const curMonth = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`
 const snaps = await sbGet(`trust_score_snapshots?worker_id=eq.${workerId}&order=month.asc&select=month,total,formula_version,data_sufficiency`)
 check('当月スナップショットが自動作成される', snaps.some(s => s.month === curMonth))
 const cur = snaps.find(s => s.month === curMonth)
-check(`スナップショットの total=${expectedTotal}・formula_version=1`, cur && Number(cur.total) === expectedTotal && cur.formula_version === 1, JSON.stringify(cur))
+check(`スナップショットの total=${expectedTotal}・formula_version=2`, cur && Number(cur.total) === expectedTotal && cur.formula_version === 2, JSON.stringify(cur))
+
+// ============================================================
+// ゼロデータ従業員（評価・契約・給与なし）の検証（formula_version 2）
+// ============================================================
+console.log('== ゼロデータ従業員の検証 ==')
+const zeroRes = await fetch(`${BASE}/api/workers`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    name_romaji: 'TEST ZERO DATA', nationality: 'フィリピン', date_of_birth: '1998-08-08',
+    residence_card_number: 'ZX00112233ST', preferred_language: 'en',
+    status_type: '技術・人文知識・国際業務', issued_date: '2026-06-01',
+    expiry_date: `${now.getFullYear() + 2}-06-01`,
+  }),
+})
+const zeroJson = await zeroRes.json()
+if (!zeroRes.ok) throw new Error(`ゼロデータ従業員の作成に失敗: ${zeroJson.error}`)
+const zeroWorkerId = zeroJson.id
+console.log(`zero-data worker: ${zeroWorkerId}`)
+
+await page.goto(`${BASE}/employees/${zeroWorkerId}`)
+await page.waitForSelector('h2:has-text("信頼スコア内訳")', { timeout: 15000 })
+await page.waitForSelector('text=データ充足度', { timeout: 15000 })
+await page.waitForTimeout(500)
+
+// 総合点は数値ではなく「実績蓄積中」
+check('ゼロデータ: カードに「実績蓄積中」を表示', await page.locator('text=実績蓄積中').first().isVisible().catch(() => false))
+
+// 全5項目が 0 / max（雇用主評価はベイズpriorの9点が出ないこと）
+for (const [label, max] of [['就労継続性', 20], ['賃金・届出コンプラ', 20], ['支援実施・参加', 15], ['資格・日本語', 15], ['雇用主評価', 30]]) {
+  const row = page.locator(`div:has(> div > span > span:text-is("${label}"))`).first()
+  const txt = await row.textContent().catch(() => '')
+  check(`ゼロデータ: 「${label}」が 0 / ${max}`, txt.includes(`0 / ${max}`), txt.slice(0, 80))
+}
+
+// バッジは全項目「データ未蓄積」
+const noDataBadges = await page.locator('text=データ未蓄積').count()
+check(`ゼロデータ: 「データ未蓄積」バッジが5項目に表示`, noDataBadges === 5, `${noDataBadges}個`)
+
+// 面談時評価は「未評価」
+check('ゼロデータ: 「面談時評価 未評価」を表示', await page.locator('text=面談時評価 未評価').isVisible().catch(() => false))
+
+await page.screenshot({ path: 'screenshot_trust_score_zero.png', fullPage: false })
+console.log('📸 screenshot_trust_score_zero.png')
 
 await browser.close()
 
@@ -273,7 +317,7 @@ const failed = results.filter(r => !r.ok)
 console.log(`\n== 結果: ${results.length - failed.length}/${results.length} 通過 ==`)
 console.log('\n== クリーンアップ対象（承認後に削除） ==')
 console.log(JSON.stringify({
-  foreign_workers: workerId,
+  foreign_workers: [workerId, zeroWorkerId],
   worker_contracts: contractRows.map(r => r.id),
   payroll_records: payrollInserted.length + '行',
   support_records: supportInserted.map(r => r.id),
