@@ -283,6 +283,80 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#6b7280', letterSpacing: '0.02em' }}>{children}</h2>
 }
 
+/** 要対応タイムライン: 既定は先頭3件のみ表示し、4件目以降は展開ボタンで開閉する */
+const TL_COLLAPSED_COUNT = 3
+
+function ActionTimeline({ items, todayStr, todayYear }: {
+  items: TimelineItem[]
+  todayStr: string
+  todayYear: string
+}) {
+  const router = useRouter()
+  const [expanded, setExpanded] = useState(false)
+  const visible = expanded ? items : items.slice(0, TL_COLLAPSED_COUNT)
+  const hiddenCount = items.length - TL_COLLAPSED_COUNT
+
+  // 状態別の件数サマリー（超過 + 現行のalert分類）
+  const overdue = items.filter(t => t.due < todayStr).length
+  const kindCounts = (['expiry', 'todoke', 'mendan'] as TimelineKind[])
+    .map(kind => ({ kind, count: items.filter(t => t.kind === kind).length }))
+    .filter(c => c.count > 0)
+
+  const pillStyle = (color: string, bg: string, border: string): React.CSSProperties => ({
+    fontSize: 11, fontWeight: 600, color, background: bg, border: `1px solid ${border}`,
+    borderRadius: 9999, padding: '2px 10px', whiteSpace: 'nowrap',
+  })
+
+  return (
+    <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+      <div data-testid="tl-summary" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', padding: '10px 18px', borderBottom: '1px solid #f3f4f6', background: '#fafafa' }}>
+        <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>全 {items.length} 件</span>
+        {overdue > 0 && (
+          <span style={pillStyle('#dc2626', '#fee2e2', '#fecaca')}>超過 {overdue}</span>
+        )}
+        {kindCounts.map(c => (
+          <span key={c.kind} style={pillStyle('#374151', '#fff', '#e5e7eb')}>{KIND_LABEL[c.kind]} {c.count}</span>
+        ))}
+      </div>
+
+      {visible.map((t, i) => (
+        <div key={t.key} data-testid={`tl-${t.kind}`}
+          style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 18px', borderBottom: i < visible.length - 1 || items.length > TL_COLLAPSED_COUNT ? '1px solid #f3f4f6' : 'none', flexWrap: 'wrap' }}>
+          <span style={{ width: 9, height: 9, borderRadius: '50%', background: URGENCY_COLOR[t.urgency], flexShrink: 0 }} />
+          {t.due < todayStr && (
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fee2e2', borderRadius: 4, padding: '2px 6px', flexShrink: 0, letterSpacing: '0.05em' }}>超過</span>
+          )}
+          <div style={{ width: 76, flexShrink: 0 }}>
+            <div style={{ fontSize: t.due.slice(0, 4) === todayYear ? 13 : 12, fontWeight: 700, color: '#111', fontVariantNumeric: 'tabular-nums' }}>
+              {t.due.slice(0, 4) === todayYear
+                ? t.due.slice(5).replace('-', '/')
+                : t.due.replace(/-/g, '/')}
+            </div>
+            <div style={{ fontSize: 10, color: '#9ca3af' }}>{KIND_LABEL[t.kind]}</div>
+          </div>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>{t.title}</div>
+            <div style={{ fontSize: 12, color: t.urgency === 'red' ? URGENCY_COLOR.red : '#6b7280', marginTop: 1 }}>{t.detail}</div>
+          </div>
+          <button className="tl-action" onClick={() => router.push(t.href)}>
+            {t.actionLabel} →
+          </button>
+        </div>
+      ))}
+
+      {items.length > TL_COLLAPSED_COUNT && (
+        <button
+          data-testid="tl-toggle"
+          onClick={() => setExpanded(v => !v)}
+          style={{ width: '100%', background: '#fafafa', border: 'none', padding: '10px 18px', fontSize: 12, fontWeight: 600, color: '#2563eb', cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          {expanded ? '▲ 折りたたむ' : `▼ 他 ${hiddenCount} 件を表示`}
+        </button>
+      )}
+    </div>
+  )
+}
+
 const CHART_COLORS = ['#1e40af', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#dbeafe']
 
 /** 凡例が長い在留資格名の略称（title属性で全文を保持） */
@@ -533,32 +607,8 @@ export default function Dashboard() {
               <div style={{ fontSize: 14, fontWeight: 600, color: URGENCY_COLOR.green }}>現在、緊急の対応事項はありません</div>
             </div>
           ) : (
-            <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-              {filteredTimeline.map((t, i) => (
-                <div key={t.key} data-testid={`tl-${t.kind}`}
-                  style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 18px', borderBottom: i < filteredTimeline.length - 1 ? '1px solid #f3f4f6' : 'none', flexWrap: 'wrap' }}>
-                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: URGENCY_COLOR[t.urgency], flexShrink: 0 }} />
-                  {t.due < todayStr && (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fee2e2', borderRadius: 4, padding: '2px 6px', flexShrink: 0, letterSpacing: '0.05em' }}>超過</span>
-                  )}
-                  <div style={{ width: 76, flexShrink: 0 }}>
-                    <div style={{ fontSize: t.due.slice(0, 4) === String(today.getFullYear()) ? 13 : 12, fontWeight: 700, color: '#111', fontVariantNumeric: 'tabular-nums' }}>
-                      {t.due.slice(0, 4) === String(today.getFullYear())
-                        ? t.due.slice(5).replace('-', '/')
-                        : t.due.replace(/-/g, '/')}
-                    </div>
-                    <div style={{ fontSize: 10, color: '#9ca3af' }}>{KIND_LABEL[t.kind]}</div>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 220 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>{t.title}</div>
-                    <div style={{ fontSize: 12, color: t.urgency === 'red' ? URGENCY_COLOR.red : '#6b7280', marginTop: 1 }}>{t.detail}</div>
-                  </div>
-                  <button className="tl-action" onClick={() => router.push(t.href)}>
-                    {t.actionLabel} →
-                  </button>
-                </div>
-              ))}
-            </div>
+            /* key=tlFilter でフィルタ切替時に展開状態をリセットする */
+            <ActionTimeline key={tlFilter} items={filteredTimeline} todayStr={todayStr} todayYear={String(today.getFullYear())} />
           )}
         </section>
 
