@@ -1,6 +1,8 @@
 /**
  * Supabase Management API 経由でSQLを直接実行するスクリプト
- * 使い方: node run_sql.mjs <personal-access-token>
+ * 使い方: node run_sql.mjs [sqlファイル]
+ *   PAT は .env.local の SUPABASE_PAT から読み込む
+ *   （旧形式 node run_sql.mjs <PAT> [sqlファイル] も引き続き使用可）
  */
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
@@ -8,10 +10,25 @@ import { dirname, join } from 'path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-const PAT      = process.argv[2]
-const SQL_ARG  = process.argv[3]
+// .env.local から SUPABASE_PAT を読み込む
+let envPat = null
+try {
+  const env = Object.fromEntries(
+    readFileSync(join(__dirname, '.env.local'), 'utf8')
+      .split('\n').filter(l => l.includes('='))
+      .map(l => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()])
+  )
+  envPat = env.SUPABASE_PAT || null
+} catch {}
+
+// 引数が .sql ならファイル指定、それ以外は旧形式の PAT 指定とみなす
+const args    = process.argv.slice(2)
+const argPat  = args.find(a => !a.endsWith('.sql'))
+const SQL_ARG = args.find(a => a.endsWith('.sql'))
+const PAT     = argPat || envPat
 if (!PAT) {
-  console.error('使い方: node run_sql.mjs <Supabase_Personal_Access_Token> [sqlファイル]')
+  console.error('使い方: node run_sql.mjs [sqlファイル]')
+  console.error('.env.local に SUPABASE_PAT を設定するか、引数でトークンを渡してください')
   console.error('トークン取得: https://supabase.com/dashboard/account/tokens')
   process.exit(1)
 }
@@ -57,6 +74,14 @@ for (let i = 0; i < statements.length; i++) {
   if (res.ok) {
     console.log('✓')
     successCount++
+    // SELECT 文は結果の行を表示する
+    if (/^select/i.test(stmt.replace(/^\s*(--.*\n)*/g, '').trim())) {
+      try {
+        const rows = await res.json()
+        if (Array.isArray(rows) && rows.length > 0) console.table(rows)
+        else console.log('  (0行)')
+      } catch {}
+    }
   } else {
     const body = await res.text()
     // 既存ポリシー・テーブルの重複エラーは無視

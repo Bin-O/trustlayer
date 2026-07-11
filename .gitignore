@@ -42,3 +42,4 @@ next-env.d.ts
 
 # screenshots
 screenshot_*.png
+.test-user-cred.json

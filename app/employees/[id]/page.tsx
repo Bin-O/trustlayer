@@ -4,9 +4,12 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getDocumentsForStatus, type DocumentDef } from '@/lib/documents/statusDocumentMap'
 import AppHeader from '@/components/AppHeader'
+import TrustScoreCard from '@/components/TrustScoreCard'
+import { calculateTrustScore, getOrCreateMonthlySnapshot, SUFFICIENCY_DISPLAY_THRESHOLD, type TrustScoreResult, type SnapshotRow } from '@/lib/trustScore'
 
 type Worker = {
   id: string
+  org_id: string
   name_kanji: string
   name_romaji: string
   nationality: string
@@ -42,76 +45,6 @@ type CardExtracted = {
   work_restriction: string | null
 }
 
-type Evaluation = {
-  attendance_score: number | null
-  performance_score: number | null
-  compliance_score: number | null
-  evaluated_at: string | null
-}
-
-type ScoreBreakdown = {
-  total: number
-  expiry: { score: number; max: number; label: string }
-  docs: { score: number; max: number; label: string }
-  attendance: { score: number | null; max: number; label: string }
-  performance: { score: number | null; max: number; label: string }
-  compliance: { score: number | null; max: number; label: string }
-  hasEvaluation: boolean
-}
-
-function calcTrustScore(worker: Worker, evaluation: Evaluation | null): ScoreBreakdown {
-  const activeStatus = worker.residence_statuses?.find(s => s.is_active)
-  const days = activeStatus
-    ? Math.ceil((new Date(activeStatus.expiry_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-    : -1
-
-  let expiryScore = 0
-  if (days >= 90) expiryScore = 30
-  else if (days >= 60) expiryScore = 22
-  else if (days >= 30) expiryScore = 12
-  else if (days >= 0) expiryScore = 5
-
-  let docScore = 0
-  if (worker.passport_number) docScore += 5
-  if (worker.residence_card_number) docScore += 5
-  if (activeStatus?.status_type) docScore += 5
-  if (activeStatus?.expiry_date) docScore += 5
-
-  const attendance = evaluation?.attendance_score ?? null
-  const performance = evaluation?.performance_score ?? null
-  const compliance = evaluation?.compliance_score ?? null
-  const hasEvaluation = evaluation !== null
-
-  const total = expiryScore + docScore + (attendance ?? 0) + (performance ?? 0) + (compliance ?? 0)
-
-  return {
-    total,
-    expiry: { score: expiryScore, max: 30, label: '在留期限管理' },
-    docs: { score: docScore, max: 20, label: '書類整備' },
-    attendance: { score: attendance, max: 20, label: '勤怠評価' },
-    performance: { score: performance, max: 20, label: '業務評価' },
-    compliance: { score: compliance, max: 10, label: 'コンプライアンス' },
-    hasEvaluation,
-  }
-}
-
-function ScoreBar({ score, max, hasData }: { score: number | null; max: number; hasData: boolean }) {
-  if (!hasData || score === null) {
-    return (
-      <div style={{ height: 6, borderRadius: 3, background: '#f0f0f0', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
-      </div>
-    )
-  }
-  const pct = Math.round((score / max) * 100)
-  const color = pct >= 80 ? '#16a34a' : pct >= 50 ? '#d97706' : '#dc2626'
-  return (
-    <div style={{ height: 6, borderRadius: 3, background: '#f0f0f0', overflow: 'hidden' }}>
-      <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3, transition: 'width 0.4s ease' }} />
-    </div>
-  )
-}
-
 function ScoreRing({ score, max }: { score: number; max: number }) {
   const pct = score / max
   const color = pct >= 0.8 ? '#16a34a' : pct >= 0.5 ? '#d97706' : '#dc2626'
@@ -137,7 +70,8 @@ export default function EmployeeDetail() {
   const router = useRouter()
   const params = useParams()
   const [worker, setWorker] = useState<Worker | null>(null)
-  const [evaluation, setEvaluation] = useState<Evaluation | null>(null)
+  const [trust, setTrust] = useState<TrustScoreResult | null>(null)
+  const [snapshots, setSnapshots] = useState<SnapshotRow[]>([])
   const [loading, setLoading] = useState(true)
   const [docGenerating, setDocGenerating] = useState<string | null>(null)
   const [editStatusModal, setEditStatusModal] = useState<{
@@ -216,24 +150,20 @@ export default function EmployeeDetail() {
     fetchContract()
   }, [params.id])
 
+  // 信頼スコア算出 + 当月スナップショットのレイジー作成
   useEffect(() => {
-    if (!params.id) return
-    const fetchEvaluation = async () => {
+    if (!worker) return
+    const fetchTrustScore = async () => {
       try {
-        const { data, error } = await supabase
-          .from('evaluations')
-          .select('attendance_score, performance_score, compliance_score, evaluated_at')
-          .eq('worker_id', params.id)
-          .order('evaluated_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-        if (!error && data) setEvaluation(data)
-      } catch {
-        // evaluations table not yet created — ignore
+        const result = await calculateTrustScore(worker.id)
+        setTrust(result)
+        setSnapshots(await getOrCreateMonthlySnapshot(worker.id, worker.org_id, result))
+      } catch (e) {
+        console.warn('[trustScore] 算出に失敗:', e)
       }
     }
-    fetchEvaluation()
-  }, [params.id])
+    fetchTrustScore()
+  }, [worker])
 
   // TODO: 在留資格更新許可申請書の自動生成（正式様式対応）が実装されたら復元する
   // const generateRenewalDoc = async () => {
@@ -570,16 +500,7 @@ export default function EmployeeDetail() {
   const urgent = !retired && days <= 30
   const statusHistory = [...(worker.residence_statuses ?? [])]
     .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
-  const score = calcTrustScore(worker, evaluation)
-  const scoreColor = score.total >= 80 ? '#16a34a' : score.total >= 50 ? '#d97706' : '#dc2626'
-
-  const breakdownItems = [
-    score.expiry,
-    score.docs,
-    score.attendance,
-    score.performance,
-    score.compliance,
-  ]
+  const trustAccumulating = trust !== null && trust.data_sufficiency < SUFFICIENCY_DISPLAY_THRESHOLD
 
   const applicableDocs = getDocumentsForStatus(activeStatus?.status_type ?? '')
   const availableDocs = applicableDocs.filter(d => d.available)
@@ -921,10 +842,16 @@ export default function EmployeeDetail() {
             <div style={{fontSize:13,color:"#666"}}>{worker.nationality} ／ {activeStatus?.status_type || '未登録'}</div>
           </div>
           <div style={{textAlign:"center"}}>
-            <ScoreRing score={score.total} max={100} />
+            {trust && !trustAccumulating ? (
+              <ScoreRing score={Math.round(trust.total)} max={100} />
+            ) : (
+              <div style={{width:72,height:72,borderRadius:'50%',border:'6px solid #f0f0f0',display:'flex',alignItems:'center',justifyContent:'center',boxSizing:'border-box'}}>
+                <span style={{fontSize:10,color:'#999'}}>{trust ? '蓄積中' : '...'}</span>
+              </div>
+            )}
             <div style={{fontSize:11,color:"#999",marginTop:4}}>信頼スコア</div>
-            {!score.hasEvaluation && (
-              <div style={{fontSize:10,color:"#d97706",marginTop:2}}>評価待ち含む</div>
+            {trustAccumulating && (
+              <div style={{fontSize:10,color:"#d97706",marginTop:2}}>実績蓄積中</div>
             )}
           </div>
         </div>
@@ -1004,42 +931,8 @@ export default function EmployeeDetail() {
             ))}
           </div>
 
-          {/* 信頼スコア内訳 */}
-          <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-              <h2 style={{margin:0,fontSize:15,fontWeight:600,color:"#000"}}>信頼スコア内訳</h2>
-              <div style={{fontSize:20,fontWeight:700,color:scoreColor}}>{score.total}<span style={{fontSize:12,color:"#999",fontWeight:400}}> / 100</span></div>
-            </div>
-
-            <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              {breakdownItems.map((item, i) => {
-                const hasData = i < 2 || score.hasEvaluation
-                const scoreVal = item.score
-                const pct = hasData && scoreVal !== null ? Math.round((scoreVal / item.max) * 100) : 0
-                const itemColor = pct >= 80 ? '#16a34a' : pct >= 50 ? '#d97706' : '#dc2626'
-
-                return (
-                  <div key={i}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                      <span style={{fontSize:12,color:"#555"}}>{item.label}</span>
-                      {hasData && scoreVal !== null ? (
-                        <span style={{fontSize:12,fontWeight:600,color:itemColor}}>{scoreVal} / {item.max}</span>
-                      ) : (
-                        <span style={{fontSize:11,color:"#bbb",background:"#f5f5f5",padding:"1px 8px",borderRadius:3}}>未入力</span>
-                      )}
-                    </div>
-                    <ScoreBar score={scoreVal} max={item.max} hasData={hasData} />
-                  </div>
-                )
-              })}
-            </div>
-
-            {!score.hasEvaluation && (
-              <div style={{marginTop:14,padding:"8px 10px",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,fontSize:11,color:"#92400e"}}>
-                ※ 勤怠・業務・コンプライアンスの評価データが未入力です。
-              </div>
-            )}
-          </div>
+          {/* 信頼スコア内訳（§6-1） */}
+          <TrustScoreCard result={trust} snapshots={snapshots} />
         </div>
 
         {/* 雇用条件入力 */}
