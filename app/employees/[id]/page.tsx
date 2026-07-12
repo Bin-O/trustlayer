@@ -5,7 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import { getDocumentsForStatus, type DocumentDef } from '@/lib/documents/statusDocumentMap'
 import AppHeader from '@/components/AppHeader'
 import TrustScoreCard from '@/components/TrustScoreCard'
+import InterviewTaskModal from '@/components/InterviewTaskModal'
 import { calculateTrustScore, getOrCreateMonthlySnapshot, SUFFICIENCY_DISPLAY_THRESHOLD, type TrustScoreResult, type SnapshotRow } from '@/lib/trustScore'
+import { TASK_TYPE_QUARTERLY_INTERVIEW, type SupportTask } from '@/lib/supportTasks'
 
 type Worker = {
   id: string
@@ -122,6 +124,12 @@ export default function EmployeeDetail() {
     open: false, extracting: false, extracted: null, saving: false,
   })
   const cardFileRef = useRef<HTMLInputElement>(null)
+
+  // 四半期面談タスク（未完了分）とモーダル
+  const [interviewTasks, setInterviewTasks] = useState<SupportTask[]>([])
+  const [openTask, setOpenTask] = useState<SupportTask | null>(null)
+  const [prevInterviewNotes, setPrevInterviewNotes] = useState<Record<string, unknown> | null>(null)
+  const [trustRefresh, setTrustRefresh] = useState(0)
   const supabase = createClient()
 
   useEffect(() => {
@@ -150,7 +158,7 @@ export default function EmployeeDetail() {
     fetchContract()
   }, [params.id])
 
-  // 信頼スコア算出 + 当月スナップショットのレイジー作成
+  // 信頼スコア算出 + 当月スナップショットのレイジー作成（面談保存後は trustRefresh で再算出）
   useEffect(() => {
     if (!worker) return
     const fetchTrustScore = async () => {
@@ -163,7 +171,42 @@ export default function EmployeeDetail() {
       }
     }
     fetchTrustScore()
-  }, [worker])
+  }, [worker, trustRefresh])
+
+  // 四半期面談タスク（未完了分）+ 前回面談のプリフィル用記録
+  const fetchInterviewTasks = async (autoOpenTaskId?: string | null) => {
+    if (!params.id) return
+    const [tasksRes, prevRes] = await Promise.all([
+      supabase.from('support_tasks')
+        .select('*')
+        .eq('worker_id', params.id)
+        .eq('task_type', TASK_TYPE_QUARTERLY_INTERVIEW)
+        .eq('status', 'pending')
+        .order('due_date'),
+      supabase.from('support_records')
+        .select('notes')
+        .eq('worker_id', params.id)
+        .eq('type', 'interview_worker')
+        .eq('completed', true)
+        .order('completed_date', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ])
+    const tasks = (tasksRes.data ?? []) as SupportTask[]
+    setInterviewTasks(tasks)
+    setPrevInterviewNotes((prevRes.data?.notes as Record<string, unknown> | undefined) ?? null)
+    if (autoOpenTaskId) {
+      const t = tasks.find(t => t.id === autoOpenTaskId)
+      if (t) setOpenTask(t)
+    }
+  }
+
+  useEffect(() => {
+    // ダッシュボードの「面談を記録」からの遷移（?task=<id>）はモーダルを自動で開く
+    const taskParam = new URLSearchParams(window.location.search).get('task')
+    fetchInterviewTasks(taskParam)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.id])
 
   // TODO: 在留資格更新許可申請書の自動生成（正式様式対応）が実装されたら復元する
   // const generateRenewalDoc = async () => {
@@ -856,6 +899,25 @@ export default function EmployeeDetail() {
           </div>
         </div>
 
+        {/* 四半期面談タスク（未完了分） */}
+        {interviewTasks.length > 0 && (
+          <div data-testid="interview-task-section" style={{background:"#fff",border:"1px solid #bfdbfe",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+            <div style={{fontSize:15,fontWeight:600,color:"#000",marginBottom:10}}>面談タスク</div>
+            {interviewTasks.map((t, i) => (
+              <div key={t.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"9px 0",borderTop:i>0?"1px solid #f0f0f0":"none",flexWrap:"wrap"}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:"#111"}}>四半期面談（{t.period_key}）</div>
+                  <div style={{fontSize:12,color:new Date(t.due_date) < new Date() ? "#dc2626" : "#6b7280"}}>期限 {t.due_date}</div>
+                </div>
+                <button data-testid={`open-interview-${t.id}`} onClick={() => setOpenTask(t)}
+                  style={{background:"#0066cc",border:"none",borderRadius:6,padding:"8px 16px",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer",flexShrink:0}}>
+                  面談を記録
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
           {/* 在留情報 */}
           <div style={{background:"#fff",border:urgent?"1px solid #fecaca":"1px solid #e0e0e0",borderRadius:12,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
@@ -1052,6 +1114,21 @@ export default function EmployeeDetail() {
         )}
 
       </div>
+
+      {/* 四半期面談モーダル（三段式） */}
+      {openTask && worker && (
+        <InterviewTaskModal
+          task={openTask}
+          workerName={worker.name_kanji || worker.name_romaji}
+          prevNotes={prevInterviewNotes}
+          onClose={() => setOpenTask(null)}
+          onSaved={() => {
+            setOpenTask(null)
+            fetchInterviewTasks()          // タスク一覧から消えることを反映
+            setTrustRefresh(n => n + 1)    // 信頼スコアを再算出
+          }}
+        />
+      )}
     </div>
   )
 }

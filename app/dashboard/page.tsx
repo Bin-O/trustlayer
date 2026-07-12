@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/AppHeader'
 import { getActiveAnnouncements } from '@/lib/announcements'
+import { ensureQuarterlyInterviewTasks, TASK_TYPE_QUARTERLY_INTERVIEW } from '@/lib/supportTasks'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { Megaphone } from 'lucide-react'
 
@@ -33,6 +34,13 @@ type GenRow = {
   worker_id: string | null
   document_id: string
   generated_at: string
+}
+
+type TaskRow = {
+  id: string
+  worker_id: string
+  period_key: string
+  due_date: string
 }
 
 type TimelineKind = 'expiry' | 'todoke' | 'mendan'
@@ -68,7 +76,7 @@ type Snapshot = {
 }
 
 const URGENCY_COLOR = { red: '#dc2626', amber: '#d97706', green: '#16a34a' } as const
-const KIND_LABEL: Record<TimelineKind, string> = { expiry: '在留期限', todoke: '届出', mendan: '支援計画' }
+const KIND_LABEL: Record<TimelineKind, string> = { expiry: '在留期限', todoke: '届出', mendan: '面談' }
 
 function fmtDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -96,16 +104,12 @@ function currentFiscalYear(now: Date): number {
   return now.getMonth() + 1 >= 4 ? now.getFullYear() : now.getFullYear() - 1
 }
 
-function monthsBetween(startStr: string, now: Date): number {
-  const s = new Date(startStr)
-  return (now.getFullYear() - s.getFullYear()) * 12 + (now.getMonth() - s.getMonth())
-}
-
 function buildSnapshot(
   actives: WorkerRow[],
   retired: WorkerRow[],
   contracts: ContractRow[],
   gens: GenRow[],
+  tasks: TaskRow[],
   payrollKeys: Set<string>,
   now: Date,
 ): Snapshot {
@@ -194,25 +198,23 @@ function buildSnapshot(
     }
   }
 
-  // ── 支援計画：定期面談の目安（特定技能1号・契約開始から3ヶ月周期） ──
+  // ── 面談タスク：四半期面談（support_tasks の未完了分・特定技能1号） ──
   let mendanCount = 0
-  const monthEnd = fmtDate(new Date(now.getFullYear(), now.getMonth() + 1, 0))
-  for (const w of actives) {
-    if (activeStatusOf(w)?.status_type !== '特定技能1号') continue
-    const start = contractOf.get(w.id)?.contract_start_date
-    if (!start) continue
-    const diff = monthsBetween(start, now)
-    if (diff <= 0 || diff % 3 !== 0) continue
+  const activeNameOf = new Map(actives.map(w => [w.id, nameOf(w)]))
+  for (const t of tasks) {
+    const name = activeNameOf.get(t.worker_id)
+    if (!name) continue  // 退職者等・在職一覧にいない従業員のタスクは表示しない
     mendanCount++
+    const d = daysUntil(t.due_date, now)
     timeline.push({
-      key: `mendan-${w.id}`,
+      key: `mendan-${t.id}`,
       kind: 'mendan',
-      due: monthEnd,
-      urgency: 'green',
-      title: `${nameOf(w)}さんの定期面談（目安）`,
-      detail: `契約開始から${diff}ヶ月・今月中の実施が目安です`,
-      actionLabel: '従業員詳細へ',
-      href: `/employees/${w.id}`,
+      due: t.due_date,
+      urgency: d < 0 ? 'red' : d <= 14 ? 'amber' : 'green',
+      title: `${name}さんの四半期面談（${t.period_key}）`,
+      detail: d < 0 ? `期限を${-d}日超過しています（期限 ${t.due_date}）` : `期限 ${t.due_date}（残り${d}日）`,
+      actionLabel: '面談を記録',
+      href: `/employees/${t.worker_id}?task=${t.id}`,
     })
   }
 
@@ -392,7 +394,10 @@ export default function Dashboard() {
     const now = new Date()
     const fy = currentFiscalYear(now)
     const fetchAll = async () => {
-      const [activesRes, retiredRes, contractsRes, gensRes, payrollRes] = await Promise.all([
+      // 四半期面談タスクのレイジー生成（不足分のみ upsert・重複はUNIQUE制約で防止）
+      await ensureQuarterlyInterviewTasks()
+
+      const [activesRes, retiredRes, contractsRes, gensRes, tasksRes, payrollRes] = await Promise.all([
         supabase.from('foreign_workers')
           .select('id, name_kanji, name_romaji, nationality, residence_statuses(status_type, expiry_date, is_active)')
           .eq('status', 'active'),
@@ -401,6 +406,10 @@ export default function Dashboard() {
           .eq('status', 'retired'),
         supabase.from('worker_contracts').select('worker_id, contract_start_date, termination_date'),
         supabase.from('document_generations').select('worker_id, document_id, generated_at'),
+        supabase.from('support_tasks')
+          .select('id, worker_id, period_key, due_date')
+          .eq('task_type', TASK_TYPE_QUARTERLY_INTERVIEW)
+          .eq('status', 'pending'),
         supabase.from('payroll_records')
           .select('worker_id, target_year, target_month')
           .or(`and(target_year.eq.${fy},target_month.gte.4),and(target_year.eq.${fy + 1},target_month.lte.3)`),
@@ -421,6 +430,7 @@ export default function Dashboard() {
         (retiredRes.data ?? []) as WorkerRow[],
         (contractsRes.data ?? []) as ContractRow[],
         (gensRes.data ?? []) as GenRow[],
+        (tasksRes.data ?? []) as TaskRow[],
         payrollKeys,
         now,
       ))
@@ -536,14 +546,15 @@ export default function Dashboard() {
                 <div style={{ fontSize: 11, color: '#9ca3af' }}>契約終了（3-1-2号）・定期届出（3-6号）</div>
               </button>
 
-              {/* 支援計画の実施予定 */}
+              {/* 四半期面談タスク */}
               <button data-testid="card-mendan" onClick={() => focusTimeline('mendan')} style={alertCardBtn}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em' }}>支援計画の実施予定（今月）</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em' }}>四半期面談タスク</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <div style={bigNum(snap.mendanCount, snap.mendanCount > 0 ? '#2563eb' : '#d1d5db')}>{snap.mendanCount}</div>
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>名</span>
+                  <div style={bigNum(snap.mendanCount, snap.mendanCount > 0 ? '#2563eb' : URGENCY_COLOR.green)}>{snap.mendanCount}</div>
+                  <span style={{ fontSize: 12, color: '#6b7280' }}>件</span>
+                  {snap.mendanCount === 0 && <span style={{ fontSize: 12, color: URGENCY_COLOR.green, fontWeight: 600 }}>✓ すべて実施済み</span>}
                 </div>
-                <div style={{ fontSize: 11, color: '#9ca3af' }}>定期面談の目安対象（特定技能1号・3ヶ月周期）</div>
+                <div style={{ fontSize: 11, color: '#9ca3af' }}>未完了の定期面談（特定技能1号・3ヶ月に1回以上）</div>
               </button>
 
               {/* 賃金台帳 */}
@@ -572,7 +583,7 @@ export default function Dashboard() {
               )}
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
-              {([['all', 'すべて'], ['expiry', '在留期限'], ['todoke', '届出'], ['mendan', '支援計画']] as [TlFilter, string][]).map(([f, label]) => {
+              {([['all', 'すべて'], ['expiry', '在留期限'], ['todoke', '届出'], ['mendan', '面談']] as [TlFilter, string][]).map(([f, label]) => {
                 const count = f === 'all' ? timeline.length : timeline.filter(t => t.kind === f).length
                 const disabled = !!snap && f !== 'all' && count === 0
                 return (
