@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getDocumentsForStatus, type DocumentDef } from '@/lib/documents/statusDocumentMap'
 import AppHeader from '@/components/AppHeader'
 import TrustScoreCard from '@/components/TrustScoreCard'
-import InterviewTaskModal from '@/components/InterviewTaskModal'
+import InterviewTaskModal, { type OrgPrefill } from '@/components/InterviewTaskModal'
 import { calculateTrustScore, getOrCreateMonthlySnapshot, SUFFICIENCY_DISPLAY_THRESHOLD, type TrustScoreResult, type SnapshotRow } from '@/lib/trustScore'
 import { TASK_TYPE_QUARTERLY_INTERVIEW, type SupportTask } from '@/lib/supportTasks'
 
@@ -129,6 +129,8 @@ export default function EmployeeDetail() {
   const [interviewTasks, setInterviewTasks] = useState<SupportTask[]>([])
   const [openTask, setOpenTask] = useState<SupportTask | null>(null)
   const [prevInterviewNotes, setPrevInterviewNotes] = useState<Record<string, unknown> | null>(null)
+  const [interviewRecords, setInterviewRecords] = useState<{ id: string; quarter: string | null; completed_date: string | null }[]>([])
+  const [orgPrefill, setOrgPrefill] = useState<OrgPrefill>(null)
   const [trustRefresh, setTrustRefresh] = useState(0)
   const supabase = createClient()
 
@@ -173,10 +175,10 @@ export default function EmployeeDetail() {
     fetchTrustScore()
   }, [worker, trustRefresh])
 
-  // 四半期面談タスク（未完了分）+ 前回面談のプリフィル用記録
+  // 四半期面談タスク（未完了分）+ 実施済み面談記録（プリフィル・再ダウンロード用）
   const fetchInterviewTasks = async (autoOpenTaskId?: string | null) => {
     if (!params.id) return
-    const [tasksRes, prevRes] = await Promise.all([
+    const [tasksRes, recsRes] = await Promise.all([
       supabase.from('support_tasks')
         .select('*')
         .eq('worker_id', params.id)
@@ -184,20 +186,60 @@ export default function EmployeeDetail() {
         .eq('status', 'pending')
         .order('due_date'),
       supabase.from('support_records')
-        .select('notes')
+        .select('id, quarter, completed_date, notes')
         .eq('worker_id', params.id)
         .eq('type', 'interview_worker')
         .eq('completed', true)
-        .order('completed_date', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+        .order('completed_date', { ascending: false }),
     ])
     const tasks = (tasksRes.data ?? []) as SupportTask[]
+    const recs = recsRes.data ?? []
     setInterviewTasks(tasks)
-    setPrevInterviewNotes((prevRes.data?.notes as Record<string, unknown> | undefined) ?? null)
+    setInterviewRecords(recs.map(r => ({ id: r.id, quarter: r.quarter, completed_date: r.completed_date })))
+    setPrevInterviewNotes((recs[0]?.notes as Record<string, unknown> | undefined) ?? null)
     if (autoOpenTaskId) {
       const t = tasks.find(t => t.id === autoOpenTaskId)
       if (t) setOpenTask(t)
+    }
+  }
+
+  // 面談対応者のプリフィル用（原則1: 支援計画書の支援担当者情報を再利用）
+  useEffect(() => {
+    if (!worker?.org_id) return
+    supabase.from('organizations')
+      .select('support_staff_name, support_staff_title')
+      .eq('id', worker.org_id)
+      .maybeSingle()
+      .then(({ data }) => setOrgPrefill(data ?? null))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [worker?.org_id])
+
+  // 定期面談報告書（5-5号）の再ダウンロード
+  const downloadInterviewReport = async (rec: { id: string; completed_date: string | null }) => {
+    if (!worker) return
+    setDocGenerating(`mendan-${rec.id}`)
+    try {
+      const res = await fetch('/api/documents/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: 'mendan_kiroku', workerId: worker.id, supportRecordId: rec.id }),
+      })
+      if (!res.ok) {
+        alert('帳票の生成に失敗しました。')
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `定期面談報告書_${worker.name_kanji || worker.name_romaji}_${rec.completed_date ?? ''}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error('[downloadInterviewReport] error:', e)
+      alert('通信エラーが発生しました。')
+    } finally {
+      setDocGenerating(null)
     }
   }
 
@@ -918,6 +960,26 @@ export default function EmployeeDetail() {
           </div>
         )}
 
+        {/* 実施済み面談記録（定期面談報告書 5-5号 の再ダウンロード） */}
+        {interviewRecords.length > 0 && (
+          <div data-testid="interview-records-section" style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+            <div style={{fontSize:15,fontWeight:600,color:"#000",marginBottom:10}}>面談記録（定期面談報告書 参考様式第5-5号）</div>
+            {interviewRecords.map((r, i) => (
+              <div key={r.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"9px 0",borderTop:i>0?"1px solid #f0f0f0":"none",flexWrap:"wrap"}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:"#111"}}>四半期面談（{r.quarter ?? '-'}）</div>
+                  <div style={{fontSize:12,color:"#6b7280"}}>実施日 {r.completed_date ?? '-'}</div>
+                </div>
+                <button data-testid={`download-report-${r.id}`} onClick={() => downloadInterviewReport(r)}
+                  disabled={docGenerating === `mendan-${r.id}`}
+                  style={{background:"#fff",border:"1px solid #d0d0d0",borderRadius:6,padding:"8px 16px",color:docGenerating === `mendan-${r.id}` ? "#9ca3af" : "#374151",fontSize:13,fontWeight:600,cursor:docGenerating === `mendan-${r.id}` ? "not-allowed" : "pointer",flexShrink:0}}>
+                  {docGenerating === `mendan-${r.id}` ? '⏳ 生成中...' : '📄 報告書をダウンロード'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
           {/* 在留情報 */}
           <div style={{background:"#fff",border:urgent?"1px solid #fecaca":"1px solid #e0e0e0",borderRadius:12,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
@@ -1121,6 +1183,7 @@ export default function EmployeeDetail() {
           task={openTask}
           workerName={worker.name_kanji || worker.name_romaji}
           prevNotes={prevInterviewNotes}
+          orgPrefill={orgPrefill}
           onClose={() => setOpenTask(null)}
           onSaved={() => {
             setOpenTask(null)

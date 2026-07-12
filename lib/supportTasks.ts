@@ -131,10 +131,36 @@ export async function ensureQuarterlyInterviewTasks(): Promise<void> {
 
 // ── 面談フォーム保存（4連書込） ─────────────────────────────
 
-export type CategoryCheck = {
+/**
+ * 参考様式第5-5号「３ 面談結果」の確認項目（18項目・5グループ）。
+ * row は帳票テンプレート mendan-hokoku-5-5.xlsx の行番号（W列=有無、Z列=問題の内容）
+ */
+export const INTERVIEW_ITEMS = [
+  { key: 'work1',    group: '業務内容', label: '雇用契約と異なる業務に従事していないこと', row: 18 },
+  { key: 'work2',    group: '業務内容', label: '他の事業主の下で業務に従事していないこと', row: 19 },
+  { key: 'work3',    group: '業務内容', label: '安全衛生に配慮して適切に業務を行っていること', row: 20 },
+  { key: 'pay1',     group: '待遇',     label: '雇用契約に基づき毎月適切に報酬を受け取っていること', row: 21 },
+  { key: 'pay2',     group: '待遇',     label: '雇用契約と異なる労働時間となっていないこと', row: 22 },
+  { key: 'pay3',     group: '待遇',     label: '休日、休暇等が適切に付与されていること（一時帰国休暇を含む）', row: 23 },
+  { key: 'pay4',     group: '待遇',     label: '適切な住居が確保されていること', row: 24 },
+  { key: 'pay5',     group: '待遇',     label: '定期的に負担する食費、居住費等が合意したとおりの内容であること', row: 25 },
+  { key: 'pay6',     group: '待遇',     label: '支援計画にのっとった支援の提供を受けていること', row: 26 },
+  { key: 'protect1', group: '保護',     label: '暴行・脅迫・監禁等の不法行為を受けていないこと', row: 27 },
+  { key: 'protect2', group: '保護',     label: '相手方を問わず保証金の徴収・違約金を定める契約等がないこと', row: 28 },
+  { key: 'protect3', group: '保護',     label: '預金通帳の管理など不当な財産管理を受けていないこと', row: 29 },
+  { key: 'protect4', group: '保護',     label: '旅券・在留カードを自分で保管していること', row: 30 },
+  { key: 'protect5', group: '保護',     label: '私生活上の自由を不当に制限されていないこと', row: 31 },
+  { key: 'life1',    group: '生活',     label: '日常生活においてトラブルが発生していないこと', row: 32 },
+  { key: 'life2',    group: '生活',     label: '健康状態に異常がないこと', row: 33 },
+  { key: 'other1',   group: 'その他',   label: '不法就労者が働いていないこと', row: 34 },
+  { key: 'other2',   group: 'その他',   label: 'その他', row: 35 },
+] as const
+
+export type InterviewItemKey = typeof INTERVIEW_ITEMS[number]['key']
+
+export type ItemCheck = {
   hasIssue: boolean
-  detail: string    // 問題ありの場合の詳細
-  response: string  // 問題ありの場合の対応
+  detail: string  // 問題ありの場合の内容（帳票の「問題の内容」欄）
 }
 
 export type EvaluatorRatings = {
@@ -143,21 +169,25 @@ export type EvaluatorRatings = {
   compliance: number   // 安全衛生・規範遵守 1〜5
 }
 
+export type StaffRole = 'support_staff' | 'support_manager'  // 支援担当者 | 支援責任者
+
 export type InterviewForm = {
   interviewDate: string
   method: 'in_person' | 'online'
   onlineConsent: boolean
   recordingUrl: string
   staffName: string
+  staffRole: StaffRole
+  staffRoleTitle: string  // 役職名（任意）
   otherParticipants: string
   language: string
   hasInterpreter: boolean
   interpreterName: string
-  categories: {
-    work: CategoryCheck
-    life: CategoryCheck
-    health: CategoryCheck
-    complaint: CategoryCheck
+  items: Record<InterviewItemKey, ItemCheck>  // 5-5号の確認18項目
+  violation: {
+    has: boolean       // ⑥基準不適合等の有無
+    date: string       // 有りの場合の発生年月日
+    detail: string     // 有りの場合の内容
   }
   freeNote: string
   staffRatings: EvaluatorRatings            // 支援担当者（必須）
@@ -196,11 +226,11 @@ function toEvaluationRow(
 export async function completeInterviewTask(
   task: Pick<SupportTask, 'id' | 'organization_id' | 'worker_id' | 'period_key'>,
   form: InterviewForm,
-): Promise<{ error: string | null }> {
+): Promise<{ error: string | null; supportRecordId?: string }> {
   const supabase = createClient()
   const evaluatedAt = new Date().toISOString()
 
-  // ① 法定記録（正本）
+  // ① 法定記録（正本）。notes は参考様式第5-5号の項目構造（items 18項目）で保持
   const { data: rec, error: recErr } = await supabase.from('support_records').insert({
     organization_id: task.organization_id,
     worker_id: task.worker_id,
@@ -214,11 +244,14 @@ export async function completeInterviewTask(
     recording_url: form.method === 'online' && form.recordingUrl ? form.recordingUrl : null,
     notes: {
       staff_name: form.staffName,
+      staff_role: form.staffRole,
+      staff_role_title: form.staffRoleTitle,
       other_participants: form.otherParticipants,
       language: form.language,
       has_interpreter: form.hasInterpreter,
       interpreter_name: form.interpreterName,
-      categories: form.categories,
+      items: form.items,
+      violation: form.violation,
       free_note: form.freeNote,
     },
   }).select().single()
@@ -250,12 +283,13 @@ export async function completeInterviewTask(
     return { error: 'タスク完了の記録に失敗: 更新行数が1ではありません（RLSポリシーを確認してください）' }
   }
 
-  // ④ 面談記録書の生成記録（帳票テンプレートは後続タスクで実装）
+  // ④ 面談記録書の生成記録（帳票の実生成は保存後に /api/documents/generate を呼ぶ。
+  //    生成記録はここで一元管理するため、API側の mendan_kiroku 分岐では記録しない）
   const { error: genErr } = await supabase.from('document_generations').insert({
     worker_id: task.worker_id,
     document_id: 'mendan_kiroku',
   })
   if (genErr) return { error: `生成記録の保存に失敗: ${genErr.message}` }
 
-  return { error: null }
+  return { error: null, supportRecordId: rec.id }
 }

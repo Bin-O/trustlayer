@@ -5,6 +5,7 @@ import { generateTodokeJokenHenkou } from '@/lib/documents/generatorExcel'
 import { generateShienKeikaku } from '@/lib/documents/generatorShienKeikaku'
 import { generateKeiyakuShuryo } from '@/lib/documents/generatorKeiyakuShuryo'
 import { generateTeikiHokoku } from '@/lib/documents/generatorTeikiHokoku'
+import { generateMendanHokoku, type MendanHokokuData } from '@/lib/documents/generatorMendanHokoku'
 import type { KoyouJokenData } from '@/lib/documents/templates/koyouJoken'
 import type { TodokeJokenHenkouData, ChangedSection } from '@/lib/documents/templates/todokeJokenHenkou'
 import type { ShienKeikakuData } from '@/lib/documents/generatorShienKeikaku'
@@ -93,7 +94,7 @@ function calcStats(
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { documentId, workerId, changeDate, changedSections, termination, newContract, fiscalYear } = body
+  const { documentId, workerId, changeDate, changedSections, termination, newContract, fiscalYear, supportRecordId } = body
 
   // teiki_hokoku は workerId 不要（機関全体のレポート）
   if (!documentId || (!workerId && documentId !== 'teiki_hokoku')) {
@@ -390,6 +391,58 @@ export async function POST(req: NextRequest) {
       })
     } catch (e) {
       console.error('[documents/generate] todoke_keiyaku_shuryo error:', e)
+      return NextResponse.json({ error: '文書生成中にエラーが発生しました' }, { status: 500 })
+    }
+  }
+
+  // ── 定期面談報告書（参考様式第5-5号・1号特定技能外国人用） ──
+  // 生成記録は面談保存時（completeInterviewTask ④）に記録済みのため、ここでは記録しない
+  if (documentId === 'mendan_kiroku') {
+    if (!supportRecordId) {
+      return NextResponse.json({ error: 'supportRecordId は必須です' }, { status: 400 })
+    }
+    const { data: rec, error: recErr } = await supabase
+      .from('support_records')
+      .select('completed_date, method, notes')
+      .eq('id', supportRecordId)
+      .eq('worker_id', workerId)
+      .single()
+    if (recErr || !rec) {
+      return NextResponse.json({ error: '面談記録が見つかりません' }, { status: 404 })
+    }
+
+    const notes = (rec.notes ?? {}) as Record<string, unknown>
+    const input: MendanHokokuData = {
+      worker: { name: worker.name_kanji ?? worker.name_romaji ?? '' },
+      org: org ? { name: org.name ?? '' } : null,
+      interview: {
+        date: rec.completed_date ?? '',
+        method: rec.method === 'online' ? 'online' : 'in_person',
+        staff_name: (notes.staff_name as string) ?? '',
+        staff_role: notes.staff_role === 'support_manager' ? 'support_manager' : 'support_staff',
+        staff_role_title: (notes.staff_role_title as string) || null,
+        items: (notes.items ?? {}) as MendanHokokuData['interview']['items'],
+        violation: {
+          has: (notes.violation as { has?: boolean } | undefined)?.has === true,
+          date: (notes.violation as { date?: string } | undefined)?.date || null,
+          detail: (notes.violation as { detail?: string } | undefined)?.detail || null,
+        },
+        free_note: (notes.free_note as string) || null,
+      },
+      created_date: new Date().toISOString().slice(0, 10),
+    }
+
+    try {
+      const buffer = await generateMendanHokoku(input)
+      const filename = `定期面談報告書_${worker.name_kanji ?? worker.name_romaji}_${rec.completed_date ?? ''}.xlsx`
+      return new NextResponse(buffer as unknown as BodyInit, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+        },
+      })
+    } catch (e) {
+      console.error('[documents/generate] mendan_kiroku error:', e)
       return NextResponse.json({ error: '文書生成中にエラーが発生しました' }, { status: 500 })
     }
   }

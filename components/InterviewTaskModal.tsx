@@ -1,21 +1,18 @@
 'use client'
 /**
  * 四半期面談タスクの三段式モーダル（これは何? / どうやる? / 記録する）
- * 保存で lib/supportTasks.ts の completeInterviewTask（4連書込）が走る。
+ * 保存で lib/supportTasks.ts の completeInterviewTask（4連書込）が走り、
+ * 続けて参考様式第5-5号（定期面談報告書）を自動生成・ダウンロードする。
  * サブコンポーネントは必ずモジュールスコープで定義（フォーカス喪失バグ対策）。
  */
 import { useState } from 'react'
 import {
-  completeInterviewTask,
-  type SupportTask, type InterviewForm, type EvaluatorRatings, type CategoryCheck,
+  completeInterviewTask, INTERVIEW_ITEMS,
+  type SupportTask, type InterviewForm, type EvaluatorRatings,
+  type InterviewItemKey, type ItemCheck, type StaffRole,
 } from '@/lib/supportTasks'
 
-const CATEGORY_LABELS: { key: keyof InterviewForm['categories']; label: string }[] = [
-  { key: 'work', label: '業務' },
-  { key: 'life', label: '生活' },
-  { key: 'health', label: '健康' },
-  { key: 'complaint', label: '苦情' },
-]
+const ITEM_GROUPS = ['業務内容', '待遇', '保護', '生活', 'その他'] as const
 
 const RATING_QUESTIONS: { key: keyof EvaluatorRatings; label: string }[] = [
   { key: 'performance', label: '業務遂行' },
@@ -23,7 +20,8 @@ const RATING_QUESTIONS: { key: keyof EvaluatorRatings; label: string }[] = [
   { key: 'compliance', label: '安全衛生・規範遵守' },
 ]
 
-const emptyCheck = (): CategoryCheck => ({ hasIssue: false, detail: '', response: '' })
+const emptyItems = (): Record<InterviewItemKey, ItemCheck> =>
+  Object.fromEntries(INTERVIEW_ITEMS.map(i => [i.key, { hasIssue: false, detail: '' }])) as Record<InterviewItemKey, ItemCheck>
 const emptyRatings = (): EvaluatorRatings => ({ performance: 0, attendance: 0, compliance: 0 })
 
 // ── モジュールスコープのUI部品 ──────────────────────────────
@@ -87,15 +85,23 @@ function RatingBlock({ title, ratings, onChange, testPrefix }: {
 
 type PrevNotes = {
   staff_name?: string
+  staff_role?: StaffRole
+  staff_role_title?: string
   language?: string
   has_interpreter?: boolean
   interpreter_name?: string
 } | null
 
-export default function InterviewTaskModal({ task, workerName, prevNotes, onClose, onSaved }: {
+export type OrgPrefill = {
+  support_staff_name?: string | null
+  support_staff_title?: string | null
+} | null
+
+export default function InterviewTaskModal({ task, workerName, prevNotes, orgPrefill, onClose, onSaved }: {
   task: SupportTask
   workerName: string
   prevNotes: PrevNotes
+  orgPrefill: OrgPrefill
   onClose: () => void
   onSaved: () => void
 }) {
@@ -104,45 +110,89 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, onClos
     method: 'in_person',
     onlineConsent: false,
     recordingUrl: '',
-    // 原則1: 前回面談の入力値をプリフィルし、新規増分のみ入力させる
-    staffName: prevNotes?.staff_name ?? '',
+    // 原則1: 前回面談 → 組織設定（支援計画書の支援担当者）の順でプリフィル
+    staffName: prevNotes?.staff_name ?? orgPrefill?.support_staff_name ?? '',
+    staffRole: prevNotes?.staff_role ?? 'support_staff',
+    staffRoleTitle: prevNotes?.staff_role_title ?? orgPrefill?.support_staff_title ?? '',
     otherParticipants: '',
     language: prevNotes?.language ?? '日本語',
     hasInterpreter: prevNotes?.has_interpreter ?? false,
     interpreterName: prevNotes?.interpreter_name ?? '',
-    categories: { work: emptyCheck(), life: emptyCheck(), health: emptyCheck(), complaint: emptyCheck() },
+    items: emptyItems(),
+    violation: { has: false, date: '', detail: '' },
     freeNote: '',
     staffRatings: emptyRatings(),
     supervisorRatings: null,
   })
+  const [allOkConfirmed, setAllOkConfirmed] = useState(false)
+  const [itemsExpanded, setItemsExpanded] = useState(false)
   const [withSupervisor, setWithSupervisor] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const set = <K extends keyof InterviewForm>(key: K, value: InterviewForm[K]) =>
     setForm(f => ({ ...f, [key]: value }))
-  const setCategory = (key: keyof InterviewForm['categories'], patch: Partial<CategoryCheck>) =>
-    setForm(f => ({ ...f, categories: { ...f.categories, [key]: { ...f.categories[key], ...patch } } }))
+  const setItem = (key: InterviewItemKey, patch: Partial<ItemCheck>) => {
+    setForm(f => ({ ...f, items: { ...f.items, [key]: { ...f.items[key], ...patch } } }))
+    if (patch.hasIssue) setAllOkConfirmed(false)
+  }
+
+  const issueCount = Object.values(form.items).filter(i => i.hasIssue).length
+  // 確認項目の完了条件: 一括「すべて問題なし」を押した、または個別に問題ありを記録した
+  const itemsConfirmed = allOkConfirmed || issueCount > 0
+
+  const confirmAllOk = () => {
+    setForm(f => ({ ...f, items: emptyItems() }))
+    setAllOkConfirmed(true)
+    setItemsExpanded(false)
+  }
 
   const ratingsComplete = (r: EvaluatorRatings) => r.performance > 0 && r.attendance > 0 && r.compliance > 0
   const consentBlocked = form.method === 'online' && !form.onlineConsent
+  const violationIncomplete = form.violation.has && (!form.violation.date || !form.violation.detail.trim())
   const canSave =
     !!form.interviewDate &&
     !!form.staffName.trim() &&
+    itemsConfirmed &&
+    !violationIncomplete &&
     ratingsComplete(form.staffRatings) &&
     (!withSupervisor || (form.supervisorRatings !== null && ratingsComplete(form.supervisorRatings))) &&
     !consentBlocked &&
     !saving
 
+  const downloadReport = async (supportRecordId: string) => {
+    const res = await fetch('/api/documents/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documentId: 'mendan_kiroku', workerId: task.worker_id, supportRecordId }),
+    })
+    if (!res.ok) throw new Error(`生成API ${res.status}`)
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `定期面談報告書_${workerName}_${form.interviewDate}.xlsx`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const handleSave = async () => {
     setSaving(true)
     setError(null)
-    const { error: err } = await completeInterviewTask(task, {
+    const { error: err, supportRecordId } = await completeInterviewTask(task, {
       ...form,
       supervisorRatings: withSupervisor ? form.supervisorRatings : null,
     })
+    if (err) { setSaving(false); setError(err); return }
+    // 原則1: 保存と同時に法定文書（5-5号）を自動生成・ダウンロード。
+    // 生成失敗でも記録自体は完了扱い（従業員詳細から再ダウンロード可能）
+    try {
+      if (supportRecordId) await downloadReport(supportRecordId)
+    } catch (e) {
+      console.warn('[InterviewTaskModal] 帳票の自動生成に失敗:', e)
+      alert('面談記録は保存されましたが、帳票の自動生成に失敗しました。従業員詳細ページから再ダウンロードできます。')
+    }
     setSaving(false)
-    if (err) { setError(err); return }
     onSaved()
   }
 
@@ -165,8 +215,8 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, onClos
           <StepBadge n={1} title="これは何？" />
           <p style={{ margin: '0 0 8px', fontSize: 13, color: '#374151', lineHeight: 1.7 }}>
             特定技能1号の方と<strong>3ヶ月に1回以上</strong>行う法定の定期面談です。
-            記録は監査・定期届出の根拠になり、実施すると信頼スコア
-            （支援実施10点・面談時評価15点）にも反映されます。
+            保存すると定期面談報告書（参考様式第5-5号）が自動生成され、
+            信頼スコア（支援実施10点・面談時評価15点）にも反映されます。
           </p>
           <div style={{ fontSize: 12, color: '#6b7280' }}>
             対象: {workerName}さん ／ 対象四半期: {task.period_key} ／ 期限: {task.due_date}
@@ -183,7 +233,7 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, onClos
             <li>本人と日程を調整する（前回の面談から3ヶ月以内の実施が目安）</li>
             <li>実施方法を決める（対面 または オンライン。オンラインは本人同意が前提・初回は対面が原則）</li>
             <li>通訳の要否を確認する（十分に理解できる言語で行う）</li>
-            <li>面談で 業務・生活・健康・苦情 の4分類を確認し、下の「記録する」に入力する</li>
+            <li>面談で公式様式の確認項目（業務・待遇・保護・生活等）を確認し、下の「記録する」に入力する</li>
           </ol>
           <div style={{ fontSize: 12, color: '#6b7280', marginTop: 10, paddingTop: 10, borderTop: '1px solid #f3f4f6' }}>
             手続きに不安がある場合の相談先:{' '}
@@ -243,9 +293,26 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, onClos
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <div>
-              <FieldLabel required>支援担当者（面談者）</FieldLabel>
+              <FieldLabel required>面談対応者（氏名）</FieldLabel>
               <input type="text" data-testid="f-staff" value={form.staffName}
                 onChange={e => set('staffName', e.target.value)} style={inputStyle} placeholder="例: 山田 花子" />
+            </div>
+            <div>
+              <FieldLabel>対応者の役職</FieldLabel>
+              <div style={{ display: 'flex', gap: 10, paddingTop: 6, flexWrap: 'wrap' }}>
+                {([['support_staff', '支援担当者'], ['support_manager', '支援責任者']] as const).map(([v, label]) => (
+                  <label key={v} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#374151', cursor: 'pointer' }}>
+                    <input type="radio" data-testid={`f-role-${v}`} checked={form.staffRole === v}
+                      onChange={() => set('staffRole', v)} />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <FieldLabel>役職名（任意）</FieldLabel>
+              <input type="text" data-testid="f-role-title" value={form.staffRoleTitle}
+                onChange={e => set('staffRoleTitle', e.target.value)} style={inputStyle} placeholder="例: 総務課長" />
             </div>
             <div>
               <FieldLabel>その他の参加者</FieldLabel>
@@ -274,41 +341,101 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, onClos
             </div>
           </div>
 
-          <FieldLabel required>確認項目（参考様式第5-5号準拠）</FieldLabel>
-          <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', marginBottom: 12 }}>
-            {CATEGORY_LABELS.map(({ key, label }, i) => {
-              const c = form.categories[key]
-              return (
-                <div key={key} style={{ padding: '10px 12px', borderBottom: i < CATEGORY_LABELS.length - 1 ? '1px solid #f3f4f6' : 'none', background: c.hasIssue ? '#fef2f2' : '#fff' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>{label}</span>
-                    <div style={{ display: 'flex', gap: 10 }}>
-                      {([[false, '問題なし'], [true, '問題あり']] as const).map(([v, l]) => (
-                        <label key={String(v)} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: v ? '#dc2626' : '#374151', cursor: 'pointer' }}>
-                          <input type="radio" data-testid={`f-cat-${key}-${v ? 'issue' : 'ok'}`}
-                            checked={c.hasIssue === v} onChange={() => setCategory(key, { hasIssue: v })} />
-                          {l}
-                        </label>
-                      ))}
-                    </div>
+          {/* 確認項目（5-5号・18項目） */}
+          <FieldLabel required>確認項目（参考様式第5-5号・18項目）</FieldLabel>
+          <div style={{ border: itemsConfirmed ? '1px solid #bbf7d0' : '1px solid #e5e7eb', borderRadius: 8, padding: '12px 14px', marginBottom: 12, background: itemsConfirmed ? '#f0fdf4' : '#fff' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <button type="button" data-testid="items-all-ok" onClick={confirmAllOk}
+                style={{
+                  background: allOkConfirmed ? '#16a34a' : '#fff',
+                  border: '1px solid #16a34a', borderRadius: 8, padding: '9px 16px',
+                  color: allOkConfirmed ? '#fff' : '#16a34a', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                }}>
+                {allOkConfirmed ? '✓ すべて問題なし（確認済み）' : '✓ すべて問題なし'}
+              </button>
+              <button type="button" data-testid="items-expand" onClick={() => setItemsExpanded(v => !v)}
+                style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                {itemsExpanded ? '▲ 閉じる' : '▼ 個別に確認する'}
+              </button>
+              {issueCount > 0 && (
+                <span data-testid="items-issue-count" style={{ fontSize: 12, fontWeight: 700, color: '#dc2626' }}>
+                  問題あり {issueCount} 件
+                </span>
+              )}
+            </div>
+            {!itemsConfirmed && (
+              <div style={{ fontSize: 12, color: '#b45309', marginTop: 8 }}>
+                「すべて問題なし」を押すか、問題のある項目を個別に記録してください
+              </div>
+            )}
+
+            {itemsExpanded && (
+              <div style={{ marginTop: 10 }}>
+                {ITEM_GROUPS.map(group => (
+                  <div key={group} style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', padding: '6px 0 4px' }}>{group}</div>
+                    {INTERVIEW_ITEMS.filter(i => i.group === group).map(item => {
+                      const c = form.items[item.key]
+                      return (
+                        <div key={item.key} style={{ padding: '6px 8px', borderRadius: 6, background: c.hasIssue ? '#fef2f2' : 'transparent' }}>
+                          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: '#374151', cursor: 'pointer' }}>
+                            <input type="checkbox" data-testid={`f-item-${item.key}-issue`} checked={c.hasIssue}
+                              onChange={e => setItem(item.key, { hasIssue: e.target.checked })}
+                              style={{ marginTop: 3 }} />
+                            <span>{item.label}<span style={{ color: c.hasIssue ? '#dc2626' : '#9ca3af', fontWeight: 600, marginLeft: 6 }}>{c.hasIssue ? '問題あり' : '問題なし'}</span></span>
+                          </label>
+                          {c.hasIssue && (
+                            <textarea data-testid={`f-item-${item.key}-detail`} value={c.detail}
+                              onChange={e => setItem(item.key, { detail: e.target.value })}
+                              style={{ ...inputStyle, minHeight: 44, resize: 'vertical', marginTop: 6 }}
+                              placeholder="問題の内容（帳票の「問題の内容」欄に出力）" />
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
-                  {c.hasIssue && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
-                      <textarea value={c.detail} onChange={e => setCategory(key, { detail: e.target.value })}
-                        style={{ ...inputStyle, minHeight: 48, resize: 'vertical' }} placeholder="詳細（発生日・内容）" />
-                      <textarea value={c.response} onChange={e => setCategory(key, { response: e.target.value })}
-                        style={{ ...inputStyle, minHeight: 48, resize: 'vertical' }} placeholder="対応" />
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+                ))}
+              </div>
+            )}
           </div>
 
-          <FieldLabel>自由記述</FieldLabel>
+          {/* 基準不適合等 */}
+          <FieldLabel required>基準不適合等の有無</FieldLabel>
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px', marginBottom: 12, background: form.violation.has ? '#fef2f2' : '#fff' }}>
+            <div style={{ display: 'flex', gap: 14 }}>
+              {([[false, 'なし'], [true, '有り']] as const).map(([v, label]) => (
+                <label key={String(v)} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: v ? '#dc2626' : '#374151', cursor: 'pointer', fontWeight: 600 }}>
+                  <input type="radio" data-testid={`f-violation-${v ? 'yes' : 'no'}`}
+                    checked={form.violation.has === v}
+                    onChange={() => set('violation', { ...form.violation, has: v })} />
+                  {label}
+                </label>
+              ))}
+            </div>
+            {form.violation.has && (
+              <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 8, marginTop: 10 }}>
+                <div>
+                  <FieldLabel required>発生年月日</FieldLabel>
+                  <input type="date" data-testid="f-violation-date" value={form.violation.date}
+                    onChange={e => set('violation', { ...form.violation, date: e.target.value })} style={inputStyle} />
+                </div>
+                <div>
+                  <FieldLabel required>基準不適合等の内容</FieldLabel>
+                  <textarea data-testid="f-violation-detail" value={form.violation.detail}
+                    onChange={e => set('violation', { ...form.violation, detail: e.target.value })}
+                    style={{ ...inputStyle, minHeight: 44, resize: 'vertical' }} />
+                </div>
+                <div style={{ gridColumn: '1 / -1', fontSize: 11, color: '#6b7280' }}>
+                  対応結果（本人・所属機関・行政機関への対応）は帳票では空欄で出力されます。必要に応じて出力後に追記してください
+                </div>
+              </div>
+            )}
+          </div>
+
+          <FieldLabel>その他特筆すべき事項</FieldLabel>
           <textarea data-testid="f-note" value={form.freeNote} onChange={e => set('freeNote', e.target.value)}
             style={{ ...inputStyle, minHeight: 56, resize: 'vertical', marginBottom: 12 }}
-            placeholder="面談で話した内容・本人の様子など（任意）" />
+            placeholder="面談で話した内容・本人の様子など（任意・帳票の⑦欄に出力）" />
 
           <FieldLabel required>雇用主評価（5段階・1名1分）</FieldLabel>
           <RatingBlock title="支援担当者による評価（必須）" ratings={form.staffRatings}
@@ -344,7 +471,7 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, onClos
           </button>
         </div>
         <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 8, textAlign: 'right' }}>
-          保存と同時に、面談記録・評価・タスク完了・書類生成記録が一括登録されます
+          保存と同時に、面談記録・評価・タスク完了の登録と定期面談報告書（5-5号）のダウンロードが行われます
         </div>
       </div>
     </div>
