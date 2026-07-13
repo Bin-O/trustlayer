@@ -10,6 +10,7 @@
  */
 import {
   TASK_TYPE_QUARTERLY_INTERVIEW,
+  quarterKey,
   type SupportTask,
 } from '@/lib/supportTasks'
 
@@ -62,16 +63,19 @@ export const STATUS_STYLE: Record<ServiceStatus, { icon: string; color: string; 
   not_applicable: { icon: '—',  color: '#cbd5e1', bg: '#f8fafc' },
 }
 
-/** 集約に必要な最小レコード形 */
-export type ServiceRecordRow = { type: string; completed: boolean | null }
+/** 集約に必要な最小レコード形。quarter は面談の当四半期判定に用いる（他業務は NULL 可） */
+export type ServiceRecordRow = { type: string; completed: boolean | null; quarter?: string | null }
 export type ServiceTaskRow = Pick<SupportTask, 'task_type' | 'status' | 'due_date'>
 
 /**
  * 1業務×1従業員の状態を判定する。
- * - taskType あり（定期面談）: 完了記録あれば done / 期限超過の未完了タスクあれば due /
- *   期限内の未完了タスクは not_yet（予定あり・未実施。新人の初回面談は期日前のため⚠️にしない）/
- *   タスクが無ければ not_yet
- * - taskType なし: 実施記録あれば done / 無ければ always→not_yet, on_event→not_applicable
+ * - taskType あり（定期面談）: 当四半期(quarter==当Q)の完了記録あれば done / 期限超過の
+ *   未完了タスクあれば due / 期限内の未完了タスクは not_yet（予定あり・未実施。新人の初回面談は
+ *   期日前のため⚠️にしない）/ タスクが無ければ not_yet。
+ *   ※過去四半期の完了記録では done にしない（監査ビューとして当Qの実施状況を反映）。
+ *   判定は completed_date ではなく quarter(=period_key)基準（当Q義務の充足を見る）
+ * - taskType なし: 実施記録あれば done（四半期概念なし・従来通り）/
+ *   無ければ always→not_yet, on_event→not_applicable
  */
 export function serviceStatusOf(
   def: SupportServiceDef,
@@ -79,7 +83,11 @@ export function serviceStatusOf(
   tasks: ServiceTaskRow[],
   now: Date = new Date(),
 ): ServiceStatus {
-  const hasDoneRecord = records.some(r => def.recordTypes.includes(r.type) && r.completed !== false)
+  const currentQuarter = quarterKey(now)
+  const hasDoneRecord = records.some(r =>
+    def.recordTypes.includes(r.type) && r.completed !== false
+    // 面談(taskType あり)のみ当四半期に限定。他業務は四半期を問わない
+    && (!def.taskType || r.quarter === currentQuarter))
   if (hasDoneRecord) return 'done'
 
   if (def.taskType) {

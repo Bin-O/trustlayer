@@ -200,7 +200,7 @@ export default function EmployeeDetail() {
         .order('completed_date', { ascending: false }),
       // 10支援業務マトリクス用: 全 type の実施記録（証拠層の集約表示）
       supabase.from('support_records')
-        .select('type, completed')
+        .select('type, completed, quarter')
         .eq('worker_id', params.id),
     ])
     const tasks = (tasksRes.data ?? []) as SupportTask[]

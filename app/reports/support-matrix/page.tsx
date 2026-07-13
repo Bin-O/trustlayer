@@ -47,17 +47,17 @@ export default function SupportMatrixPage() {
       if (ids.length === 0) { setRows([]); setLoading(false); return }
 
       const [recsRes, tasksRes] = await Promise.all([
-        supabase.from('support_records').select('worker_id, type, completed').in('worker_id', ids),
+        supabase.from('support_records').select('worker_id, type, completed, quarter').in('worker_id', ids),
         supabase.from('support_tasks')
           .select('worker_id, task_type, status, due_date')
           .in('worker_id', ids)
           .in('task_type', [...INTERVIEW_TASK_TYPES])
           .eq('status', 'pending'),
       ])
-      const recsBy = new Map<string, { type: string; completed: boolean | null }[]>()
+      const recsBy = new Map<string, { type: string; completed: boolean | null; quarter: string | null }[]>()
       for (const r of recsRes.data ?? []) {
         const list = recsBy.get(r.worker_id) ?? []
-        list.push({ type: r.type, completed: r.completed })
+        list.push({ type: r.type, completed: r.completed, quarter: r.quarter })
         recsBy.set(r.worker_id, list)
       }
       const tasksBy = new Map<string, Pick<SupportTask, 'task_type' | 'status' | 'due_date'>[]>()
