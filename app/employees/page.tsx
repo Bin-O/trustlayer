@@ -43,7 +43,7 @@ export default function Employees() {
 
   const getFlag = (nationality: string) => {
     const flags: {[key: string]: string} = {
-      'ベトナム':'🇻🇳','フィリピン':'🇵🇭','中国':'🇨🇳','バングラデシュ':'🇧🇩','韓国':'🇰🇷'
+      'ベトナム':'🇻🇳','フィリピン':'🇵🇭','中国':'🇨🇳','バングラデシュ':'🇧🇩','韓国':'🇰🇷','ミャンマー':'🇲🇲','インドネシア':'🇮🇩'
     }
     return flags[nationality] || '🌏'
   }
