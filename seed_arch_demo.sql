@@ -185,9 +185,13 @@ INSERT INTO payroll_records (worker_id, organization_id, target_year, target_mon
 
 
 -- ======================= STEP 8: 支援記録 support_records ==================================
--- ③: 本人面談を直近3四半期完了 + 事前ガイダンス(orientation)完了 → 支援スコア満点方向。
+-- ③: 本人面談を直近3四半期完了 + 事前ガイダンス(guidance)・住居確保(housing)・生活OT(orientation)
+--     完了 → 支援マトリクスで No.1/3/4/10 が実施済(実施率4/6)。信頼スコアの支援枠は面談+orientation
+--     で既に満点のため、guidance/housing 追加でスコアは変わらない(マトリクス表示のみ変化)。
 -- ⑤: 1回のみ。⑥: 過去(2026-Q1)は実施済だが当四半期(2026-Q3)は未実施 → Q3タスクがpendingになる。
 INSERT INTO support_records (organization_id, worker_id, type, quarter, scheduled_date, completed, completed_date, method, notes) VALUES
+('11111111-1111-1111-1111-111111111111','a1000000-0000-4000-8000-000000000003','guidance',         NULL,        '2024-06-20', true,'2024-06-20','online',   '{}'::jsonb),
+('11111111-1111-1111-1111-111111111111','a1000000-0000-4000-8000-000000000003','housing',          NULL,        '2024-07-02', true,'2024-07-02','in_person','{}'::jsonb),
 ('11111111-1111-1111-1111-111111111111','a1000000-0000-4000-8000-000000000003','orientation',      NULL,        '2024-07-05', true,'2024-07-05','in_person','{}'::jsonb),
 ('11111111-1111-1111-1111-111111111111','a1000000-0000-4000-8000-000000000003','interview_worker','2025-Q4','2025-11-20', true,'2025-11-20','in_person','{}'::jsonb),
 ('11111111-1111-1111-1111-111111111111','a1000000-0000-4000-8000-000000000003','interview_worker','2026-Q1','2026-02-18', true,'2026-02-18','in_person','{}'::jsonb),

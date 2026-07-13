@@ -122,7 +122,7 @@ export default function SupportMatrixPage() {
                     {SUPPORT_SERVICES_DEF.map(def => (
                       <th key={def.key} style={th} title={def.label}>
                         <div style={{ fontSize: 10, color: '#9ca3af' }}>{def.no}</div>
-                        <div style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', height: 84, margin: '2px auto 0', fontWeight: 600, color: '#374151' }}>{def.label}</div>
+                        <div style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', margin: '2px auto 0', fontWeight: 600, color: '#374151' }}>{def.short}</div>
                       </th>
                     ))}
                     <th style={{ ...th, minWidth: 56 }}>実施率</th>

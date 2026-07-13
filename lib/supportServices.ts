@@ -20,6 +20,7 @@ export type SupportServiceDef = {
   key: string
   no: number                 // 法定10業務の番号
   label: string
+  short: string              // マトリクス縦書きヘッダー用の短縮表記（全文は title 属性で表示）
   obligation: Obligation
   recordTypes: string[]      // 実施済み判定に用いる support_records.type（複数可）
   /** 定期面談だけはタスク化済みのため、期限概念（⚠️）を持つ */
@@ -32,16 +33,16 @@ export type SupportServiceDef = {
  * always→未実施○ / on_event→該当なし— で表示される（実施記録UIは次フェーズ）。
  */
 export const SUPPORT_SERVICES_DEF: SupportServiceDef[] = [
-  { key: 'guidance',        no: 1,  label: '事前ガイダンス',            obligation: 'always',   recordTypes: ['guidance'] },
-  { key: 'airport_pickup',  no: 2,  label: '出入国する際の送迎',        obligation: 'on_event', recordTypes: ['airport_pickup'] },
-  { key: 'housing',         no: 3,  label: '住居確保・生活契約支援',    obligation: 'always',   recordTypes: ['housing'] },
-  { key: 'life_orientation',no: 4,  label: '生活オリエンテーション',    obligation: 'always',   recordTypes: ['orientation'] },
-  { key: 'accompaniment',   no: 5,  label: '公的手続等への同行',        obligation: 'on_event', recordTypes: ['accompaniment'] },
-  { key: 'japanese',        no: 6,  label: '日本語学習の機会提供',      obligation: 'always',   recordTypes: ['japanese', 'training'] },
-  { key: 'consultation',    no: 7,  label: '相談・苦情への対応',        obligation: 'on_event', recordTypes: ['consultation'] },
-  { key: 'exchange',        no: 8,  label: '日本人との交流促進',        obligation: 'always',   recordTypes: ['exchange'] },
-  { key: 'job_change',      no: 9,  label: '転職支援（非自発的離職時）', obligation: 'on_event', recordTypes: ['job_change'] },
-  { key: 'interview',       no: 10, label: '定期的な面談・行政通報',    obligation: 'always',   recordTypes: ['interview_worker', 'interview_supervisor'], taskType: TASK_TYPE_QUARTERLY_INTERVIEW },
+  { key: 'guidance',        no: 1,  label: '事前ガイダンス',            short: '事前案内',   obligation: 'always',   recordTypes: ['guidance'] },
+  { key: 'airport_pickup',  no: 2,  label: '出入国する際の送迎',        short: '送迎',       obligation: 'on_event', recordTypes: ['airport_pickup'] },
+  { key: 'housing',         no: 3,  label: '住居確保・生活契約支援',    short: '住居確保',   obligation: 'always',   recordTypes: ['housing'] },
+  { key: 'life_orientation',no: 4,  label: '生活オリエンテーション',    short: '生活案内',   obligation: 'always',   recordTypes: ['orientation'] },
+  { key: 'accompaniment',   no: 5,  label: '公的手続等への同行',        short: '手続同行',   obligation: 'on_event', recordTypes: ['accompaniment'] },
+  { key: 'japanese',        no: 6,  label: '日本語学習の機会提供',      short: '日本語学習', obligation: 'always',   recordTypes: ['japanese', 'training'] },
+  { key: 'consultation',    no: 7,  label: '相談・苦情への対応',        short: '相談対応',   obligation: 'on_event', recordTypes: ['consultation'] },
+  { key: 'exchange',        no: 8,  label: '日本人との交流促進',        short: '交流促進',   obligation: 'always',   recordTypes: ['exchange'] },
+  { key: 'job_change',      no: 9,  label: '転職支援（非自発的離職時）', short: '転職支援',   obligation: 'on_event', recordTypes: ['job_change'] },
+  { key: 'interview',       no: 10, label: '定期的な面談・行政通報',    short: '定期面談',   obligation: 'always',   recordTypes: ['interview_worker', 'interview_supervisor'], taskType: TASK_TYPE_QUARTERLY_INTERVIEW },
 ]
 
 /** マトリクスのセル状態 */
@@ -67,8 +68,9 @@ export type ServiceTaskRow = Pick<SupportTask, 'task_type' | 'status' | 'due_dat
 
 /**
  * 1業務×1従業員の状態を判定する。
- * - taskType あり（定期面談）: 完了記録あれば done / 未完了タスクあれば due（期限で判定）/
- *   どちらも無ければ not_yet
+ * - taskType あり（定期面談）: 完了記録あれば done / 期限超過の未完了タスクあれば due /
+ *   期限内の未完了タスクは not_yet（予定あり・未実施。新人の初回面談は期日前のため⚠️にしない）/
+ *   タスクが無ければ not_yet
  * - taskType なし: 実施記録あれば done / 無ければ always→not_yet, on_event→not_applicable
  */
 export function serviceStatusOf(
@@ -82,8 +84,9 @@ export function serviceStatusOf(
 
   if (def.taskType) {
     const pending = tasks.filter(t => interviewTaskMatches(def, t.task_type) && t.status === 'pending')
-    if (pending.length > 0) return 'due'
-    return 'not_yet'
+    // 期限超過（due_date < now）の未完了タスクのみ「要対応」。期限内は「未実施（予定あり）」
+    const overdue = pending.some(t => new Date(t.due_date) < now)
+    return overdue ? 'due' : 'not_yet'
   }
 
   return def.obligation === 'on_event' ? 'not_applicable' : 'not_yet'
