@@ -8,6 +8,7 @@ import TrustScoreCard from '@/components/TrustScoreCard'
 import InterviewTaskModal, { type OrgPrefill } from '@/components/InterviewTaskModal'
 import { calculateTrustScore, getOrCreateMonthlySnapshot, SUFFICIENCY_DISPLAY_THRESHOLD, type TrustScoreResult, type SnapshotRow } from '@/lib/trustScore'
 import { INTERVIEW_TASK_TYPES, interviewVariantOf, interviewDocumentIdOf, type SupportTask } from '@/lib/supportTasks'
+import { computeServiceMatrix, completionRate, STATUS_STYLE, STATUS_LABEL, type ServiceStatus, type SupportServiceDef } from '@/lib/supportServices'
 
 type Worker = {
   id: string
@@ -134,6 +135,7 @@ export default function EmployeeDetail() {
     supervisor: Record<string, unknown> | null
   }>({ worker: null, supervisor: null })
   const [interviewRecords, setInterviewRecords] = useState<{ id: string; type: string; quarter: string | null; completed_date: string | null }[]>([])
+  const [serviceMatrix, setServiceMatrix] = useState<{ def: SupportServiceDef; status: ServiceStatus }[]>([])
   const [orgPrefill, setOrgPrefill] = useState<OrgPrefill>(null)
   const [trustRefresh, setTrustRefresh] = useState(0)
   const supabase = createClient()
@@ -182,7 +184,7 @@ export default function EmployeeDetail() {
   // 四半期面談タスク（本人+監督者・未完了分）+ 実施済み面談記録（プリフィル・再ダウンロード用）
   const fetchInterviewTasks = async (autoOpenTaskId?: string | null) => {
     if (!params.id) return
-    const [tasksRes, recsRes] = await Promise.all([
+    const [tasksRes, recsRes, allRecsRes] = await Promise.all([
       supabase.from('support_tasks')
         .select('*')
         .eq('worker_id', params.id)
@@ -195,6 +197,10 @@ export default function EmployeeDetail() {
         .in('type', ['interview_worker', 'interview_supervisor'])
         .eq('completed', true)
         .order('completed_date', { ascending: false }),
+      // 10支援業務マトリクス用: 全 type の実施記録（証拠層の集約表示）
+      supabase.from('support_records')
+        .select('type, completed')
+        .eq('worker_id', params.id),
     ])
     const tasks = (tasksRes.data ?? []) as SupportTask[]
     const recs = recsRes.data ?? []
@@ -204,6 +210,7 @@ export default function EmployeeDetail() {
       worker: (recs.find(r => r.type === 'interview_worker')?.notes as Record<string, unknown> | undefined) ?? null,
       supervisor: (recs.find(r => r.type === 'interview_supervisor')?.notes as Record<string, unknown> | undefined) ?? null,
     })
+    setServiceMatrix(computeServiceMatrix(allRecsRes.data ?? [], tasks))
     if (autoOpenTaskId) {
       const t = tasks.find(t => t.id === autoOpenTaskId)
       if (t) setOpenTask(t)
@@ -995,6 +1002,40 @@ export default function EmployeeDetail() {
             ))}
           </div>
         )}
+
+        {/* 10支援業務の実施状況（レポートビュー・特定技能1号のみ） */}
+        {activeStatus?.status_type === '特定技能1号' && serviceMatrix.length > 0 && (() => {
+          const rate = completionRate(serviceMatrix)
+          return (
+            <div data-testid="service-matrix-card" style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+              <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:10}}>
+                <div style={{fontSize:15,fontWeight:600,color:"#000"}}>支援業務の実施状況</div>
+                <div style={{fontSize:12,color:"#6b7280"}}>
+                  常時義務の実施率 <span data-testid="matrix-rate" style={{fontWeight:700,color:"#111"}}>{rate.done}/{rate.total}</span>
+                </div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column"}}>
+                {serviceMatrix.map(({ def, status }, i) => {
+                  const s = STATUS_STYLE[status]
+                  return (
+                    <div key={def.key} data-testid={`matrix-row-${def.key}`}
+                      style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderTop:i>0?"1px solid #f3f4f6":"none"}}>
+                      <span style={{width:22,fontSize:12,color:"#9ca3af",fontVariantNumeric:"tabular-nums",flexShrink:0}}>{def.no}</span>
+                      <span style={{flex:1,minWidth:0,fontSize:13,color:"#374151"}}>{def.label}</span>
+                      <span data-testid={`matrix-status-${def.key}`}
+                        style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:12,fontWeight:600,color:s.color,background:s.bg,borderRadius:9999,padding:"3px 10px",flexShrink:0}}>
+                        {s.icon} {STATUS_LABEL[status]}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div style={{fontSize:11,color:"#9ca3af",marginTop:10}}>
+                監査・記録の一覧表示です。「該当なし」は事由発生時のみ必要な業務、実施記録がある業務は「実施済」になります。
+              </div>
+            </div>
+          )
+        })()}
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
           {/* 在留情報 */}

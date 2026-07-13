@@ -1,5 +1,5 @@
 'use client'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { LogOut, Settings } from 'lucide-react'
@@ -11,6 +11,7 @@ type Page = 'dashboard' | 'employees' | 'reports' | 'settings'
 
 export default function AppHeader({ currentPage }: { currentPage: Page }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [orgName, setOrgName] = useState<string>('')
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -24,7 +25,8 @@ export default function AppHeader({ currentPage }: { currentPage: Page }) {
   }, [])
 
   const navBtn = (label: string, page: Page, path: string) => {
-    const active = currentPage === page
+    // reports は複数ページを持つため、同一 currentPage 内では pathname で active を分ける
+    const active = currentPage === page && (currentPage !== 'reports' || pathname === path)
     return (
       <button
         onClick={() => router.push(path)}
@@ -66,6 +68,7 @@ export default function AppHeader({ currentPage }: { currentPage: Page }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: '#475569', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 4, padding: '2px 7px', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>特定技能</span>
           {navBtn('定期届出', 'reports', '/reports/annual')}
+          {navBtn('支援業務', 'reports', '/reports/support-matrix')}
         </div>
 
         {/* アバターメニュー（設定） */}

@@ -574,6 +574,26 @@ export default function Dashboard() {
           )}
         </div>
 
+        {/* 支援業務レポートビューへの入口（柱1: 監査・投資家向けレポート） */}
+        <button
+          data-testid="entry-support-matrix"
+          onClick={() => router.push('/reports/support-matrix')}
+          style={{
+            ...cardStyle, cursor: 'pointer', fontFamily: 'inherit', width: '100%',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+            marginBottom: 28, padding: '14px 20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <span style={{ fontSize: 20 }}>📋</span>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#111' }}>支援業務の実施状況を見る</div>
+              <div style={{ fontSize: 12, color: '#9ca3af' }}>義務的支援10業務の実施記録を一覧化（監査用レポート）</div>
+            </div>
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', flexShrink: 0 }}>開く →</span>
+        </button>
+
         {/* 要対応タイムライン */}
         <section id="action-timeline" style={{ marginBottom: 28, scrollMarginTop: 72 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
