@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/AppHeader'
 import EmploymentConditionsWizard from '@/components/EmploymentConditionsWizard'
+import { getFlag } from '@/lib/countries'
+import { calculateTrustScore, BRANCH_META, type TrustBranch } from '@/lib/trustScore'
 
 type Worker = {
   id: string
@@ -27,6 +29,8 @@ export default function Employees() {
   const [confirmModal, setConfirmModal] = useState(false)
   const [bulkWizard, setBulkWizard] = useState(false)
   const [bulkDone, setBulkDone] = useState<number | null>(null)
+  // 信頼スコアの表示分岐（緑/橙/灰）。一覧では各行ぶんを非同期算出して格納する
+  const [branches, setBranches] = useState<Record<string, TrustBranch>>({})
   const supabase = createClient()
 
   useEffect(() => {
@@ -41,12 +45,27 @@ export default function Employees() {
     fetchData()
   }, [])
 
-  const getFlag = (nationality: string) => {
-    const flags: {[key: string]: string} = {
-      'ベトナム':'🇻🇳','フィリピン':'🇵🇭','中国':'🇨🇳','バングラデシュ':'🇧🇩','韓国':'🇰🇷','ミャンマー':'🇲🇲','インドネシア':'🇮🇩'
+  // 一覧の各従業員について信頼スコアの分岐を算出（詳細ページと同一ロジックを共有）
+  useEffect(() => {
+    if (workers.length === 0) return
+    let cancelled = false
+    const run = async () => {
+      const entries = await Promise.all(
+        workers.map(async w => {
+          try {
+            const result = await calculateTrustScore(w.id)
+            return [w.id, result.branch] as const
+          } catch {
+            return null
+          }
+        })
+      )
+      if (cancelled) return
+      setBranches(Object.fromEntries(entries.filter((e): e is readonly [string, TrustBranch] => e !== null)))
     }
-    return flags[nationality] || '🌏'
-  }
+    run()
+    return () => { cancelled = true }
+  }, [workers])
 
   const getDays = (expiry: string) => {
     return Math.ceil((new Date(expiry).getTime() - new Date().getTime()) / (1000*60*60*24))
@@ -163,6 +182,7 @@ export default function Employees() {
                 const badge = getDaysBadge(days)
                 const urgent = !retired && days <= 30
                 const isChecked = selected.has(w.id)
+                const branch = branches[w.id]
                 return (
                   <div key={w.id} style={{background:'#fff',border:isChecked?'1px solid #0066cc':urgent?'1px solid #fecaca':'1px solid #e0e0e0',borderRadius:12,padding:'16px 20px',display:'flex',alignItems:'center',gap:16,boxShadow: isChecked ? '0 0 0 2px rgba(0,102,204,0.15)' : '0 1px 3px rgba(0,0,0,0.06)',transition:'border-color 0.15s'}}>
                     <input
@@ -181,6 +201,9 @@ export default function Employees() {
                           <span style={{background:'#475569',color:'#fff',fontSize:11,padding:'2px 8px',borderRadius:4,fontWeight:600}}>退職</span>
                         ) : (
                           <span style={{background:'#f0f0f0',color:'#666',fontSize:11,padding:'2px 8px',borderRadius:4}}>{w.status === 'active' ? '在籍中' : w.status}</span>
+                        )}
+                        {!retired && branch && (
+                          <span title="信頼スコアの状態" style={{background:BRANCH_META[branch].bg,color:BRANCH_META[branch].color,border:`1px solid ${BRANCH_META[branch].border}`,fontSize:11,padding:'2px 8px',borderRadius:4,fontWeight:600}}>{BRANCH_META[branch].label}</span>
                         )}
                       </div>
                       <div style={{fontSize:13,color:'#666'}}>{active?.status_type || '未登録'}</div>

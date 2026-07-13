@@ -101,6 +101,40 @@ export function normalizeNationality(value: string): string | null {
   return null
 }
 
+// 国籍表記 → 国旗絵文字。一覧・詳細ページで共通利用（辞書の二重管理を避けるためここに集約）。
+// 未登録の国籍は getFlag のフォールバック（🌏）で表示する。
+export const NATIONALITY_TO_FLAG: Record<string, string> = {
+  'ベトナム': '🇻🇳',
+  '中国': '🇨🇳',
+  '台湾': '🇹🇼',
+  '香港': '🇭🇰',
+  'フィリピン': '🇵🇭',
+  'インドネシア': '🇮🇩',
+  'ミャンマー': '🇲🇲',
+  'ネパール': '🇳🇵',
+  'タイ': '🇹🇭',
+  'カンボジア': '🇰🇭',
+  'バングラデシュ': '🇧🇩',
+  '韓国': '🇰🇷',
+  'モンゴル': '🇲🇳',
+  'スリランカ': '🇱🇰',
+  'インド': '🇮🇳',
+  'パキスタン': '🇵🇰',
+  'ウズベキスタン': '🇺🇿',
+  'ブラジル': '🇧🇷',
+  'ペルー': '🇵🇪',
+}
+
+// 国籍から国旗絵文字を返す。表記ゆれ（略称・正式国名）は normalizeNationality で吸収。
+// 該当が無ければ地球儀（🌏）を返す。
+export function getFlag(nationality: string | null | undefined): string {
+  if (!nationality) return '🌏'
+  const direct = NATIONALITY_TO_FLAG[nationality]
+  if (direct) return direct
+  const normalized = normalizeNationality(nationality)
+  return (normalized && NATIONALITY_TO_FLAG[normalized]) || '🌏'
+}
+
 // 国籍から使用言語の初期値を推定するマップ（フォームのLANGUAGES値と対応）
 export const NATIONALITY_TO_LANGUAGE: Record<string, string> = {
   'ベトナム': 'vi',

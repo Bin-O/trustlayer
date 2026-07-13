@@ -21,6 +21,21 @@ export const SUFFICIENCY_DISPLAY_THRESHOLD = 0.5
 
 export type Badge = 'verified' | 'document_confirmed' | 'self_reported' | 'subjective'
 
+/**
+ * 信頼スコア全体の表示分岐（緑/橙/灰）。
+ * - verified   緑「検証済」   : データ充足度が閾値以上。数値スコアを表示する
+ * - attention  橙「要対応」   : 蓄積されるべき期間が経過してなお面談・評価が皆無 = 検証された欠缺
+ * - accumulating 灰「データ蓄積中」: 新入社等でデータがまだ蓄積されていない
+ */
+export type TrustBranch = 'verified' | 'attention' | 'accumulating'
+
+/** 分岐バッジの文言・配色（一覧・詳細・カードで共通利用） */
+export const BRANCH_META: Record<TrustBranch, { label: string; color: string; bg: string; border: string }> = {
+  verified:     { label: '検証済',       color: '#166534', bg: '#dcfce7', border: '#bbf7d0' },
+  attention:    { label: '要対応',       color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
+  accumulating: { label: 'データ蓄積中', color: '#6b7280', bg: '#f3f4f6', border: '#e5e7eb' },
+}
+
 export type BreakdownItem = {
   key: 'continuity' | 'compliance' | 'support' | 'qualification' | 'evaluation'
   label: string
@@ -37,6 +52,7 @@ export type TrustScoreResult = {
   total: number
   data_sufficiency: number // 0〜1
   items: BreakdownItem[]
+  branch: TrustBranch
 }
 
 export type SnapshotRow = {
@@ -47,6 +63,37 @@ export type SnapshotRow = {
 }
 
 const TOKUTEI_TYPES = ['特定技能1号', '特定技能2号']
+
+/** 橙「要対応」判定のガード: この在職月数以上で面談・評価が皆無なら「検証された欠缺」とみなす */
+export const ATTENTION_MIN_TENURE_MONTHS = 3
+
+/**
+ * スコア全体の表示分岐を導出する（緑/橙/灰）。
+ *
+ * 橙「要対応」の判定原則:
+ *   特定技能の在留者は、支援担当者による面談を「3ヶ月に1回以上」実施する義務がある。
+ *   したがって在職 ATTENTION_MIN_TENURE_MONTHS ヶ月以上を経過してもなお、面談記録・
+ *   雇用主評価が一件も存在しない状態は、単なる「データ未蓄積」ではなく、蓄積される
+ *   べき期間が経過してなお空である＝制度上の義務が果たされていない「検証された欠缺」
+ *   である。これを灰(新入社の未蓄積)と区別して橙で明示する。
+ *   ※面談義務は特定技能専属のため、非特定技能(特定活動等)はこの分岐の対象外とする。
+ */
+export function deriveTrustBranch(input: {
+  dataSufficiency: number
+  isTokutei: boolean
+  tenureMonths: number
+  interviewCount: number // 実施済み(completed)の本人面談の件数
+  evaluationCount: number // 雇用主評価レコードの件数
+}): TrustBranch {
+  if (input.dataSufficiency >= SUFFICIENCY_DISPLAY_THRESHOLD) return 'verified'
+  if (
+    input.isTokutei &&
+    input.tenureMonths >= ATTENTION_MIN_TENURE_MONTHS &&
+    input.interviewCount === 0 &&
+    input.evaluationCount === 0
+  ) return 'attention'
+  return 'accumulating'
+}
 
 // ── 日付ユーティリティ ──────────────────────────────────────
 
@@ -384,11 +431,25 @@ export async function calculateTrustScore(workerId: string): Promise<TrustScoreR
     (qualification.hasData ? 0.15 : 0) +
     (interview.count > 0 ? 0.15 : 0)
 
+  // 表示分岐（緑/橙/灰）。橙「要対応」は特定技能で在職3ヶ月超なのに面談・評価が皆無な場合。
+  const tenureMonths = contract?.contract_start_date
+    ? monthsBetween(new Date(contract.contract_start_date), now)
+    : 0
+  const interviewCount = support.filter(r => r.type === 'interview_worker' && r.completed).length
+  const branch = deriveTrustBranch({
+    dataSufficiency: Math.round(sufficiency * 100) / 100,
+    isTokutei,
+    tenureMonths,
+    interviewCount,
+    evaluationCount: evals.length,
+  })
+
   return {
     formula_version: FORMULA_VERSION,
     total: items.reduce((a, b) => a + b.score, 0),
     data_sufficiency: Math.round(sufficiency * 100) / 100,
     items,
+    branch,
   }
 }
 

@@ -6,7 +6,8 @@ import { getDocumentsForStatus, type DocumentDef } from '@/lib/documents/statusD
 import AppHeader from '@/components/AppHeader'
 import TrustScoreCard from '@/components/TrustScoreCard'
 import InterviewTaskModal, { type OrgPrefill } from '@/components/InterviewTaskModal'
-import { calculateTrustScore, getOrCreateMonthlySnapshot, SUFFICIENCY_DISPLAY_THRESHOLD, type TrustScoreResult, type SnapshotRow } from '@/lib/trustScore'
+import { calculateTrustScore, getOrCreateMonthlySnapshot, BRANCH_META, type TrustScoreResult, type SnapshotRow } from '@/lib/trustScore'
+import { getFlag } from '@/lib/countries'
 import { INTERVIEW_TASK_TYPES, interviewVariantOf, interviewDocumentIdOf, type SupportTask } from '@/lib/supportTasks'
 import { computeServiceMatrix, completionRate, STATUS_STYLE, STATUS_LABEL, type ServiceStatus, type SupportServiceDef } from '@/lib/supportServices'
 
@@ -585,14 +586,6 @@ export default function EmployeeDetail() {
     return Math.ceil(diff / (1000 * 60 * 60 * 24))
   }
 
-  const getFlag = (nationality: string) => {
-    const flags: {[key: string]: string} = {
-      'ベトナム': '🇻🇳', 'フィリピン': '🇵🇭', '中国': '🇨🇳',
-      'バングラデシュ': '🇧🇩', '韓国': '🇰🇷'
-    }
-    return flags[nationality] || '🌏'
-  }
-
   if (loading) return <div style={{padding:40,textAlign:"center",color:"#666"}}>読み込み中...</div>
   if (!worker) return <div style={{padding:40,textAlign:"center",color:"#666"}}>データが見つかりません</div>
 
@@ -604,7 +597,7 @@ export default function EmployeeDetail() {
   const urgent = !retired && days <= 30
   const statusHistory = [...(worker.residence_statuses ?? [])]
     .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
-  const trustAccumulating = trust !== null && trust.data_sufficiency < SUFFICIENCY_DISPLAY_THRESHOLD
+  const trustVerified = trust !== null && trust.branch === 'verified'
 
   const applicableDocs = getDocumentsForStatus(activeStatus?.status_type ?? '')
   const availableDocs = applicableDocs.filter(d => d.available)
@@ -946,16 +939,16 @@ export default function EmployeeDetail() {
             <div style={{fontSize:13,color:"#666"}}>{worker.nationality} ／ {activeStatus?.status_type || '未登録'}</div>
           </div>
           <div style={{textAlign:"center"}}>
-            {trust && !trustAccumulating ? (
+            {trust && trustVerified ? (
               <ScoreRing score={Math.round(trust.total)} max={100} />
             ) : (
-              <div style={{width:72,height:72,borderRadius:'50%',border:'6px solid #f0f0f0',display:'flex',alignItems:'center',justifyContent:'center',boxSizing:'border-box'}}>
-                <span style={{fontSize:10,color:'#999'}}>{trust ? '蓄積中' : '...'}</span>
+              <div style={{width:72,height:72,borderRadius:'50%',border:`6px solid ${trust ? BRANCH_META[trust.branch].border : '#f0f0f0'}`,display:'flex',alignItems:'center',justifyContent:'center',boxSizing:'border-box'}}>
+                <span style={{fontSize:10,color: trust ? BRANCH_META[trust.branch].color : '#999'}}>{trust ? BRANCH_META[trust.branch].label : '...'}</span>
               </div>
             )}
             <div style={{fontSize:11,color:"#999",marginTop:4}}>信頼スコア</div>
-            {trustAccumulating && (
-              <div style={{fontSize:10,color:"#d97706",marginTop:2}}>実績蓄積中</div>
+            {trust && !trustVerified && (
+              <div style={{fontSize:10,fontWeight:600,color:BRANCH_META[trust.branch].color,marginTop:2}}>{BRANCH_META[trust.branch].label}</div>
             )}
           </div>
         </div>

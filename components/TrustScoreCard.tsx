@@ -14,7 +14,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import type { TrustScoreResult, SnapshotRow, Badge } from '@/lib/trustScore'
-import { SUFFICIENCY_DISPLAY_THRESHOLD } from '@/lib/trustScore'
+import { BRANCH_META } from '@/lib/trustScore'
 
 const BADGE_STYLE: Record<Badge, { label: string; color: string; bg: string; border: string }> = {
   verified:           { label: '検証済',     color: '#166534', bg: '#dcfce7', border: '#bbf7d0' },
@@ -68,7 +68,8 @@ export default function TrustScoreCard({ result, snapshots }: {
     )
   }
 
-  const accumulating = result.data_sufficiency < SUFFICIENCY_DISPLAY_THRESHOLD
+  const isVerified = result.branch === 'verified'
+  const branchMeta = BRANCH_META[result.branch]
   const total = Math.round(result.total)
   const totalColor = total >= 80 ? '#16a34a' : total >= 50 ? '#d97706' : '#dc2626'
 
@@ -92,9 +93,9 @@ export default function TrustScoreCard({ result, snapshots }: {
       {/* ヘッダー: 総合スコア + トレンド */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
         <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#000' }}>信頼スコア内訳</h2>
-        {accumulating ? (
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 9999, padding: '3px 12px' }}>
-            実績蓄積中
+        {!isVerified ? (
+          <span style={{ fontSize: 12, fontWeight: 600, color: branchMeta.color, background: branchMeta.bg, border: `1px solid ${branchMeta.border}`, borderRadius: 9999, padding: '3px 12px' }}>
+            {branchMeta.label}
           </span>
         ) : (
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -153,8 +154,13 @@ export default function TrustScoreCard({ result, snapshots }: {
         <div style={{ height: 5, borderRadius: 3, background: '#f0f0f0', overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${Math.round(result.data_sufficiency * 100)}%`, background: '#0066cc', borderRadius: 3 }} />
         </div>
-        {accumulating && (
-          <div style={{ marginTop: 8, fontSize: 11, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '6px 10px' }}>
+        {result.branch === 'attention' && (
+          <div style={{ marginTop: 8, fontSize: 11, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '6px 10px' }}>
+            在職期間が経過していますが、面談記録・雇用主評価が未登録です。特定技能の面談は3ヶ月に1回以上の実施が必要です。至急ご対応ください。
+          </div>
+        )}
+        {result.branch === 'accumulating' && (
+          <div style={{ marginTop: 8, fontSize: 11, color: '#6b7280', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '6px 10px' }}>
             算出に必要なデータが不足しています。賃金台帳・面談記録・資格情報が蓄積されると総合スコアが表示されます。
           </div>
         )}
