@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/AppHeader'
 import { getActiveAnnouncements } from '@/lib/announcements'
-import { ensureQuarterlyInterviewTasks, TASK_TYPE_QUARTERLY_INTERVIEW } from '@/lib/supportTasks'
+import { ensureQuarterlyInterviewTasks, interviewVariantOf, INTERVIEW_TASK_TYPES } from '@/lib/supportTasks'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { Megaphone } from 'lucide-react'
 
@@ -39,6 +39,7 @@ type GenRow = {
 type TaskRow = {
   id: string
   worker_id: string
+  task_type: string
   period_key: string
   due_date: string
 }
@@ -211,7 +212,9 @@ function buildSnapshot(
       kind: 'mendan',
       due: t.due_date,
       urgency: d < 0 ? 'red' : d <= 14 ? 'amber' : 'green',
-      title: `${name}さんの四半期面談（${t.period_key}）`,
+      title: interviewVariantOf(t.task_type) === 'supervisor'
+        ? `${name}さんの監督者面談（${t.period_key}）`
+        : `${name}さんの四半期面談（${t.period_key}）`,
       detail: d < 0 ? `期限を${-d}日超過しています（期限 ${t.due_date}）` : `期限 ${t.due_date}（残り${d}日）`,
       actionLabel: '面談を記録',
       href: `/employees/${t.worker_id}?task=${t.id}`,
@@ -407,8 +410,8 @@ export default function Dashboard() {
         supabase.from('worker_contracts').select('worker_id, contract_start_date, termination_date'),
         supabase.from('document_generations').select('worker_id, document_id, generated_at'),
         supabase.from('support_tasks')
-          .select('id, worker_id, period_key, due_date')
-          .eq('task_type', TASK_TYPE_QUARTERLY_INTERVIEW)
+          .select('id, worker_id, task_type, period_key, due_date')
+          .in('task_type', [...INTERVIEW_TASK_TYPES])
           .eq('status', 'pending'),
         supabase.from('payroll_records')
           .select('worker_id, target_year, target_month')
@@ -554,7 +557,7 @@ export default function Dashboard() {
                   <span style={{ fontSize: 12, color: '#6b7280' }}>件</span>
                   {snap.mendanCount === 0 && <span style={{ fontSize: 12, color: URGENCY_COLOR.green, fontWeight: 600 }}>✓ すべて実施済み</span>}
                 </div>
-                <div style={{ fontSize: 11, color: '#9ca3af' }}>未完了の定期面談（特定技能1号・3ヶ月に1回以上）</div>
+                <div style={{ fontSize: 11, color: '#9ca3af' }}>未完了の定期面談（本人+監督者・特定技能1号・3ヶ月に1回以上）</div>
               </button>
 
               {/* 賃金台帳 */}

@@ -395,15 +395,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── 定期面談報告書（参考様式第5-5号・1号特定技能外国人用） ──
+  // ── 定期面談報告書（5-5号=本人用 mendan_kiroku / 5-6号=監督者用 mendan_kiroku_supervisor） ──
   // 生成記録は面談保存時（completeInterviewTask ④）に記録済みのため、ここでは記録しない
-  if (documentId === 'mendan_kiroku') {
+  if (documentId === 'mendan_kiroku' || documentId === 'mendan_kiroku_supervisor') {
     if (!supportRecordId) {
       return NextResponse.json({ error: 'supportRecordId は必須です' }, { status: 400 })
     }
+    const isSupervisor = documentId === 'mendan_kiroku_supervisor'
     const { data: rec, error: recErr } = await supabase
       .from('support_records')
-      .select('completed_date, method, notes')
+      .select('completed_date, method, notes, type')
       .eq('id', supportRecordId)
       .eq('worker_id', workerId)
       .single()
@@ -412,9 +413,14 @@ export async function POST(req: NextRequest) {
     }
 
     const notes = (rec.notes ?? {}) as Record<string, unknown>
+    const st = notes.supervisor_target as { name?: string; title?: string; department?: string } | null | undefined
     const input: MendanHokokuData = {
+      form: isSupervisor ? '5-6' : '5-5',
       worker: { name: worker.name_kanji ?? worker.name_romaji ?? '' },
       org: org ? { name: org.name ?? '' } : null,
+      supervisorTarget: isSupervisor
+        ? { name: st?.name ?? '', title: st?.title ?? '', department: st?.department ?? '' }
+        : null,
       interview: {
         date: rec.completed_date ?? '',
         method: rec.method === 'online' ? 'online' : 'in_person',
@@ -434,7 +440,8 @@ export async function POST(req: NextRequest) {
 
     try {
       const buffer = await generateMendanHokoku(input)
-      const filename = `定期面談報告書_${worker.name_kanji ?? worker.name_romaji}_${rec.completed_date ?? ''}.xlsx`
+      const label = isSupervisor ? '定期面談報告書_監督者用' : '定期面談報告書'
+      const filename = `${label}_${worker.name_kanji ?? worker.name_romaji}_${rec.completed_date ?? ''}.xlsx`
       return new NextResponse(buffer as unknown as BodyInit, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -442,7 +449,7 @@ export async function POST(req: NextRequest) {
         },
       })
     } catch (e) {
-      console.error('[documents/generate] mendan_kiroku error:', e)
+      console.error('[documents/generate] mendan error:', e)
       return NextResponse.json({ error: '文書生成中にエラーが発生しました' }, { status: 500 })
     }
   }

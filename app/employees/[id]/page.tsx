@@ -7,7 +7,7 @@ import AppHeader from '@/components/AppHeader'
 import TrustScoreCard from '@/components/TrustScoreCard'
 import InterviewTaskModal, { type OrgPrefill } from '@/components/InterviewTaskModal'
 import { calculateTrustScore, getOrCreateMonthlySnapshot, SUFFICIENCY_DISPLAY_THRESHOLD, type TrustScoreResult, type SnapshotRow } from '@/lib/trustScore'
-import { TASK_TYPE_QUARTERLY_INTERVIEW, type SupportTask } from '@/lib/supportTasks'
+import { INTERVIEW_TASK_TYPES, interviewVariantOf, interviewDocumentIdOf, type SupportTask } from '@/lib/supportTasks'
 
 type Worker = {
   id: string
@@ -125,11 +125,15 @@ export default function EmployeeDetail() {
   })
   const cardFileRef = useRef<HTMLInputElement>(null)
 
-  // 四半期面談タスク（未完了分）とモーダル
+  // 四半期面談タスク（本人+監督者・未完了分）とモーダル
   const [interviewTasks, setInterviewTasks] = useState<SupportTask[]>([])
   const [openTask, setOpenTask] = useState<SupportTask | null>(null)
-  const [prevInterviewNotes, setPrevInterviewNotes] = useState<Record<string, unknown> | null>(null)
-  const [interviewRecords, setInterviewRecords] = useState<{ id: string; quarter: string | null; completed_date: string | null }[]>([])
+  // プリフィル用の前回記録（variant ごとに保持）
+  const [prevNotesByType, setPrevNotesByType] = useState<{
+    worker: Record<string, unknown> | null
+    supervisor: Record<string, unknown> | null
+  }>({ worker: null, supervisor: null })
+  const [interviewRecords, setInterviewRecords] = useState<{ id: string; type: string; quarter: string | null; completed_date: string | null }[]>([])
   const [orgPrefill, setOrgPrefill] = useState<OrgPrefill>(null)
   const [trustRefresh, setTrustRefresh] = useState(0)
   const supabase = createClient()
@@ -175,28 +179,31 @@ export default function EmployeeDetail() {
     fetchTrustScore()
   }, [worker, trustRefresh])
 
-  // 四半期面談タスク（未完了分）+ 実施済み面談記録（プリフィル・再ダウンロード用）
+  // 四半期面談タスク（本人+監督者・未完了分）+ 実施済み面談記録（プリフィル・再ダウンロード用）
   const fetchInterviewTasks = async (autoOpenTaskId?: string | null) => {
     if (!params.id) return
     const [tasksRes, recsRes] = await Promise.all([
       supabase.from('support_tasks')
         .select('*')
         .eq('worker_id', params.id)
-        .eq('task_type', TASK_TYPE_QUARTERLY_INTERVIEW)
+        .in('task_type', [...INTERVIEW_TASK_TYPES])
         .eq('status', 'pending')
         .order('due_date'),
       supabase.from('support_records')
-        .select('id, quarter, completed_date, notes')
+        .select('id, type, quarter, completed_date, notes')
         .eq('worker_id', params.id)
-        .eq('type', 'interview_worker')
+        .in('type', ['interview_worker', 'interview_supervisor'])
         .eq('completed', true)
         .order('completed_date', { ascending: false }),
     ])
     const tasks = (tasksRes.data ?? []) as SupportTask[]
     const recs = recsRes.data ?? []
     setInterviewTasks(tasks)
-    setInterviewRecords(recs.map(r => ({ id: r.id, quarter: r.quarter, completed_date: r.completed_date })))
-    setPrevInterviewNotes((recs[0]?.notes as Record<string, unknown> | undefined) ?? null)
+    setInterviewRecords(recs.map(r => ({ id: r.id, type: r.type, quarter: r.quarter, completed_date: r.completed_date })))
+    setPrevNotesByType({
+      worker: (recs.find(r => r.type === 'interview_worker')?.notes as Record<string, unknown> | undefined) ?? null,
+      supervisor: (recs.find(r => r.type === 'interview_supervisor')?.notes as Record<string, unknown> | undefined) ?? null,
+    })
     if (autoOpenTaskId) {
       const t = tasks.find(t => t.id === autoOpenTaskId)
       if (t) setOpenTask(t)
@@ -214,15 +221,20 @@ export default function EmployeeDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worker?.org_id])
 
-  // 定期面談報告書（5-5号）の再ダウンロード
-  const downloadInterviewReport = async (rec: { id: string; completed_date: string | null }) => {
+  // 定期面談報告書（5-5号/5-6号）の再ダウンロード
+  const downloadInterviewReport = async (rec: { id: string; type: string; completed_date: string | null }) => {
     if (!worker) return
+    const isSupervisor = rec.type === 'interview_supervisor'
     setDocGenerating(`mendan-${rec.id}`)
     try {
       const res = await fetch('/api/documents/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentId: 'mendan_kiroku', workerId: worker.id, supportRecordId: rec.id }),
+        body: JSON.stringify({
+          documentId: isSupervisor ? 'mendan_kiroku_supervisor' : 'mendan_kiroku',
+          workerId: worker.id,
+          supportRecordId: rec.id,
+        }),
       })
       if (!res.ok) {
         alert('帳票の生成に失敗しました。')
@@ -232,7 +244,7 @@ export default function EmployeeDetail() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `定期面談報告書_${worker.name_kanji || worker.name_romaji}_${rec.completed_date ?? ''}.xlsx`
+      a.download = `定期面談報告書${isSupervisor ? '_監督者用' : ''}_${worker.name_kanji || worker.name_romaji}_${rec.completed_date ?? ''}.xlsx`
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) {
@@ -948,7 +960,9 @@ export default function EmployeeDetail() {
             {interviewTasks.map((t, i) => (
               <div key={t.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"9px 0",borderTop:i>0?"1px solid #f0f0f0":"none",flexWrap:"wrap"}}>
                 <div>
-                  <div style={{fontSize:13,fontWeight:600,color:"#111"}}>四半期面談（{t.period_key}）</div>
+                  <div style={{fontSize:13,fontWeight:600,color:"#111"}}>
+                    {interviewVariantOf(t.task_type) === 'supervisor' ? '監督者面談' : '四半期面談（本人）'}（{t.period_key}）
+                  </div>
                   <div style={{fontSize:12,color:new Date(t.due_date) < new Date() ? "#dc2626" : "#6b7280"}}>期限 {t.due_date}</div>
                 </div>
                 <button data-testid={`open-interview-${t.id}`} onClick={() => setOpenTask(t)}
@@ -963,11 +977,13 @@ export default function EmployeeDetail() {
         {/* 実施済み面談記録（定期面談報告書 5-5号 の再ダウンロード） */}
         {interviewRecords.length > 0 && (
           <div data-testid="interview-records-section" style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
-            <div style={{fontSize:15,fontWeight:600,color:"#000",marginBottom:10}}>面談記録（定期面談報告書 参考様式第5-5号）</div>
+            <div style={{fontSize:15,fontWeight:600,color:"#000",marginBottom:10}}>面談記録（定期面談報告書 参考様式第5-5号／5-6号）</div>
             {interviewRecords.map((r, i) => (
               <div key={r.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"9px 0",borderTop:i>0?"1px solid #f0f0f0":"none",flexWrap:"wrap"}}>
                 <div>
-                  <div style={{fontSize:13,fontWeight:600,color:"#111"}}>四半期面談（{r.quarter ?? '-'}）</div>
+                  <div style={{fontSize:13,fontWeight:600,color:"#111"}}>
+                    {r.type === 'interview_supervisor' ? '監督者面談（5-6号）' : '本人面談（5-5号）'}（{r.quarter ?? '-'}）
+                  </div>
                   <div style={{fontSize:12,color:"#6b7280"}}>実施日 {r.completed_date ?? '-'}</div>
                 </div>
                 <button data-testid={`download-report-${r.id}`} onClick={() => downloadInterviewReport(r)}
@@ -1182,7 +1198,12 @@ export default function EmployeeDetail() {
         <InterviewTaskModal
           task={openTask}
           workerName={worker.name_kanji || worker.name_romaji}
-          prevNotes={prevInterviewNotes}
+          // 担当者・言語等は variant 横断で引き継ぐ（原則1）。同 variant の前回が
+          // あれば優先し、無ければもう一方の面談の前回記録にフォールバック
+          prevNotes={
+            prevNotesByType[interviewVariantOf(openTask.task_type)]
+              ?? prevNotesByType[interviewVariantOf(openTask.task_type) === 'worker' ? 'supervisor' : 'worker']
+          }
           orgPrefill={orgPrefill}
           onClose={() => setOpenTask(null)}
           onSaved={() => {

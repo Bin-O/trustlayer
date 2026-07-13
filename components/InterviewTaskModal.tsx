@@ -1,15 +1,18 @@
 'use client'
 /**
  * 四半期面談タスクの三段式モーダル（これは何? / どうやる? / 記録する）
+ * variant は task.task_type から導出:
+ *   worker     = 本人面談（参考様式第5-5号、評価は支援担当者）
+ *   supervisor = 監督者面談（参考様式第5-6号、評価は現場責任者）
  * 保存で lib/supportTasks.ts の completeInterviewTask（4連書込）が走り、
- * 続けて参考様式第5-5号（定期面談報告書）を自動生成・ダウンロードする。
+ * 続けて該当様式の定期面談報告書を自動生成・ダウンロードする。
  * サブコンポーネントは必ずモジュールスコープで定義（フォーカス喪失バグ対策）。
  */
 import { useState } from 'react'
 import {
-  completeInterviewTask, INTERVIEW_ITEMS,
+  completeInterviewTask, INTERVIEW_ITEMS, interviewVariantOf, interviewDocumentIdOf, itemLabelOf,
   type SupportTask, type InterviewForm, type EvaluatorRatings,
-  type InterviewItemKey, type ItemCheck, type StaffRole,
+  type InterviewItemKey, type ItemCheck, type StaffRole, type SupervisorTarget,
 } from '@/lib/supportTasks'
 
 const ITEM_GROUPS = ['業務内容', '待遇', '保護', '生活', 'その他'] as const
@@ -87,6 +90,7 @@ type PrevNotes = {
   staff_name?: string
   staff_role?: StaffRole
   staff_role_title?: string
+  supervisor_target?: SupervisorTarget | null
   language?: string
   has_interpreter?: boolean
   interpreter_name?: string
@@ -105,6 +109,10 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
   onClose: () => void
   onSaved: () => void
 }) {
+  const variant = interviewVariantOf(task.task_type)
+  const isSupervisor = variant === 'supervisor'
+  const taskLabel = isSupervisor ? '監督者面談' : '四半期面談'
+
   const [form, setForm] = useState<InterviewForm>({
     interviewDate: '',
     method: 'in_person',
@@ -114,6 +122,13 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
     staffName: prevNotes?.staff_name ?? orgPrefill?.support_staff_name ?? '',
     staffRole: prevNotes?.staff_role ?? 'support_staff',
     staffRoleTitle: prevNotes?.staff_role_title ?? orgPrefill?.support_staff_title ?? '',
+    supervisorTarget: isSupervisor
+      ? {
+          name: prevNotes?.supervisor_target?.name ?? '',
+          title: prevNotes?.supervisor_target?.title ?? '',
+          department: prevNotes?.supervisor_target?.department ?? '',
+        }
+      : null,
     otherParticipants: '',
     language: prevNotes?.language ?? '日本語',
     hasInterpreter: prevNotes?.has_interpreter ?? false,
@@ -121,12 +136,10 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
     items: emptyItems(),
     violation: { has: false, date: '', detail: '' },
     freeNote: '',
-    staffRatings: emptyRatings(),
-    supervisorRatings: null,
+    ratings: emptyRatings(),
   })
   const [allOkConfirmed, setAllOkConfirmed] = useState(false)
   const [itemsExpanded, setItemsExpanded] = useState(false)
-  const [withSupervisor, setWithSupervisor] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -136,6 +149,8 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
     setForm(f => ({ ...f, items: { ...f.items, [key]: { ...f.items[key], ...patch } } }))
     if (patch.hasIssue) setAllOkConfirmed(false)
   }
+  const setSupervisorTarget = (patch: Partial<SupervisorTarget>) =>
+    setForm(f => ({ ...f, supervisorTarget: { ...(f.supervisorTarget ?? { name: '', title: '', department: '' }), ...patch } }))
 
   const issueCount = Object.values(form.items).filter(i => i.hasIssue).length
   // 確認項目の完了条件: 一括「すべて問題なし」を押した、または個別に問題ありを記録した
@@ -148,15 +163,17 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
   }
 
   const ratingsComplete = (r: EvaluatorRatings) => r.performance > 0 && r.attendance > 0 && r.compliance > 0
-  const consentBlocked = form.method === 'online' && !form.onlineConsent
+  // オンライン面談の本人同意要件は外国人本人との面談のみ（監督者面談には適用されない）
+  const consentBlocked = !isSupervisor && form.method === 'online' && !form.onlineConsent
   const violationIncomplete = form.violation.has && (!form.violation.date || !form.violation.detail.trim())
+  const supervisorTargetIncomplete = isSupervisor && !form.supervisorTarget?.name.trim()
   const canSave =
     !!form.interviewDate &&
     !!form.staffName.trim() &&
+    !supervisorTargetIncomplete &&
     itemsConfirmed &&
     !violationIncomplete &&
-    ratingsComplete(form.staffRatings) &&
-    (!withSupervisor || (form.supervisorRatings !== null && ratingsComplete(form.supervisorRatings))) &&
+    ratingsComplete(form.ratings) &&
     !consentBlocked &&
     !saving
 
@@ -164,14 +181,14 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
     const res = await fetch('/api/documents/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ documentId: 'mendan_kiroku', workerId: task.worker_id, supportRecordId }),
+      body: JSON.stringify({ documentId: interviewDocumentIdOf(variant), workerId: task.worker_id, supportRecordId }),
     })
     if (!res.ok) throw new Error(`生成API ${res.status}`)
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `定期面談報告書_${workerName}_${form.interviewDate}.xlsx`
+    a.download = `定期面談報告書${isSupervisor ? '_監督者用' : ''}_${workerName}_${form.interviewDate}.xlsx`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -179,12 +196,9 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
   const handleSave = async () => {
     setSaving(true)
     setError(null)
-    const { error: err, supportRecordId } = await completeInterviewTask(task, {
-      ...form,
-      supervisorRatings: withSupervisor ? form.supervisorRatings : null,
-    })
+    const { error: err, supportRecordId } = await completeInterviewTask(task, form)
     if (err) { setSaving(false); setError(err); return }
-    // 原則1: 保存と同時に法定文書（5-5号）を自動生成・ダウンロード。
+    // 原則1: 保存と同時に法定文書（5-5/5-6号）を自動生成・ダウンロード。
     // 生成失敗でも記録自体は完了扱い（従業員詳細から再ダウンロード可能）
     try {
       if (supportRecordId) await downloadReport(supportRecordId)
@@ -205,7 +219,7 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
       <div style={{ background: '#f9fafb', borderRadius: 14, width: '100%', maxWidth: 620, padding: '22px 22px 18px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
           <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#111' }}>
-            四半期面談 — {workerName}さん（{task.period_key}）
+            {taskLabel} — {workerName}さん（{task.period_key}）
           </h2>
           <button onClick={onClose} data-testid="interview-close" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9ca3af' }}>✕</button>
         </div>
@@ -213,13 +227,21 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
         {/* ── 第1段: これは何? ── */}
         <div style={sectionStyle}>
           <StepBadge n={1} title="これは何？" />
-          <p style={{ margin: '0 0 8px', fontSize: 13, color: '#374151', lineHeight: 1.7 }}>
-            特定技能1号の方と<strong>3ヶ月に1回以上</strong>行う法定の定期面談です。
-            保存すると定期面談報告書（参考様式第5-5号）が自動生成され、
-            信頼スコア（支援実施10点・面談時評価15点）にも反映されます。
-          </p>
+          {isSupervisor ? (
+            <p style={{ margin: '0 0 8px', fontSize: 13, color: '#374151', lineHeight: 1.7 }}>
+              {workerName}さんの<strong>監督者（上司・現場責任者）</strong>と3ヶ月に1回以上行う法定の定期面談です。
+              本人面談とは別に実施し、保存すると定期面談報告書（参考様式第5-6号）が自動生成されます。
+              末尾の現場責任者評価は信頼スコア（面談時評価15点）に反映されます。
+            </p>
+          ) : (
+            <p style={{ margin: '0 0 8px', fontSize: 13, color: '#374151', lineHeight: 1.7 }}>
+              特定技能1号の方と<strong>3ヶ月に1回以上</strong>行う法定の定期面談です。
+              保存すると定期面談報告書（参考様式第5-5号）が自動生成され、
+              信頼スコア（支援実施10点・面談時評価15点）にも反映されます。
+            </p>
+          )}
           <div style={{ fontSize: 12, color: '#6b7280' }}>
-            対象: {workerName}さん ／ 対象四半期: {task.period_key} ／ 期限: {task.due_date}
+            対象: {isSupervisor ? `${workerName}さんの監督者` : `${workerName}さん`} ／ 対象四半期: {task.period_key} ／ 期限: {task.due_date}
           </div>
           <div style={{ fontSize: 12, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '6px 10px', marginTop: 8 }}>
             面談者（支援担当者）は中立的な立場が必要です。直属の上司・代表取締役は面談者になれません。
@@ -230,10 +252,21 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
         <div style={sectionStyle}>
           <StepBadge n={2} title="どうやる？" />
           <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: '#374151', lineHeight: 1.9, listStyle: 'decimal' }}>
-            <li>本人と日程を調整する（前回の面談から3ヶ月以内の実施が目安）</li>
-            <li>実施方法を決める（対面 または オンライン。オンラインは本人同意が前提・初回は対面が原則）</li>
-            <li>通訳の要否を確認する（十分に理解できる言語で行う）</li>
-            <li>面談で公式様式の確認項目（業務・待遇・保護・生活等）を確認し、下の「記録する」に入力する</li>
+            {isSupervisor ? (
+              <>
+                <li>対象の監督者（{workerName}さんの上司・現場責任者）と日程を調整する</li>
+                <li>実施方法を決める（対面 または オンライン）</li>
+                <li>面談で公式様式の確認項目（業務・待遇・保護・生活等を雇用側の視点で）を確認し、下の「記録する」に入力する</li>
+                <li>末尾で現場責任者としての評価（3問・1分）を聞き取り入力する</li>
+              </>
+            ) : (
+              <>
+                <li>本人と日程を調整する（前回の面談から3ヶ月以内の実施が目安）</li>
+                <li>実施方法を決める（対面 または オンライン。オンラインは本人同意が前提・初回は対面が原則）</li>
+                <li>通訳の要否を確認する（十分に理解できる言語で行う）</li>
+                <li>面談で公式様式の確認項目（業務・待遇・保護・生活等）を確認し、下の「記録する」に入力する</li>
+              </>
+            )}
           </ol>
           <div style={{ fontSize: 12, color: '#6b7280', marginTop: 10, paddingTop: 10, borderTop: '1px solid #f3f4f6' }}>
             手続きに不安がある場合の相談先:{' '}
@@ -246,6 +279,30 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
         {/* ── 第3段: 記録する ── */}
         <div style={sectionStyle}>
           <StepBadge n={3} title="記録する" />
+
+          {/* 監督者面談: 面談対象者（監督者）の情報 */}
+          {isSupervisor && (
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', marginBottom: 8 }}>面談対象者（監督者）</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <FieldLabel required>監督者の氏名</FieldLabel>
+                  <input type="text" data-testid="f-sup-name" value={form.supervisorTarget?.name ?? ''}
+                    onChange={e => setSupervisorTarget({ name: e.target.value })} style={inputStyle} placeholder="例: 佐藤 一郎" />
+                </div>
+                <div>
+                  <FieldLabel>監督者の役職</FieldLabel>
+                  <input type="text" data-testid="f-sup-title" value={form.supervisorTarget?.title ?? ''}
+                    onChange={e => setSupervisorTarget({ title: e.target.value })} style={inputStyle} placeholder="例: 製造課長" />
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <FieldLabel>監督者の所属部署</FieldLabel>
+                  <input type="text" data-testid="f-sup-department" value={form.supervisorTarget?.department ?? ''}
+                    onChange={e => setSupervisorTarget({ department: e.target.value })} style={inputStyle} placeholder="例: 製造部 第一製造課" />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <div>
@@ -267,7 +324,7 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
             </div>
           </div>
 
-          {form.method === 'online' && (
+          {!isSupervisor && form.method === 'online' && (
             <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#374151', cursor: 'pointer', fontWeight: 600 }}>
                 <input type="checkbox" data-testid="f-consent" checked={form.onlineConsent}
@@ -319,30 +376,34 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
               <input type="text" value={form.otherParticipants}
                 onChange={e => set('otherParticipants', e.target.value)} style={inputStyle} placeholder="任意" />
             </div>
-            <div>
-              <FieldLabel>使用言語</FieldLabel>
-              <input type="text" data-testid="f-language" value={form.language}
-                onChange={e => set('language', e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <FieldLabel>通訳</FieldLabel>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 6 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#374151', cursor: 'pointer', flexShrink: 0 }}>
-                  <input type="checkbox" checked={form.hasInterpreter}
-                    onChange={e => set('hasInterpreter', e.target.checked)} />
-                  同席あり
-                </label>
-                {form.hasInterpreter && (
-                  <input type="text" value={form.interpreterName}
-                    onChange={e => set('interpreterName', e.target.value)}
-                    style={{ ...inputStyle, padding: '6px 8px' }} placeholder="通訳者名" />
-                )}
-              </div>
-            </div>
+            {!isSupervisor && (
+              <>
+                <div>
+                  <FieldLabel>使用言語</FieldLabel>
+                  <input type="text" data-testid="f-language" value={form.language}
+                    onChange={e => set('language', e.target.value)} style={inputStyle} />
+                </div>
+                <div>
+                  <FieldLabel>通訳</FieldLabel>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 6 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#374151', cursor: 'pointer', flexShrink: 0 }}>
+                      <input type="checkbox" checked={form.hasInterpreter}
+                        onChange={e => set('hasInterpreter', e.target.checked)} />
+                      同席あり
+                    </label>
+                    {form.hasInterpreter && (
+                      <input type="text" value={form.interpreterName}
+                        onChange={e => set('interpreterName', e.target.value)}
+                        style={{ ...inputStyle, padding: '6px 8px' }} placeholder="通訳者名" />
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
-          {/* 確認項目（5-5号・18項目） */}
-          <FieldLabel required>確認項目（参考様式第5-5号・18項目）</FieldLabel>
+          {/* 確認項目（5-5/5-6号・18項目） */}
+          <FieldLabel required>確認項目（参考様式第{isSupervisor ? '5-6' : '5-5'}号・18項目）</FieldLabel>
           <div style={{ border: itemsConfirmed ? '1px solid #bbf7d0' : '1px solid #e5e7eb', borderRadius: 8, padding: '12px 14px', marginBottom: 12, background: itemsConfirmed ? '#f0fdf4' : '#fff' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <button type="button" data-testid="items-all-ok" onClick={confirmAllOk}
@@ -382,7 +443,7 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
                             <input type="checkbox" data-testid={`f-item-${item.key}-issue`} checked={c.hasIssue}
                               onChange={e => setItem(item.key, { hasIssue: e.target.checked })}
                               style={{ marginTop: 3 }} />
-                            <span>{item.label}<span style={{ color: c.hasIssue ? '#dc2626' : '#9ca3af', fontWeight: 600, marginLeft: 6 }}>{c.hasIssue ? '問題あり' : '問題なし'}</span></span>
+                            <span>{itemLabelOf(item.key, variant)}<span style={{ color: c.hasIssue ? '#dc2626' : '#9ca3af', fontWeight: 600, marginLeft: 6 }}>{c.hasIssue ? '問題あり' : '問題なし'}</span></span>
                           </label>
                           {c.hasIssue && (
                             <textarea data-testid={`f-item-${item.key}-detail`} value={c.detail}
@@ -435,24 +496,20 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
           <FieldLabel>その他特筆すべき事項</FieldLabel>
           <textarea data-testid="f-note" value={form.freeNote} onChange={e => set('freeNote', e.target.value)}
             style={{ ...inputStyle, minHeight: 56, resize: 'vertical', marginBottom: 12 }}
-            placeholder="面談で話した内容・本人の様子など（任意・帳票の⑦欄に出力）" />
+            placeholder="面談で話した内容・様子など（任意・帳票の⑦欄に出力）" />
 
-          <FieldLabel required>雇用主評価（5段階・1名1分）</FieldLabel>
-          <RatingBlock title="支援担当者による評価（必須）" ratings={form.staffRatings}
-            onChange={r => set('staffRatings', r)} testPrefix="rate-staff" />
-
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#374151', cursor: 'pointer', marginTop: 10 }}>
-            <input type="checkbox" data-testid="f-with-supervisor" checked={withSupervisor}
-              onChange={e => {
-                setWithSupervisor(e.target.checked)
-                if (e.target.checked && !form.supervisorRatings) set('supervisorRatings', emptyRatings())
-              }} />
-            現場責任者の評価も今入力する（後からの追記も可能）
-          </label>
-          {withSupervisor && form.supervisorRatings && (
-            <RatingBlock title="現場責任者による評価" ratings={form.supervisorRatings}
-              onChange={r => set('supervisorRatings', r)} testPrefix="rate-supervisor" />
-          )}
+          {/* 雇用主評価（分担方式: 本人面談=支援担当者 / 監督者面談=現場責任者） */}
+          <FieldLabel required>雇用主評価（5段階・1分）</FieldLabel>
+          <RatingBlock
+            title={isSupervisor ? '現場責任者（監督者）による評価（必須）' : '支援担当者による評価（必須）'}
+            ratings={form.ratings}
+            onChange={r => set('ratings', r)}
+            testPrefix={isSupervisor ? 'rate-supervisor' : 'rate-staff'} />
+          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>
+            {isSupervisor
+              ? '現場責任者評価はこの監督者面談で入力します（本人面談では支援担当者評価を入力）'
+              : '現場責任者評価は監督者面談のタスクで入力します（二重入力を防ぐ分担方式）'}
+          </div>
         </div>
 
         {error && (
@@ -471,7 +528,7 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
           </button>
         </div>
         <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 8, textAlign: 'right' }}>
-          保存と同時に、面談記録・評価・タスク完了の登録と定期面談報告書（5-5号）のダウンロードが行われます
+          保存と同時に、面談記録・評価・タスク完了の登録と定期面談報告書（{isSupervisor ? '5-6' : '5-5'}号）のダウンロードが行われます
         </div>
       </div>
     </div>
