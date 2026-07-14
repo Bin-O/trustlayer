@@ -9,6 +9,8 @@ import InterviewTaskModal, { type OrgPrefill } from '@/components/InterviewTaskM
 import { calculateTrustScore, getOrCreateMonthlySnapshot, BRANCH_META, type TrustScoreResult, type SnapshotRow } from '@/lib/trustScore'
 import { getFlag } from '@/lib/countries'
 import { INTERVIEW_TASK_TYPES, interviewVariantOf, interviewDocumentIdOf, type SupportTask } from '@/lib/supportTasks'
+import { industryTaskDefByType } from '@/lib/industryTasks'
+import { SUBTYPE_TOKUTEI_KATSUDO_55 } from '@/lib/industry/packages/transport'
 import { computeServiceMatrix, completionRate, STATUS_STYLE, STATUS_LABEL, type ServiceStatus, type SupportServiceDef } from '@/lib/supportServices'
 
 type Worker = {
@@ -26,6 +28,7 @@ type Worker = {
   residence_statuses: {
     id: string
     status_type: string
+    status_subtype: string | null
     expiry_date: string
     issued_date: string
     card_number: string
@@ -129,6 +132,8 @@ export default function EmployeeDetail() {
 
   // 四半期面談タスク（本人+監督者・未完了分）とモーダル
   const [interviewTasks, setInterviewTasks] = useState<SupportTask[]>([])
+  // 業界パッケージ由来の一回限りタスク（初任講習・初任診断等・未完了分・段2は表示のみ）
+  const [industryTasks, setIndustryTasks] = useState<SupportTask[]>([])
   const [openTask, setOpenTask] = useState<SupportTask | null>(null)
   // プリフィル用の前回記録（variant ごとに保持）
   const [prevNotesByType, setPrevNotesByType] = useState<{
@@ -185,11 +190,18 @@ export default function EmployeeDetail() {
   // 四半期面談タスク（本人+監督者・未完了分）+ 実施済み面談記録（プリフィル・再ダウンロード用）
   const fetchInterviewTasks = async (autoOpenTaskId?: string | null) => {
     if (!params.id) return
-    const [tasksRes, recsRes, allRecsRes] = await Promise.all([
+    const [tasksRes, industryTasksRes, recsRes, allRecsRes] = await Promise.all([
       supabase.from('support_tasks')
         .select('*')
         .eq('worker_id', params.id)
         .in('task_type', [...INTERVIEW_TASK_TYPES])
+        .eq('status', 'pending')
+        .order('due_date'),
+      // 業界パッケージの一回限りタスク（面談以外・生成は ensureIndustryTasks／段2は表示のみ）
+      supabase.from('support_tasks')
+        .select('*')
+        .eq('worker_id', params.id)
+        .not('task_type', 'in', `(${INTERVIEW_TASK_TYPES.join(',')})`)
         .eq('status', 'pending')
         .order('due_date'),
       supabase.from('support_records')
@@ -206,6 +218,7 @@ export default function EmployeeDetail() {
     const tasks = (tasksRes.data ?? []) as SupportTask[]
     const recs = recsRes.data ?? []
     setInterviewTasks(tasks)
+    setIndustryTasks((industryTasksRes.data ?? []) as SupportTask[])
     setInterviewRecords(recs.map(r => ({ id: r.id, type: r.type, quarter: r.quarter, completed_date: r.completed_date })))
     setPrevNotesByType({
       worker: (recs.find(r => r.type === 'interview_worker')?.notes as Record<string, unknown> | undefined) ?? null,
@@ -936,7 +949,15 @@ export default function EmployeeDetail() {
                 </button>
               )}
             </div>
-            <div style={{fontSize:13,color:"#666"}}>{worker.nationality} ／ {activeStatus?.status_type || '未登録'}</div>
+            <div style={{fontSize:13,color:"#666",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+              <span>{worker.nationality} ／ {activeStatus?.status_subtype || activeStatus?.status_type || '未登録'}</span>
+              {activeStatus?.status_subtype === SUBTYPE_TOKUTEI_KATSUDO_55 && (
+                <span data-testid="badge-koshin-fuka" title="更新不可の時限資格。期限内に免許取得→特定技能1号への変更申請が必要"
+                  style={{fontSize:10,fontWeight:700,color:"#7c3aed",background:"#f3e8ff",borderRadius:4,padding:"2px 7px",letterSpacing:"0.03em"}}>
+                  更新不可
+                </span>
+              )}
+            </div>
           </div>
           <div style={{textAlign:"center"}}>
             {trust && trustVerified ? (
@@ -971,6 +992,36 @@ export default function EmployeeDetail() {
                 </button>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* 業界パッケージの一回限りタスク（初任講習・初任診断等・段2は表示のみ） */}
+        {industryTasks.length > 0 && (
+          <div data-testid="industry-task-section" style={{background:"#fff",border:"1px solid #ddd6fe",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+            <div style={{fontSize:15,fontWeight:600,color:"#000",marginBottom:10}}>業界別タスク（法定期限）</div>
+            {industryTasks.map((t, i) => {
+              const def = industryTaskDefByType(t.task_type)
+              const d = getDaysUntil(t.due_date)
+              const overdue = d < 0
+              return (
+                <div key={t.id} data-testid={`industry-task-${t.task_type}`} style={{padding:"10px 0",borderTop:i>0?"1px solid #f0f0f0":"none"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                    <span style={{fontSize:13,fontWeight:600,color:"#111"}}>{def?.label ?? t.task_type}</span>
+                    <span style={{fontSize:11,fontWeight:700,color:overdue?"#dc2626":d<=14?"#7c3aed":"#6b7280",background:overdue?"#fee2e2":d<=14?"#f3e8ff":"#f3f4f6",borderRadius:4,padding:"2px 7px"}}>
+                      {overdue ? `期限超過 ${-d}日` : `残り${d}日`}
+                    </span>
+                  </div>
+                  <div style={{fontSize:12,color:"#6b7280",marginTop:3}}>期限 {t.due_date}</div>
+                  {def?.guide && (
+                    <div style={{fontSize:12,color:"#6b7280",marginTop:5,lineHeight:1.55}}>
+                      <div>{def.guide.what}</div>
+                      <div style={{marginTop:2}}>▶ {def.guide.how}</div>
+                      {def.guide.legalBasis && <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>根拠: {def.guide.legalBasis}</div>}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
 

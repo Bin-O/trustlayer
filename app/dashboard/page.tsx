@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/AppHeader'
 import { getActiveAnnouncements } from '@/lib/announcements'
 import { ensureQuarterlyInterviewTasks, interviewVariantOf, INTERVIEW_TASK_TYPES } from '@/lib/supportTasks'
+import { ensureIndustryTasks, industryTaskDefByType } from '@/lib/industryTasks'
+import { SUBTYPE_TOKUTEI_KATSUDO_55 } from '@/lib/industry/packages/transport'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { Megaphone } from 'lucide-react'
 
@@ -12,6 +14,7 @@ const TOKUTEI_TYPES = ['特定技能1号', '特定技能2号']
 
 type ResidenceStatus = {
   status_type: string | null
+  status_subtype: string | null
   expiry_date: string | null
   is_active: boolean
 }
@@ -44,7 +47,7 @@ type TaskRow = {
   due_date: string
 }
 
-type TimelineKind = 'expiry' | 'todoke' | 'mendan'
+type TimelineKind = 'expiry' | 'todoke' | 'mendan' | 'industry'
 type TlFilter = 'all' | TimelineKind
 
 type TimelineItem = {
@@ -56,6 +59,7 @@ type TimelineItem = {
   detail: string
   actionLabel: string
   href: string
+  badge?: string  // 特記バッジ（例: 特定活動55号の「更新不可」）
 }
 
 type Dist = { name: string; value: number }
@@ -77,7 +81,7 @@ type Snapshot = {
 }
 
 const URGENCY_COLOR = { red: '#dc2626', amber: '#d97706', green: '#16a34a' } as const
-const KIND_LABEL: Record<TimelineKind, string> = { expiry: '在留期限', todoke: '届出', mendan: '面談' }
+const KIND_LABEL: Record<TimelineKind, string> = { expiry: '在留期限', todoke: '届出', mendan: '面談', industry: '業界研修' }
 
 function fmtDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -111,6 +115,7 @@ function buildSnapshot(
   contracts: ContractRow[],
   gens: GenRow[],
   tasks: TaskRow[],
+  industryTasks: TaskRow[],
   payrollKeys: Set<string>,
   now: Date,
 ): Snapshot {
@@ -133,15 +138,21 @@ function buildSnapshot(
     else expiryOver90++
 
     if (d <= 90) {
+      // 特定活動55号は更新不可の時限資格。期限内に免許取得→特技1号変更申請が必要
+      const is55 = st.status_subtype === SUBTYPE_TOKUTEI_KATSUDO_55
       timeline.push({
         key: `expiry-${w.id}`,
         kind: 'expiry',
         due: st.expiry_date,
         urgency: d <= 30 ? 'red' : d <= 60 ? 'amber' : 'green',
         title: `${nameOf(w)}さんの在留期限`,
-        detail: d < 0 ? `期限を${-d}日超過しています（${st.expiry_date}）` : `残り${d}日（${st.expiry_date}）`,
+        detail: is55
+          ? (d < 0 ? `期限を${-d}日超過（${st.expiry_date}）／免許取得→特技1号変更が必要`
+                   : `残り${d}日（${st.expiry_date}）／免許取得→特技1号変更が必要`)
+          : (d < 0 ? `期限を${-d}日超過しています（${st.expiry_date}）` : `残り${d}日（${st.expiry_date}）`),
         actionLabel: '従業員詳細へ',
         href: `/employees/${w.id}`,
+        ...(is55 ? { badge: '更新不可' } : {}),
       })
     }
   }
@@ -218,6 +229,24 @@ function buildSnapshot(
       detail: d < 0 ? `期限を${-d}日超過しています（期限 ${t.due_date}）` : `期限 ${t.due_date}（残り${d}日）`,
       actionLabel: '面談を記録',
       href: `/employees/${t.worker_id}?task=${t.id}`,
+    })
+  }
+
+  // ── 業界パッケージ由来の一回限りタスク（初任講習・初任診断等・在職者分） ──
+  for (const t of industryTasks) {
+    const name = activeNameOf.get(t.worker_id)
+    if (!name) continue
+    const def = industryTaskDefByType(t.task_type)
+    const d = daysUntil(t.due_date, now)
+    timeline.push({
+      key: `industry-${t.id}`,
+      kind: 'industry',
+      due: t.due_date,
+      urgency: d < 0 ? 'red' : d <= 14 ? 'amber' : 'green',
+      title: `${name}さんの${def?.label ?? t.task_type}`,
+      detail: d < 0 ? `期限を${-d}日超過しています（期限 ${t.due_date}）` : `期限 ${t.due_date}（残り${d}日）`,
+      actionLabel: '従業員詳細へ',
+      href: `/employees/${t.worker_id}`,
     })
   }
 
@@ -310,6 +339,9 @@ function ActionTimeline({ items, todayStr, todayYear }: {
           {t.due < todayStr && (
             <span data-testid="tl-overdue-tag" style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fee2e2', borderRadius: 4, padding: '2px 6px', flexShrink: 0, letterSpacing: '0.05em' }}>超過</span>
           )}
+          {t.badge && (
+            <span data-testid="tl-badge" style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', background: '#f3e8ff', borderRadius: 4, padding: '2px 6px', flexShrink: 0, letterSpacing: '0.05em' }}>{t.badge}</span>
+          )}
           <div style={{ width: 76, flexShrink: 0 }}>
             <div style={{ fontSize: t.due.slice(0, 4) === todayYear ? 13 : 12, fontWeight: 700, color: '#111', fontVariantNumeric: 'tabular-nums' }}>
               {t.due.slice(0, 4) === todayYear
@@ -397,21 +429,27 @@ export default function Dashboard() {
     const now = new Date()
     const fy = currentFiscalYear(now)
     const fetchAll = async () => {
-      // 四半期面談タスクのレイジー生成（不足分のみ upsert・重複はUNIQUE制約で防止）
+      // タスクのレイジー生成（不足分のみ upsert・重複はUNIQUE制約で防止）
+      // 面談（四半期）と業界パッケージ（one_time）は別関数で並存生成する
       await ensureQuarterlyInterviewTasks()
+      await ensureIndustryTasks(now)
 
-      const [activesRes, retiredRes, contractsRes, gensRes, tasksRes, payrollRes] = await Promise.all([
+      const [activesRes, retiredRes, contractsRes, gensRes, tasksRes, industryTasksRes, payrollRes] = await Promise.all([
         supabase.from('foreign_workers')
-          .select('id, name_kanji, name_romaji, nationality, residence_statuses(status_type, expiry_date, is_active)')
+          .select('id, name_kanji, name_romaji, nationality, residence_statuses(status_type, status_subtype, expiry_date, is_active)')
           .eq('status', 'active'),
         supabase.from('foreign_workers')
-          .select('id, name_kanji, name_romaji, nationality, residence_statuses(status_type, expiry_date, is_active)')
+          .select('id, name_kanji, name_romaji, nationality, residence_statuses(status_type, status_subtype, expiry_date, is_active)')
           .eq('status', 'retired'),
         supabase.from('worker_contracts').select('worker_id, contract_start_date, termination_date'),
         supabase.from('document_generations').select('worker_id, document_id, generated_at'),
         supabase.from('support_tasks')
           .select('id, worker_id, task_type, period_key, due_date')
           .in('task_type', [...INTERVIEW_TASK_TYPES])
+          .eq('status', 'pending'),
+        supabase.from('support_tasks')
+          .select('id, worker_id, task_type, period_key, due_date')
+          .not('task_type', 'in', `(${INTERVIEW_TASK_TYPES.join(',')})`)
           .eq('status', 'pending'),
         supabase.from('payroll_records')
           .select('worker_id, target_year, target_month')
@@ -434,6 +472,7 @@ export default function Dashboard() {
         (contractsRes.data ?? []) as ContractRow[],
         (gensRes.data ?? []) as GenRow[],
         (tasksRes.data ?? []) as TaskRow[],
+        (industryTasksRes.data ?? []) as TaskRow[],
         payrollKeys,
         now,
       ))
@@ -606,7 +645,7 @@ export default function Dashboard() {
               )}
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
-              {([['all', 'すべて'], ['expiry', '在留期限'], ['todoke', '届出'], ['mendan', '面談']] as [TlFilter, string][]).map(([f, label]) => {
+              {([['all', 'すべて'], ['expiry', '在留期限'], ['todoke', '届出'], ['mendan', '面談'], ['industry', '業界研修']] as [TlFilter, string][]).map(([f, label]) => {
                 const count = f === 'all' ? timeline.length : timeline.filter(t => t.kind === f).length
                 const disabled = !!snap && f !== 'all' && count === 0
                 return (
