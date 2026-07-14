@@ -242,6 +242,12 @@ INSERT INTO qualifications (organization_id, worker_id, type, level, verified_le
 ('11111111-1111-1111-1111-111111111111','a1000000-0000-4000-8000-000000000006','jlpt','N4','document_confirmed','2024-12-01');
 -- ②④⑦⑧ は資格未登録（⑦=灰・⑧=橙 の演出）
 
+-- ======================= STEP 10b: 作業割当 worker_work_assignments（段3） =====================
+-- ⑤（製造）にフォークリフト作業割当を投入。対応する skill_training 資格は未投入 =
+-- 資格ギャップ（労安衛法119条リスク）成立。他7名は割当なし=作業資格セクション非表示。
+INSERT INTO worker_work_assignments (organization_id, worker_id, work_key, planned_start_date, status) VALUES
+('11111111-1111-1111-1111-111111111111','a1000000-0000-4000-8000-000000000005','forklift_1t','2026-08-01','planned');
+
 
 -- ======================= STEP 11: 帳票生成記録 document_generations =========================
 -- 機関単位: teiki_hokoku を1件（worker_id NULL, 提出期間開始2026-04-01以降）→ ダッシュボード

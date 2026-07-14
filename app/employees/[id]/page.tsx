@@ -11,6 +11,9 @@ import { getFlag } from '@/lib/countries'
 import { INTERVIEW_TASK_TYPES, interviewVariantOf, interviewDocumentIdOf, type SupportTask } from '@/lib/supportTasks'
 import { industryTaskDefByType } from '@/lib/industryTasks'
 import { SUBTYPE_TOKUTEI_KATSUDO_55 } from '@/lib/industry/packages/transport'
+import { resolveIndustry } from '@/lib/industry/codes'
+import { industryPackageOf } from '@/lib/industry'
+import { computeQualGap, type QualGap } from '@/lib/qualGap'
 import { computeServiceMatrix, completionRate, STATUS_STYLE, STATUS_LABEL, type ServiceStatus, type SupportServiceDef } from '@/lib/supportServices'
 
 type Worker = {
@@ -134,6 +137,8 @@ export default function EmployeeDetail() {
   const [interviewTasks, setInterviewTasks] = useState<SupportTask[]>([])
   // 業界パッケージ由来の一回限りタスク（初任講習・初任診断等・未完了分・段2は表示のみ）
   const [industryTasks, setIndustryTasks] = useState<SupportTask[]>([])
+  // 作業資格ギャップ（作業割当 × 保有資格・段3。未充足=労安衛法119条リスク）
+  const [qualGaps, setQualGaps] = useState<QualGap[]>([])
   const [openTask, setOpenTask] = useState<SupportTask | null>(null)
   // プリフィル用の前回記録（variant ごとに保持）
   const [prevNotesByType, setPrevNotesByType] = useState<{
@@ -190,7 +195,7 @@ export default function EmployeeDetail() {
   // 四半期面談タスク（本人+監督者・未完了分）+ 実施済み面談記録（プリフィル・再ダウンロード用）
   const fetchInterviewTasks = async (autoOpenTaskId?: string | null) => {
     if (!params.id) return
-    const [tasksRes, industryTasksRes, recsRes, allRecsRes] = await Promise.all([
+    const [tasksRes, industryTasksRes, recsRes, allRecsRes, assignRes, qualRes, condRes] = await Promise.all([
       supabase.from('support_tasks')
         .select('*')
         .eq('worker_id', params.id)
@@ -214,11 +219,28 @@ export default function EmployeeDetail() {
       supabase.from('support_records')
         .select('type, completed, quarter')
         .eq('worker_id', params.id),
+      // 段3: 作業資格ギャップ判定用（作業割当・保有資格・業界解決用の分野）
+      supabase.from('worker_work_assignments')
+        .select('work_key, status, planned_start_date')
+        .eq('worker_id', params.id),
+      supabase.from('qualifications')
+        .select('type, level')
+        .eq('worker_id', params.id),
+      supabase.from('employment_conditions')
+        .select('industry_field')
+        .eq('worker_id', params.id)
+        .maybeSingle(),
     ])
     const tasks = (tasksRes.data ?? []) as SupportTask[]
     const recs = recsRes.data ?? []
     setInterviewTasks(tasks)
     setIndustryTasks((industryTasksRes.data ?? []) as SupportTask[])
+
+    // 段3: 業界パッケージの workQualRules × 作業割当 × 保有資格 → ギャップ
+    const pkg = industryPackageOf(resolveIndustry(condRes.data?.industry_field))
+    setQualGaps(pkg
+      ? computeQualGap(pkg.workQualRules, assignRes.data ?? [], qualRes.data ?? [])
+      : [])
     setInterviewRecords(recs.map(r => ({ id: r.id, type: r.type, quarter: r.quarter, completed_date: r.completed_date })))
     setPrevNotesByType({
       worker: (recs.find(r => r.type === 'interview_worker')?.notes as Record<string, unknown> | undefined) ?? null,
@@ -1019,6 +1041,39 @@ export default function EmployeeDetail() {
                       {def.guide.legalBasis && <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>根拠: {def.guide.legalBasis}</div>}
                     </div>
                   )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* 作業資格チェック（段3・作業割当 × 保有資格・未充足=労安衛法119条リスク） */}
+        {qualGaps.length > 0 && (
+          <div data-testid="qual-gap-section" style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+            <div style={{fontSize:15,fontWeight:600,color:"#000",marginBottom:10}}>作業資格チェック（労働安全衛生法）</div>
+            {qualGaps.map((g, i) => {
+              const bad = !g.satisfied
+              return (
+                <div key={g.rule.work} data-testid={`qual-gap-${g.rule.work}`}
+                  style={{padding:"11px 13px",marginTop:i>0?8:0,borderRadius:8,
+                    background:bad?"#fee2e2":"#dcfce7",border:`1px solid ${bad?"#fecaca":"#bbf7d0"}`}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                    <span style={{fontSize:14}}>{bad?"⚠️":"✅"}</span>
+                    <span style={{fontSize:13,fontWeight:600,color:"#111"}}>{g.rule.label}</span>
+                    <span style={{fontSize:11,fontWeight:700,color:bad?"#dc2626":"#166534",
+                      background:bad?"#fff":"#fff",borderRadius:4,padding:"2px 7px"}}>
+                      {bad?"技能講習 未修了":"技能講習 修了済"}
+                    </span>
+                  </div>
+                  {bad && (
+                    <div style={{fontSize:12,color:"#b91c1c",marginTop:5,fontWeight:600}}>
+                      無資格での従事は罰則対象 — {g.rule.penalty}
+                    </div>
+                  )}
+                  <div style={{fontSize:11,color:"#6b7280",marginTop:4,lineHeight:1.5}}>
+                    {g.assignment.planned_start_date && <>従事予定 {g.assignment.planned_start_date}／</>}
+                    根拠: {g.rule.legalBasis}
+                  </div>
                 </div>
               )
             })}
