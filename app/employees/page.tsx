@@ -71,10 +71,12 @@ export default function Employees() {
     return Math.ceil((new Date(expiry).getTime() - new Date().getTime()) / (1000*60*60*24))
   }
 
+  // 在留期限の残日数: ≤30日=赤(回復不能の切迫) / 31〜60日=橙 / それ以外=灰(期日前)
+  // 緑は「完了・検証済」専用のため残日数には使わない(docs/product-direction.md 原則3)
   const getDaysBadge = (days: number) => {
     if (days <= 30) return {bg:'#fee2e2',color:'#dc2626',text:`残り${days}日`}
     if (days <= 60) return {bg:'#fef3c7',color:'#d97706',text:`残り${days}日`}
-    return {bg:'#dcfce7',color:'#16a34a',text:`残り${days}日`}
+    return {bg:'#f3f4f6',color:'#6b7280',text:`残り${days}日`}
   }
 
   const activeWorkers = workers.filter(w => w.status === 'active')
@@ -113,7 +115,7 @@ export default function Employees() {
         <div style={{ maxWidth: 780, margin: '0 auto', padding: '28px 24px' }}>
           <button
             onClick={() => setBulkWizard(false)}
-            style={{ background: 'none', border: 'none', color: '#0066cc', fontSize: 14, cursor: 'pointer', marginBottom: 20, padding: 0 }}>
+            style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 14, cursor: 'pointer', marginBottom: 20, padding: 0 }}>
             ← 従業員一覧に戻る
           </button>
           <EmploymentConditionsWizard
@@ -134,12 +136,12 @@ export default function Employees() {
       <div style={{maxWidth:900,margin:'0 auto',padding:'32px 24px'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
           <div>
-            <h1 style={{margin:'0 0 4px',fontSize:22,fontWeight:700,color:'#000'}}>在留情報一覧</h1>
-            <p style={{margin:0,fontSize:14,color:'#666'}}>
+            <h1 style={{margin:'0 0 4px',fontSize:21,fontWeight:700,color:'#111827'}}>従業員管理</h1>
+            <p style={{margin:0,fontSize:14,color:'#6b7280'}}>
               在職：{activeWorkers.length}名{retiredCount > 0 && `　退職：${retiredCount}名`}
             </p>
           </div>
-          <button onClick={()=>router.push('/employees/new')} style={{background:'#0066cc',border:'none',borderRadius:6,padding:'10px 20px',color:'#fff',fontWeight:600,fontSize:13,cursor:'pointer'}}>＋ 新規登録</button>
+          <button onClick={()=>router.push('/employees/new')} style={{background:'#2563eb',border:'none',borderRadius:6,padding:'10px 20px',color:'#fff',fontWeight:600,fontSize:13,cursor:'pointer'}}>＋ 新規登録</button>
         </div>
 
         {bulkDone !== null && (
@@ -149,26 +151,26 @@ export default function Employees() {
         )}
 
         {loading ? (
-          <div style={{textAlign:'center',padding:60,color:'#666'}}>読み込み中...</div>
+          <div style={{textAlign:'center',padding:60,color:'#6b7280'}}>読み込み中...</div>
         ) : displayWorkers.length === 0 ? (
-          <div style={{textAlign:'center',padding:60,color:'#666'}}>データがありません</div>
+          <div style={{textAlign:'center',padding:60,color:'#6b7280'}}>データがありません</div>
         ) : (
           <>
             {/* ヘッダー行（全選択） */}
-            <div style={{background:'#fff',border:'1px solid #e0e0e0',borderRadius:12,padding:'12px 20px',marginBottom:8,display:'flex',alignItems:'center',gap:12,boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}}>
+            <div style={{background:'#fff',border:'1px solid #e5e7eb',borderRadius:12,padding:'12px 20px',marginBottom:8,display:'flex',alignItems:'center',gap:12,boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}}>
               <input
                 type="checkbox"
                 checked={allSelected}
                 onChange={toggleAll}
-                style={{width:16,height:16,cursor:'pointer',accentColor:'#0066cc'}}
+                style={{width:16,height:16,cursor:'pointer',accentColor:'#2563eb'}}
               />
-              <span style={{fontSize:13,fontWeight:600,color:'#555'}}>全選択</span>
-              <label style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:6,fontSize:13,color:'#555',cursor:'pointer'}}>
+              <span style={{fontSize:13,fontWeight:600,color:'#6b7280'}}>全選択</span>
+              <label style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:6,fontSize:13,color:'#6b7280',cursor:'pointer'}}>
                 <input
                   type="checkbox"
                   checked={includeRetired}
                   onChange={e => setIncludeRetired(e.target.checked)}
-                  style={{width:15,height:15,cursor:'pointer',accentColor:'#0066cc'}}
+                  style={{width:15,height:15,cursor:'pointer',accentColor:'#2563eb'}}
                 />
                 退職者を含む{retiredCount > 0 && `（${retiredCount}名）`}
               </label>
@@ -184,37 +186,37 @@ export default function Employees() {
                 const isChecked = selected.has(w.id)
                 const branch = branches[w.id]
                 return (
-                  <div key={w.id} style={{background:'#fff',border:isChecked?'1px solid #0066cc':urgent?'1px solid #fecaca':'1px solid #e0e0e0',borderRadius:12,padding:'16px 20px',display:'flex',alignItems:'center',gap:16,boxShadow: isChecked ? '0 0 0 2px rgba(0,102,204,0.15)' : '0 1px 3px rgba(0,0,0,0.06)',transition:'border-color 0.15s'}}>
+                  <div key={w.id} style={{background:'#fff',border:isChecked?'1px solid #2563eb':urgent?'1px solid #fecaca':'1px solid #e5e7eb',borderRadius:12,padding:'16px 20px',display:'flex',alignItems:'center',gap:16,boxShadow: isChecked ? '0 0 0 2px rgba(37,99,235,0.15)' : '0 1px 3px rgba(0,0,0,0.06)',transition:'border-color 0.15s'}}>
                     <input
                       type="checkbox"
                       checked={isChecked}
                       onChange={() => toggleOne(w.id)}
                       onClick={e => e.stopPropagation()}
-                      style={{width:16,height:16,cursor:'pointer',accentColor:'#0066cc',flexShrink:0}}
+                      style={{width:16,height:16,cursor:'pointer',accentColor:'#2563eb',flexShrink:0}}
                     />
                     <div style={{fontSize:28}}>{getFlag(w.nationality)}</div>
                     <div style={{flex:1}}>
                       <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-                        <span style={{fontWeight:600,fontSize:15,color:'#000'}}>{w.name_kanji || w.name_romaji}</span>
+                        <span style={{fontWeight:600,fontSize:14,color:'#111827'}}>{w.name_kanji || w.name_romaji}</span>
                         {urgent && <span style={{background:'#fee2e2',color:'#dc2626',fontSize:11,padding:'2px 8px',borderRadius:4,fontWeight:600}}>期限間近</span>}
                         {retired ? (
                           <span style={{background:'#475569',color:'#fff',fontSize:11,padding:'2px 8px',borderRadius:4,fontWeight:600}}>退職</span>
                         ) : (
-                          <span style={{background:'#f0f0f0',color:'#666',fontSize:11,padding:'2px 8px',borderRadius:4}}>{w.status === 'active' ? '在籍中' : w.status}</span>
+                          <span style={{background:'#f3f4f6',color:'#6b7280',fontSize:11,padding:'2px 8px',borderRadius:4}}>{w.status === 'active' ? '在籍中' : w.status}</span>
                         )}
                         {!retired && branch && (
                           <span title="信頼スコアの状態" style={{background:BRANCH_META[branch].bg,color:BRANCH_META[branch].color,border:`1px solid ${BRANCH_META[branch].border}`,fontSize:11,padding:'2px 8px',borderRadius:4,fontWeight:600}}>{BRANCH_META[branch].label}</span>
                         )}
                       </div>
-                      <div style={{fontSize:13,color:'#666'}}>{active?.status_type || '未登録'}</div>
+                      <div style={{fontSize:13,color:'#6b7280'}}>{active?.status_type || '未登録'}</div>
                     </div>
                     {active && (
                       <div style={{textAlign:'center'}}>
                         <span style={{background:badge.bg,color:badge.color,fontSize:12,fontWeight:600,padding:'4px 10px',borderRadius:6}}>{badge.text}</span>
-                        <div style={{fontSize:11,color:'#999',marginTop:2}}>期限：{active.expiry_date}</div>
+                        <div style={{fontSize:11,color:'#9ca3af',marginTop:2}}>期限：{active.expiry_date}</div>
                       </div>
                     )}
-                    <button onClick={()=>router.push(`/employees/${w.id}`)} style={{background:'#fff',border:'1px solid #0066cc',borderRadius:6,padding:'8px 16px',color:'#0066cc',fontSize:13,fontWeight:600,cursor:'pointer'}}>詳細 →</button>
+                    <button onClick={()=>router.push(`/employees/${w.id}`)} style={{background:'#fff',border:'1px solid #2563eb',borderRadius:6,padding:'8px 16px',color:'#2563eb',fontSize:13,fontWeight:600,cursor:'pointer'}}>詳細 →</button>
                   </div>
                 )
               })}
@@ -225,7 +227,7 @@ export default function Employees() {
 
       {/* 一括適用フローティングバー */}
       {selected.size > 0 && (
-        <div style={{position:'fixed',bottom:0,left:0,right:0,background:'#1a1a2e',borderTop:'2px solid #0066cc',padding:'14px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',zIndex:100,boxShadow:'0 -4px 20px rgba(0,0,0,0.25)'}}>
+        <div style={{position:'fixed',bottom:0,left:0,right:0,background:'#1a1a2e',borderTop:'2px solid #2563eb',padding:'14px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',zIndex:100,boxShadow:'0 -4px 20px rgba(0,0,0,0.25)'}}>
           <div style={{color:'#fff',fontSize:14,fontWeight:600}}>
             {selected.size}名を選択中
             <span style={{color:'#94a3b8',fontWeight:400,marginLeft:8,fontSize:13}}>
@@ -236,7 +238,7 @@ export default function Employees() {
             <button onClick={() => setSelected(new Set())} style={{padding:'9px 18px',borderRadius:6,border:'1px solid #475569',background:'transparent',color:'#cbd5e1',fontSize:13,cursor:'pointer'}}>
               選択解除
             </button>
-            <button onClick={() => setConfirmModal(true)} style={{padding:'9px 20px',borderRadius:6,border:'none',background:'#0066cc',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>
+            <button onClick={() => setConfirmModal(true)} style={{padding:'9px 20px',borderRadius:6,border:'none',background:'#2563eb',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>
               選択した{selected.size}名に同じ条件を適用
             </button>
           </div>
@@ -246,9 +248,9 @@ export default function Employees() {
       {/* 確認モーダル */}
       {confirmModal && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.55)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
-          <div style={{background:'#fff',borderRadius:14,padding:'28px 32px',width:480,maxWidth:'100%',boxShadow:'0 8px 40px rgba(0,0,0,0.18)'}}>
-            <h3 style={{margin:'0 0 12px',fontSize:17,fontWeight:700,color:'#111'}}>一括適用の確認</h3>
-            <p style={{margin:'0 0 16px',fontSize:13,color:'#555',lineHeight:1.7}}>
+          <div style={{background:'#fff',borderRadius:12,padding:'28px 32px',width:480,maxWidth:'100%',boxShadow:'0 8px 32px rgba(0,0,0,0.18)'}}>
+            <h3 style={{margin:'0 0 12px',fontSize:16,fontWeight:700,color:'#111'}}>一括適用の確認</h3>
+            <p style={{margin:'0 0 16px',fontSize:13,color:'#6b7280',lineHeight:1.7}}>
               以下の従業員に同じ雇用条件を一括で適用します。<br />
               既存の雇用条件は上書きされます。
             </p>
@@ -261,10 +263,10 @@ export default function Employees() {
               ))}
             </div>
             <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
-              <button onClick={() => setConfirmModal(false)} style={{padding:'10px 22px',borderRadius:8,border:'1px solid #d0d0d0',background:'#fff',color:'#555',fontSize:14,cursor:'pointer'}}>
+              <button onClick={() => setConfirmModal(false)} style={{padding:'10px 22px',borderRadius:8,border:'1px solid #d1d5db',background:'#fff',color:'#6b7280',fontSize:14,cursor:'pointer'}}>
                 キャンセル
               </button>
-              <button onClick={() => { setConfirmModal(false); setBulkWizard(true) }} style={{padding:'10px 22px',borderRadius:8,border:'none',background:'#0066cc',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer'}}>
+              <button onClick={() => { setConfirmModal(false); setBulkWizard(true) }} style={{padding:'10px 22px',borderRadius:8,border:'none',background:'#2563eb',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer'}}>
                 適用する →
               </button>
             </div>

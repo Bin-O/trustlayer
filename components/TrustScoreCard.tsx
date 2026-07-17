@@ -45,9 +45,10 @@ function BadgeChip({ badge, hasData }: { badge: Badge; hasData: boolean }) {
 
 function ItemBar({ score, max }: { score: number; max: number }) {
   const pct = Math.round((score / max) * 100)
-  const color = pct >= 80 ? '#16a34a' : pct >= 50 ? '#d97706' : '#dc2626'
+  // スコアの高低は状態色で塗らない(赤=期限超過専用)。バーは中立のブランド青
+  const color = '#2563eb'
   return (
-    <div style={{ height: 6, borderRadius: 3, background: '#f0f0f0', overflow: 'hidden' }}>
+    <div style={{ height: 6, borderRadius: 3, background: '#f3f4f6', overflow: 'hidden' }}>
       <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3, transition: 'width 0.4s ease' }} />
     </div>
   )
@@ -61,9 +62,9 @@ export default function TrustScoreCard({ result, snapshots }: {
 
   if (!result) {
     return (
-      <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 12, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-        <h2 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 600, color: '#000' }}>信頼スコア内訳</h2>
-        <div style={{ fontSize: 13, color: '#999' }}>読み込み中...</div>
+      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 600, color: '#111827' }}>信頼スコア内訳</h2>
+        <div style={{ fontSize: 13, color: '#9ca3af' }}>読み込み中...</div>
       </div>
     )
   }
@@ -71,14 +72,15 @@ export default function TrustScoreCard({ result, snapshots }: {
   const isVerified = result.branch === 'verified'
   const branchMeta = BRANCH_META[result.branch]
   const total = Math.round(result.total)
-  const totalColor = total >= 80 ? '#16a34a' : total >= 50 ? '#d97706' : '#dc2626'
+  // 総合点は中立色。状態は branch バッジ側で表現する(4色体系)
+  const totalColor = '#111827'
 
   // 前月比トレンド: 当月以外で最新のスナップショットと比較
   const nowMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
   const prev = [...snapshots].filter(s => s.month < nowMonth).pop()
   const diff = prev ? total - Math.round(prev.total) : null
   const trend = diff === null ? null : diff > 0 ? { mark: '▲', color: '#16a34a', text: `+${diff}` }
-    : diff < 0 ? { mark: '▼', color: '#dc2626', text: `${diff}` }
+    : diff < 0 ? { mark: '▼', color: '#d97706', text: `${diff}` }
     : { mark: '−', color: '#9ca3af', text: '±0' }
 
   const radarData = result.items.map(i => ({
@@ -89,10 +91,10 @@ export default function TrustScoreCard({ result, snapshots }: {
   const historyData = snapshots.map(s => ({ month: s.month, total: Math.round(s.total) }))
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 12, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
       {/* ヘッダー: 総合スコア + トレンド */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-        <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#000' }}>信頼スコア内訳</h2>
+        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#111827' }}>信頼スコア内訳</h2>
         {!isVerified ? (
           <span style={{ fontSize: 12, fontWeight: 600, color: branchMeta.color, background: branchMeta.bg, border: `1px solid ${branchMeta.border}`, borderRadius: 9999, padding: '3px 12px' }}>
             {branchMeta.label}
@@ -100,7 +102,7 @@ export default function TrustScoreCard({ result, snapshots }: {
         ) : (
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
             <span style={{ fontSize: 28, fontWeight: 700, color: totalColor, lineHeight: 1 }}>
-              {total}<span style={{ fontSize: 13, color: '#999', fontWeight: 400 }}> / 100</span>
+              {total}<span style={{ fontSize: 13, color: '#9ca3af', fontWeight: 400 }}> / 100</span>
             </span>
             {trend && (
               <span style={{ fontSize: 12, fontWeight: 600, color: trend.color }}>
@@ -117,7 +119,7 @@ export default function TrustScoreCard({ result, snapshots }: {
           <RadarChart data={radarData} outerRadius="72%">
             <PolarGrid stroke="#e5e7eb" />
             <PolarAngleAxis dataKey="axis" tick={{ fontSize: 11, fill: '#6b7280' }} />
-            <Radar dataKey="pct" stroke="#0066cc" fill="#0066cc" fillOpacity={0.18} />
+            <Radar dataKey="pct" stroke="#2563eb" fill="#2563eb" fillOpacity={0.18} />
           </RadarChart>
         </ResponsiveContainer>
       </div>
@@ -128,7 +130,7 @@ export default function TrustScoreCard({ result, snapshots }: {
           <div key={item.key}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, gap: 8 }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                <span style={{ fontSize: 12, color: '#555' }}>{item.label}</span>
+                <span style={{ fontSize: 12, color: '#6b7280' }}>{item.label}</span>
                 <BadgeChip badge={item.badge} hasData={item.hasData} />
               </span>
               <span style={{ fontSize: 12, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap' }}>
@@ -148,11 +150,11 @@ export default function TrustScoreCard({ result, snapshots }: {
       {/* データ充足度 */}
       <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #f3f4f6' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span style={{ fontSize: 11, color: '#888' }}>データ充足度</span>
-          <span style={{ fontSize: 11, fontWeight: 600, color: '#555' }}>{Math.round(result.data_sufficiency * 100)}%</span>
+          <span style={{ fontSize: 11, color: '#9ca3af' }}>データ充足度</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#6b7280' }}>{Math.round(result.data_sufficiency * 100)}%</span>
         </div>
-        <div style={{ height: 5, borderRadius: 3, background: '#f0f0f0', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${Math.round(result.data_sufficiency * 100)}%`, background: '#0066cc', borderRadius: 3 }} />
+        <div style={{ height: 5, borderRadius: 3, background: '#f3f4f6', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${Math.round(result.data_sufficiency * 100)}%`, background: '#2563eb', borderRadius: 3 }} />
         </div>
         {result.branch === 'attention' && (
           <div style={{ marginTop: 8, fontSize: 11, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '6px 10px' }}>
@@ -170,7 +172,7 @@ export default function TrustScoreCard({ result, snapshots }: {
       <div style={{ marginTop: 12 }}>
         <button
           onClick={() => setShowHistory(v => !v)}
-          style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, color: '#0066cc', cursor: 'pointer', fontWeight: 500 }}
+          style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, color: '#2563eb', cursor: 'pointer', fontWeight: 500 }}
         >
           {showHistory ? '▾ スコア推移を閉じる' : '▸ スコア推移を表示'}
         </button>
@@ -183,12 +185,12 @@ export default function TrustScoreCard({ result, snapshots }: {
                   <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#9ca3af' }} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#9ca3af' }} />
                   <Tooltip formatter={(v) => [`${v}点`, '総合スコア']} labelStyle={{ fontSize: 11 }} contentStyle={{ fontSize: 11 }} />
-                  <Line type="monotone" dataKey="total" stroke="#0066cc" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="total" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <div style={{ marginTop: 8, fontSize: 11, color: '#999' }}>
+            <div style={{ marginTop: 8, fontSize: 11, color: '#9ca3af' }}>
               月次スナップショットが2件以上蓄積されると推移グラフが表示されます。
             </div>
           )

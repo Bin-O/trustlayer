@@ -35,7 +35,7 @@ export default function AppHeader({ currentPage }: { currentPage: Page }) {
           border: 'none',
           borderRadius: 6,
           padding: '7px 12px',
-          color: active ? '#0066cc' : '#555',
+          color: active ? '#2563eb' : '#6b7280',
           fontWeight: active ? 600 : 500,
           fontSize: 13,
           cursor: 'pointer',
@@ -77,7 +77,7 @@ export default function AppHeader({ currentPage }: { currentPage: Page }) {
             onClick={() => setMenuOpen(o => !o)}
             aria-label="アカウントメニュー"
             style={{
-              width: 34, height: 34, borderRadius: '50%', background: '#0066cc',
+              width: 34, height: 34, borderRadius: '50%', background: '#2563eb',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontWeight: 700, color: '#fff', fontSize: 14, flexShrink: 0,
               border: currentPage === 'settings' ? '2px solid #93c5fd' : 'none',
@@ -100,7 +100,7 @@ export default function AppHeader({ currentPage }: { currentPage: Page }) {
                     background: currentPage === 'settings' ? '#eff6ff' : 'none',
                     border: 'none', borderRadius: 6, padding: '8px 10px',
                     fontSize: 13, fontWeight: currentPage === 'settings' ? 600 : 500,
-                    color: currentPage === 'settings' ? '#0066cc' : '#374151',
+                    color: currentPage === 'settings' ? '#2563eb' : '#374151',
                     cursor: 'pointer', textAlign: 'left',
                   }}
                 >

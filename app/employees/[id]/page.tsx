@@ -15,6 +15,7 @@ import { resolveIndustry } from '@/lib/industry/codes'
 import { industryPackageOf } from '@/lib/industry'
 import { computeQualGap, type QualGap } from '@/lib/qualGap'
 import { computeServiceMatrix, completionRate, STATUS_STYLE, STATUS_LABEL, type ServiceStatus, type SupportServiceDef } from '@/lib/supportServices'
+import { AlertTriangle, CheckCircle2, FileText, Pencil, Camera, Sparkles } from 'lucide-react'
 
 type Worker = {
   id: string
@@ -55,22 +56,23 @@ type CardExtracted = {
   work_restriction: string | null
 }
 
-function ScoreRing({ score, max }: { score: number; max: number }) {
+// スコアの色は信頼スコアの分岐(検証済=緑/要対応=橙/蓄積中=灰)に従う。
+// 低スコア=赤 は使わない(赤=期限超過専用: docs/product-direction.md 原則3)
+function ScoreRing({ score, max, color }: { score: number; max: number; color: string }) {
   const pct = score / max
-  const color = pct >= 0.8 ? '#16a34a' : pct >= 0.5 ? '#d97706' : '#dc2626'
   const r = 26
   const circ = 2 * Math.PI * r
   const dash = circ * pct
   return (
     <div style={{ position: 'relative', width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <svg width={72} height={72} style={{ position: 'absolute', transform: 'rotate(-90deg)' }}>
-        <circle cx={36} cy={36} r={r} fill="none" stroke="#f0f0f0" strokeWidth={6} />
+        <circle cx={36} cy={36} r={r} fill="none" stroke="#f3f4f6" strokeWidth={6} />
         <circle cx={36} cy={36} r={r} fill="none" stroke={color} strokeWidth={6}
           strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" />
       </svg>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: 18, fontWeight: 700, color, lineHeight: 1 }}>{score}</div>
-        <div style={{ fontSize: 9, color: '#999', lineHeight: 1 }}>/100</div>
+        <div style={{ fontSize: 9, color: '#9ca3af', lineHeight: 1 }}>/100</div>
       </div>
     </div>
   )
@@ -621,8 +623,8 @@ export default function EmployeeDetail() {
     return Math.ceil(diff / (1000 * 60 * 60 * 24))
   }
 
-  if (loading) return <div style={{padding:40,textAlign:"center",color:"#666"}}>読み込み中...</div>
-  if (!worker) return <div style={{padding:40,textAlign:"center",color:"#666"}}>データが見つかりません</div>
+  if (loading) return <div style={{padding:40,textAlign:"center",color:"#6b7280"}}>読み込み中...</div>
+  if (!worker) return <div style={{padding:40,textAlign:"center",color:"#6b7280"}}>データが見つかりません</div>
 
   const activeStatus = worker.residence_statuses?.find(s => s.is_active)
   // 3-1-2号（特定技能雇用契約の終了）は特定技能専属の随時届出。他の在留資格には案内しない
@@ -692,7 +694,7 @@ export default function EmployeeDetail() {
               </button>
               <button onClick={handleSaveWorker} disabled={editWorkerModal.saving}
                 style={{padding:'8px 20px',borderRadius:6,border:'none',
-                  background: editWorkerModal.saving ? '#e5e7eb' : '#0066cc',
+                  background: editWorkerModal.saving ? '#e5e7eb' : '#2563eb',
                   color: editWorkerModal.saving ? '#9ca3af' : '#fff',
                   fontSize:14,fontWeight:600,cursor: editWorkerModal.saving ? 'not-allowed' : 'pointer'}}>
                 {editWorkerModal.saving ? '保存中...' : '保存'}
@@ -746,7 +748,7 @@ export default function EmployeeDetail() {
               </button>
               <button onClick={handleSaveStatus} disabled={editStatusModal.saving}
                 style={{padding:'8px 20px',borderRadius:6,border:'none',
-                  background: editStatusModal.saving ? '#e5e7eb' : '#0066cc',
+                  background: editStatusModal.saving ? '#e5e7eb' : '#2563eb',
                   color: editStatusModal.saving ? '#9ca3af' : '#fff',
                   fontSize:14,fontWeight:600,cursor: editStatusModal.saving ? 'not-allowed' : 'pointer'}}>
                 {editStatusModal.saving ? '保存中...' : '保存'}
@@ -822,7 +824,7 @@ export default function EmployeeDetail() {
                     <div key={r.label} style={{display:'grid',gridTemplateColumns:'120px 1fr 1fr',borderBottom:i<rows.length-1?'1px solid #f1f5f9':'none',fontSize:13}}>
                       <div style={{padding:'10px 12px',color:'#666'}}>{r.label}</div>
                       <div style={{padding:'10px 12px',color:'#334155'}}>{r.current ?? '-'}</div>
-                      <div style={{padding:'10px 12px',fontWeight:changed?700:400,color:changed?'#0066cc':'#94a3b8',background:changed?'#eff6ff':'transparent'}}>
+                      <div style={{padding:'10px 12px',fontWeight:changed?700:400,color:changed?'#2563eb':'#94a3b8',background:changed?'#eff6ff':'transparent'}}>
                         {r.next ?? '-'}{changed && ' ←変更'}
                       </div>
                     </div>
@@ -837,7 +839,7 @@ export default function EmployeeDetail() {
                 </button>
                 <button onClick={handleConfirmCardUpdate} disabled={cardUpdate.saving}
                   style={{padding:'8px 20px',borderRadius:6,border:'none',
-                    background: cardUpdate.saving ? '#e5e7eb' : '#0066cc',
+                    background: cardUpdate.saving ? '#e5e7eb' : '#2563eb',
                     color: cardUpdate.saving ? '#9ca3af' : '#fff',
                     fontSize:14,fontWeight:600,cursor: cardUpdate.saving ? 'not-allowed' : 'pointer'}}>
                   {cardUpdate.saving ? '更新中...' : 'この内容で更新'}
@@ -867,12 +869,12 @@ export default function EmployeeDetail() {
                   <div>
                     <label style={{fontSize:12,color:'#555',display:'block',marginBottom:4}}>契約終了年月日</label>
                     <input type="date" value={km.terminationDate} onChange={e => setKm({ terminationDate: e.target.value })}
-                      style={{border:'1px solid #d0d0d0',borderRadius:6,padding:'7px 10px',fontSize:14,width:'100%',boxSizing:'border-box'}} />
+                      style={{border:'1px solid #d1d5db',borderRadius:6,padding:'7px 10px',fontSize:14,width:'100%',boxSizing:'border-box'}} />
                   </div>
                   <div>
                     <label style={{fontSize:12,color:'#555',display:'block',marginBottom:4}}>終了区分</label>
                     <select value={km.terminationType} onChange={e => setKm({ terminationType: e.target.value as typeof km.terminationType })}
-                      style={{border:'1px solid #d0d0d0',borderRadius:6,padding:'7px 10px',fontSize:14,width:'100%',boxSizing:'border-box'}}>
+                      style={{border:'1px solid #d1d5db',borderRadius:6,padding:'7px 10px',fontSize:14,width:'100%',boxSizing:'border-box'}}>
                       <option value="expiry">01. 雇用契約の期間満了</option>
                       <option value="dismissal">02. 特定技能所属機関の都合による終了（経営上の都合）</option>
                       <option value="resignation">10. 外国人の都合による終了（自己都合退職）</option>
@@ -884,7 +886,7 @@ export default function EmployeeDetail() {
                       <label style={{fontSize:12,color:'#555',display:'block',marginBottom:4}}>終了理由（その他の場合）</label>
                       <input type="text" value={km.terminationReason} onChange={e => setKm({ terminationReason: e.target.value })}
                         placeholder="理由を記入してください"
-                        style={{border:'1px solid #d0d0d0',borderRadius:6,padding:'7px 10px',fontSize:14,width:'100%',boxSizing:'border-box'}} />
+                        style={{border:'1px solid #d1d5db',borderRadius:6,padding:'7px 10px',fontSize:14,width:'100%',boxSizing:'border-box'}} />
                     </div>
                   )}
                 </div>
@@ -903,7 +905,7 @@ export default function EmployeeDetail() {
                 <div>
                   <label style={{fontSize:12,color:'#555',display:'block',marginBottom:4}}>契約締結年月日</label>
                   <input type="date" value={km.newContractDate} onChange={e => setKm({ newContractDate: e.target.value })}
-                    style={{border:'1px solid #d0d0d0',borderRadius:6,padding:'7px 10px',fontSize:14,width:'100%',boxSizing:'border-box'}} />
+                    style={{border:'1px solid #d1d5db',borderRadius:6,padding:'7px 10px',fontSize:14,width:'100%',boxSizing:'border-box'}} />
                 </div>
               )}
             </div>
@@ -915,10 +917,10 @@ export default function EmployeeDetail() {
               </button>
               <button onClick={generateKeiyakuDoc} disabled={docGenerating === 'todoke_keiyaku_shuryo'}
                 style={{padding:'8px 20px',borderRadius:6,border:'none',
-                  background: docGenerating === 'todoke_keiyaku_shuryo' ? '#e5e7eb' : '#0066cc',
+                  background: docGenerating === 'todoke_keiyaku_shuryo' ? '#e5e7eb' : '#2563eb',
                   color: docGenerating === 'todoke_keiyaku_shuryo' ? '#9ca3af' : '#fff',
                   fontSize:14,fontWeight:600,cursor:docGenerating === 'todoke_keiyaku_shuryo' ? 'not-allowed' : 'pointer'}}>
-                {docGenerating === 'todoke_keiyaku_shuryo' ? '⏳ 生成中...' : '📄 Excel生成・ダウンロード'}
+                {docGenerating === 'todoke_keiyaku_shuryo' ? '生成中...' : <><FileText size={13} style={{display:'inline',verticalAlign:'-2px',marginRight:5}} />Excel生成・ダウンロード</>}
               </button>
             </div>
           </div>
@@ -927,7 +929,7 @@ export default function EmployeeDetail() {
       <AppHeader currentPage="employees" />
 
       <div style={{maxWidth:900,margin:"0 auto",padding:"32px 24px"}}>
-        <button onClick={()=>router.push('/employees')} style={{background:"none",border:"none",color:"#0066cc",fontSize:13,cursor:"pointer",marginBottom:20,padding:0}}>← 一覧に戻る</button>
+        <button onClick={()=>router.push('/employees')} style={{background:"none",border:"none",color:"#2563eb",fontSize:13,cursor:"pointer",marginBottom:20,padding:0}}>← 一覧に戻る</button>
 
         {/* 退職処理完了 → 届出案内（3-1-2号は特定技能のみ） */}
         {retireDone && (
@@ -951,18 +953,18 @@ export default function EmployeeDetail() {
         )}
 
         {/* Profile header */}
-        <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"24px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)",display:"flex",alignItems:"center",gap:20}}>
+        <div style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:12,padding:"24px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)",display:"flex",alignItems:"center",gap:20}}>
           <div style={{fontSize:56}}>{getFlag(worker.nationality)}</div>
           <div style={{flex:1}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
-              <h1 style={{margin:0,fontSize:22,fontWeight:700,color:"#000"}}>{worker.name_kanji || worker.name_romaji}</h1>
+              <h1 style={{margin:0,fontSize:22,fontWeight:700,color:"#111827"}}>{worker.name_kanji || worker.name_romaji}</h1>
               {urgent && <span style={{background:"#fee2e2",color:"#dc2626",fontSize:11,padding:"2px 10px",borderRadius:4,fontWeight:600}}>期限間近</span>}
               {retired ? (
                 <span style={{background:"#475569",color:"#fff",fontSize:11,padding:"2px 10px",borderRadius:4,fontWeight:600}}>
                   退職{contract?.termination_date ? `（${contract.termination_date}）` : ''}
                 </span>
               ) : (
-                <span style={{background:"#f0f0f0",color:"#666",fontSize:11,padding:"2px 10px",borderRadius:4}}>{worker.status === 'active' ? '在籍中' : worker.status}</span>
+                <span style={{background:"#f3f4f6",color:"#6b7280",fontSize:11,padding:"2px 10px",borderRadius:4}}>{worker.status === 'active' ? '在籍中' : worker.status}</span>
               )}
               {worker.status === 'active' && (
                 <button onClick={() => setRetireModal({ open: true, retireDate: '', saving: false })}
@@ -971,11 +973,11 @@ export default function EmployeeDetail() {
                 </button>
               )}
             </div>
-            <div style={{fontSize:13,color:"#666",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+            <div style={{fontSize:13,color:"#6b7280",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
               <span>{worker.nationality} ／ {activeStatus?.status_subtype || activeStatus?.status_type || '未登録'}</span>
               {activeStatus?.status_subtype === SUBTYPE_TOKUTEI_KATSUDO_55 && (
                 <span data-testid="badge-koshin-fuka" title="更新不可の時限資格。期限内に免許取得→特定技能1号への変更申請が必要"
-                  style={{fontSize:10,fontWeight:700,color:"#7c3aed",background:"#f3e8ff",borderRadius:4,padding:"2px 7px",letterSpacing:"0.03em"}}>
+                  style={{fontSize:10,fontWeight:700,color:"#dc2626",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:4,padding:"2px 7px",letterSpacing:"0.03em"}}>
                   更新不可
                 </span>
               )}
@@ -983,25 +985,130 @@ export default function EmployeeDetail() {
           </div>
           <div style={{textAlign:"center"}}>
             {trust && trustVerified ? (
-              <ScoreRing score={Math.round(trust.total)} max={100} />
+              <ScoreRing score={Math.round(trust.total)} max={100} color={BRANCH_META[trust.branch].color} />
             ) : (
-              <div style={{width:72,height:72,borderRadius:'50%',border:`6px solid ${trust ? BRANCH_META[trust.branch].border : '#f0f0f0'}`,display:'flex',alignItems:'center',justifyContent:'center',boxSizing:'border-box'}}>
+              <div style={{width:72,height:72,borderRadius:'50%',border:`6px solid ${trust ? BRANCH_META[trust.branch].border : '#f3f4f6'}`,display:'flex',alignItems:'center',justifyContent:'center',boxSizing:'border-box'}}>
                 <span style={{fontSize:10,color: trust ? BRANCH_META[trust.branch].color : '#999'}}>{trust ? BRANCH_META[trust.branch].label : '...'}</span>
               </div>
             )}
-            <div style={{fontSize:11,color:"#999",marginTop:4}}>信頼スコア</div>
+            <div style={{fontSize:11,color:"#9ca3af",marginTop:4}}>信頼スコア</div>
             {trust && !trustVerified && (
               <div style={{fontSize:10,fontWeight:600,color:BRANCH_META[trust.branch].color,marginTop:2}}>{BRANCH_META[trust.branch].label}</div>
             )}
           </div>
         </div>
 
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+          {/* 基本情報 */}
+          <div style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:12,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <h2 style={{margin:0,fontSize:15,fontWeight:600,color:"#111827"}}>基本情報</h2>
+              <button onClick={handleOpenEditWorker}
+                style={{background:"none",border:"1px solid #d1d5db",borderRadius:6,padding:"4px 12px",fontSize:12,cursor:"pointer",color:"#6b7280"}}>
+                <Pencil size={11} style={{display:'inline',verticalAlign:'-1px',marginRight:4}} />編集
+              </button>
+            </div>
+            {[
+              {label:"氏名（ローマ字）", value:worker.name_romaji},
+              {label:"生年月日", value:worker.date_of_birth},
+              {label:"国籍", value:worker.nationality},
+              {label:"性別", value:worker.gender === 'male' ? '男性' : worker.gender === 'female' ? '女性' : '-'},
+              {label:"パスポート番号", value:worker.passport_number, missingBadge:!worker.passport_number},
+              {label:"在留カード番号", value:activeStatus?.card_number || '-'},
+            ].map((item,i)=>(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<5?"1px solid #f3f4f6":"none"}}>
+                <span style={{fontSize:13,color:"#6b7280"}}>{item.label}</span>
+                {item.missingBadge ? (
+                  <span style={{fontSize:11,fontWeight:600,color:"#92400e",background:"#fef3c7",border:"1px solid #fde68a",borderRadius:9999,padding:"2px 10px"}}><AlertTriangle size={11} style={{display:'inline',verticalAlign:'-1px',marginRight:4}} />未入力</span>
+                ) : (
+                  <span style={{fontSize:13,color:"#111827",fontWeight:500}}>{item.value}</span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* 在留情報 */}
+          <div style={{background:"#fff",border:urgent?"1px solid #fecaca":"1px solid #e5e7eb",borderRadius:12,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <h2 style={{margin:0,fontSize:15,fontWeight:600,color:"#111827"}}>在留情報</h2>
+              <button onClick={handleOpenEditStatus}
+                style={{background:"none",border:"1px solid #d1d5db",borderRadius:6,padding:"4px 12px",fontSize:12,cursor:"pointer",color:"#6b7280"}}>
+                <Pencil size={11} style={{display:'inline',verticalAlign:'-1px',marginRight:4}} />編集
+              </button>
+            </div>
+            {[
+              {label:"在留資格", value:activeStatus?.status_type || '-'},
+              {label:"在留期限", value:activeStatus?.expiry_date || '-'},
+              {label:"残り日数", value:<span style={{color:urgent?"#dc2626":days<=60?"#d97706":"#6b7280",fontWeight:700}}>{days}日</span>},
+              {label:"在留カード番号", value:activeStatus?.card_number || '-'},
+            ].map((item,i)=>(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<3?"1px solid #f3f4f6":"none"}}>
+                <span style={{fontSize:13,color:"#6b7280"}}>{item.label}</span>
+                <span style={{fontSize:13,color:"#111827",fontWeight:500}}>{item.value}</span>
+              </div>
+            ))}
+            <input
+              ref={cardFileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              style={{display:'none'}}
+              onChange={e => {
+                const file = e.target.files?.[0]
+                if (file) handleCardUpdateFile(file)
+                e.target.value = ''
+              }}
+            />
+            <button
+              onClick={() => cardFileRef.current?.click()}
+              disabled={cardUpdate.extracting}
+              style={{marginTop:16,background:cardUpdate.extracting?"#e5e7eb":"#2563eb",border:"none",borderRadius:6,padding:"10px 16px",color:cardUpdate.extracting?"#9ca3af":"#fff",fontSize:13,fontWeight:600,cursor:cardUpdate.extracting?"not-allowed":"pointer",width:"100%"}}
+            >
+              {cardUpdate.extracting ? 'AI読み取り中...' : <><Camera size={14} style={{display:'inline',verticalAlign:'-2px',marginRight:6}} />新しい在留カードを読み取って更新</>}
+            </button>
+            <button
+              onClick={() => alert('この機能は準備中です。今後、在留資格更新申請書の自動生成に対応予定です。')}
+              style={{marginTop:8,background:"#f3f4f6",border:"1px solid #d1d5db",borderRadius:6,padding:"10px 16px",color:"#6b7280",fontSize:13,fontWeight:600,cursor:"pointer",width:"100%"}}
+            >
+              更新申請書を生成（準備中）
+            </button>
+          </div>
+
+        </div>
+
+        {/* 雇用条件入力 */}
+        <div style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:12,padding:"20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:600,color:"#111827",marginBottom:2}}>雇用条件書</div>
+            <div style={{fontSize:13,color:"#888"}}>契約期間・労働時間・賃金などを入力します</div>
+          </div>
+          <button
+            onClick={() => router.push(`/employees/${worker.id}/employment-conditions`)}
+            style={{background:"#2563eb",border:"none",borderRadius:6,padding:"9px 18px",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer",flexShrink:0}}
+          >
+            <Pencil size={12} style={{display:'inline',verticalAlign:'-1px',marginRight:5}} />雇用条件を入力
+          </button>
+        </div>
+
+        {/* 賃金台帳 */}
+        <div style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:12,padding:"20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:600,color:"#111827",marginBottom:2}}>賃金台帳</div>
+            <div style={{fontSize:13,color:"#888"}}>給与明細をAIで読み取り、月別に記録します</div>
+          </div>
+          <button
+            onClick={() => router.push(`/employees/${worker.id}/payroll`)}
+            style={{background:"#2563eb",border:"none",borderRadius:6,padding:"9px 18px",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer",flexShrink:0}}
+          >
+            <Sparkles size={13} style={{display:'inline',verticalAlign:'-2px',marginRight:5}} />賃金台帳を開く
+          </button>
+        </div>
+
         {/* 四半期面談タスク（未完了分） */}
         {interviewTasks.length > 0 && (
           <div data-testid="interview-task-section" style={{background:"#fff",border:"1px solid #bfdbfe",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
-            <div style={{fontSize:15,fontWeight:600,color:"#000",marginBottom:10}}>面談タスク</div>
+            <div style={{fontSize:15,fontWeight:600,color:"#111827",marginBottom:10}}>面談タスク</div>
             {interviewTasks.map((t, i) => (
-              <div key={t.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"9px 0",borderTop:i>0?"1px solid #f0f0f0":"none",flexWrap:"wrap"}}>
+              <div key={t.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"9px 0",borderTop:i>0?"1px solid #f3f4f6":"none",flexWrap:"wrap"}}>
                 <div>
                   <div style={{fontSize:13,fontWeight:600,color:"#111"}}>
                     {interviewVariantOf(t.task_type) === 'supervisor' ? '監督者面談' : '四半期面談（本人）'}（{t.period_key}）
@@ -1009,7 +1116,7 @@ export default function EmployeeDetail() {
                   <div style={{fontSize:12,color:new Date(t.due_date) < new Date() ? "#dc2626" : "#6b7280"}}>期限 {t.due_date}</div>
                 </div>
                 <button data-testid={`open-interview-${t.id}`} onClick={() => setOpenTask(t)}
-                  style={{background:"#0066cc",border:"none",borderRadius:6,padding:"8px 16px",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer",flexShrink:0}}>
+                  style={{background:"#2563eb",border:"none",borderRadius:6,padding:"8px 16px",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer",flexShrink:0}}>
                   面談を記録
                 </button>
               </div>
@@ -1020,16 +1127,16 @@ export default function EmployeeDetail() {
         {/* 業界パッケージの一回限りタスク（初任講習・初任診断等・段2は表示のみ） */}
         {industryTasks.length > 0 && (
           <div data-testid="industry-task-section" style={{background:"#fff",border:"1px solid #ddd6fe",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
-            <div style={{fontSize:15,fontWeight:600,color:"#000",marginBottom:10}}>業界別タスク（法定期限）</div>
+            <div style={{fontSize:15,fontWeight:600,color:"#111827",marginBottom:10}}>業界別タスク（法定期限）</div>
             {industryTasks.map((t, i) => {
               const def = industryTaskDefByType(t.task_type)
               const d = getDaysUntil(t.due_date)
               const overdue = d < 0
               return (
-                <div key={t.id} data-testid={`industry-task-${t.task_type}`} style={{padding:"10px 0",borderTop:i>0?"1px solid #f0f0f0":"none"}}>
+                <div key={t.id} data-testid={`industry-task-${t.task_type}`} style={{padding:"10px 0",borderTop:i>0?"1px solid #f3f4f6":"none"}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                     <span style={{fontSize:13,fontWeight:600,color:"#111"}}>{def?.label ?? t.task_type}</span>
-                    <span style={{fontSize:11,fontWeight:700,color:overdue?"#dc2626":d<=14?"#7c3aed":"#6b7280",background:overdue?"#fee2e2":d<=14?"#f3e8ff":"#f3f4f6",borderRadius:4,padding:"2px 7px"}}>
+                    <span style={{fontSize:11,fontWeight:700,color:overdue?"#dc2626":d<=14?"#d97706":"#6b7280",background:overdue?"#fee2e2":d<=14?"#fffbeb":"#f3f4f6",borderRadius:4,padding:"2px 7px"}}>
                       {overdue ? `期限超過 ${-d}日` : `残り${d}日`}
                     </span>
                   </div>
@@ -1049,24 +1156,27 @@ export default function EmployeeDetail() {
 
         {/* 作業資格チェック（段3・作業割当 × 保有資格・未充足=労安衛法119条リスク） */}
         {qualGaps.length > 0 && (
-          <div data-testid="qual-gap-section" style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
-            <div style={{fontSize:15,fontWeight:600,color:"#000",marginBottom:10}}>作業資格チェック（労働安全衛生法）</div>
+          <div data-testid="qual-gap-section" style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+            <div style={{fontSize:15,fontWeight:600,color:"#111827",marginBottom:10}}>作業資格チェック（労働安全衛生法）</div>
             {qualGaps.map((g, i) => {
               const bad = !g.satisfied
               return (
                 <div key={g.rule.work} data-testid={`qual-gap-${g.rule.work}`}
                   style={{padding:"11px 13px",marginTop:i>0?8:0,borderRadius:8,
-                    background:bad?"#fee2e2":"#dcfce7",border:`1px solid ${bad?"#fecaca":"#bbf7d0"}`}}>
+                    /* 未充足=検証された欠缺(期限超過ではない)→橙 */
+                    background:bad?"#fffbeb":"#f0fdf4",border:`1px solid ${bad?"#fde68a":"#bbf7d0"}`}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                    <span style={{fontSize:14}}>{bad?"⚠️":"✅"}</span>
+                    {bad
+                      ? <AlertTriangle size={15} strokeWidth={2} color="#d97706" style={{flexShrink:0}} />
+                      : <CheckCircle2 size={15} strokeWidth={2} color="#16a34a" style={{flexShrink:0}} />}
                     <span style={{fontSize:13,fontWeight:600,color:"#111"}}>{g.rule.label}</span>
-                    <span style={{fontSize:11,fontWeight:700,color:bad?"#dc2626":"#166534",
-                      background:bad?"#fff":"#fff",borderRadius:4,padding:"2px 7px"}}>
+                    <span style={{fontSize:11,fontWeight:700,color:bad?"#d97706":"#166534",
+                      background:"#fff",borderRadius:4,padding:"2px 7px"}}>
                       {bad?"技能講習 未修了":"技能講習 修了済"}
                     </span>
                   </div>
                   {bad && (
-                    <div style={{fontSize:12,color:"#b91c1c",marginTop:5,fontWeight:600}}>
+                    <div style={{fontSize:12,color:"#b45309",marginTop:5,fontWeight:600}}>
                       無資格での従事は罰則対象 — {g.rule.penalty}
                     </div>
                   )}
@@ -1082,10 +1192,10 @@ export default function EmployeeDetail() {
 
         {/* 実施済み面談記録（定期面談報告書 5-5号 の再ダウンロード） */}
         {interviewRecords.length > 0 && (
-          <div data-testid="interview-records-section" style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
-            <div style={{fontSize:15,fontWeight:600,color:"#000",marginBottom:10}}>面談記録（定期面談報告書 参考様式第5-5号／5-6号）</div>
+          <div data-testid="interview-records-section" style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+            <div style={{fontSize:15,fontWeight:600,color:"#111827",marginBottom:10}}>面談記録（定期面談報告書 参考様式第5-5号／5-6号）</div>
             {interviewRecords.map((r, i) => (
-              <div key={r.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"9px 0",borderTop:i>0?"1px solid #f0f0f0":"none",flexWrap:"wrap"}}>
+              <div key={r.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"9px 0",borderTop:i>0?"1px solid #f3f4f6":"none",flexWrap:"wrap"}}>
                 <div>
                   <div style={{fontSize:13,fontWeight:600,color:"#111"}}>
                     {r.type === 'interview_supervisor' ? '監督者面談（5-6号）' : '本人面談（5-5号）'}（{r.quarter ?? '-'}）
@@ -1094,8 +1204,8 @@ export default function EmployeeDetail() {
                 </div>
                 <button data-testid={`download-report-${r.id}`} onClick={() => downloadInterviewReport(r)}
                   disabled={docGenerating === `mendan-${r.id}`}
-                  style={{background:"#fff",border:"1px solid #d0d0d0",borderRadius:6,padding:"8px 16px",color:docGenerating === `mendan-${r.id}` ? "#9ca3af" : "#374151",fontSize:13,fontWeight:600,cursor:docGenerating === `mendan-${r.id}` ? "not-allowed" : "pointer",flexShrink:0}}>
-                  {docGenerating === `mendan-${r.id}` ? '⏳ 生成中...' : '📄 報告書をダウンロード'}
+                  style={{background:"#fff",border:"1px solid #d1d5db",borderRadius:6,padding:"8px 16px",color:docGenerating === `mendan-${r.id}` ? "#9ca3af" : "#374151",fontSize:13,fontWeight:600,cursor:docGenerating === `mendan-${r.id}` ? "not-allowed" : "pointer",flexShrink:0}}>
+                  {docGenerating === `mendan-${r.id}` ? '生成中...' : <><FileText size={13} style={{display:'inline',verticalAlign:'-2px',marginRight:5}} />報告書をダウンロード</>}
                 </button>
               </div>
             ))}
@@ -1106,9 +1216,9 @@ export default function EmployeeDetail() {
         {activeStatus?.status_type === '特定技能1号' && serviceMatrix.length > 0 && (() => {
           const rate = completionRate(serviceMatrix)
           return (
-            <div data-testid="service-matrix-card" style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+            <div data-testid="service-matrix-card" style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
               <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:10}}>
-                <div style={{fontSize:15,fontWeight:600,color:"#000"}}>支援業務の実施状況</div>
+                <div style={{fontSize:15,fontWeight:600,color:"#111827"}}>支援業務の実施状況</div>
                 <div style={{fontSize:12,color:"#6b7280"}}>
                   常時義務の実施率 <span data-testid="matrix-rate" style={{fontWeight:700,color:"#111"}}>{rate.done}/{rate.total}</span>
                 </div>
@@ -1116,6 +1226,7 @@ export default function EmployeeDetail() {
               <div style={{display:"flex",flexDirection:"column"}}>
                 {serviceMatrix.map(({ def, status }, i) => {
                   const s = STATUS_STYLE[status]
+                  const StatusIcon = s.icon
                   return (
                     <div key={def.key} data-testid={`matrix-row-${def.key}`}
                       style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderTop:i>0?"1px solid #f3f4f6":"none"}}>
@@ -1123,7 +1234,7 @@ export default function EmployeeDetail() {
                       <span style={{flex:1,minWidth:0,fontSize:13,color:"#374151"}}>{def.label}</span>
                       <span data-testid={`matrix-status-${def.key}`}
                         style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:12,fontWeight:600,color:s.color,background:s.bg,borderRadius:9999,padding:"3px 10px",flexShrink:0}}>
-                        {s.icon} {STATUS_LABEL[status]}
+                        <StatusIcon size={12} strokeWidth={2.4} /> {STATUS_LABEL[status]}
                       </span>
                     </div>
                   )
@@ -1136,118 +1247,16 @@ export default function EmployeeDetail() {
           )
         })()}
 
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
-          {/* 在留情報 */}
-          <div style={{background:"#fff",border:urgent?"1px solid #fecaca":"1px solid #e0e0e0",borderRadius:12,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-              <h2 style={{margin:0,fontSize:15,fontWeight:600,color:"#000"}}>在留情報</h2>
-              <button onClick={handleOpenEditStatus}
-                style={{background:"none",border:"1px solid #d0d0d0",borderRadius:6,padding:"4px 12px",fontSize:12,cursor:"pointer",color:"#555"}}>
-                ✏️ 編集
-              </button>
-            </div>
-            {[
-              {label:"在留資格", value:activeStatus?.status_type || '-'},
-              {label:"在留期限", value:activeStatus?.expiry_date || '-'},
-              {label:"残り日数", value:<span style={{color:urgent?"#dc2626":"#16a34a",fontWeight:700}}>{days}日</span>},
-              {label:"在留カード番号", value:activeStatus?.card_number || '-'},
-            ].map((item,i)=>(
-              <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<3?"1px solid #f0f0f0":"none"}}>
-                <span style={{fontSize:13,color:"#666"}}>{item.label}</span>
-                <span style={{fontSize:13,color:"#000",fontWeight:500}}>{item.value}</span>
-              </div>
-            ))}
-            <input
-              ref={cardFileRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,application/pdf"
-              style={{display:'none'}}
-              onChange={e => {
-                const file = e.target.files?.[0]
-                if (file) handleCardUpdateFile(file)
-                e.target.value = ''
-              }}
-            />
-            <button
-              onClick={() => cardFileRef.current?.click()}
-              disabled={cardUpdate.extracting}
-              style={{marginTop:16,background:cardUpdate.extracting?"#e5e7eb":"#0066cc",border:"none",borderRadius:6,padding:"10px 16px",color:cardUpdate.extracting?"#9ca3af":"#fff",fontSize:13,fontWeight:600,cursor:cardUpdate.extracting?"not-allowed":"pointer",width:"100%"}}
-            >
-              {cardUpdate.extracting ? '⏳ AI読み取り中...' : '📷 新しい在留カードを読み取って更新'}
-            </button>
-            <button
-              onClick={() => alert('この機能は準備中です。今後、在留資格更新申請書の自動生成に対応予定です。')}
-              style={{marginTop:8,background:"#f3f4f6",border:"1px solid #d1d5db",borderRadius:6,padding:"10px 16px",color:"#6b7280",fontSize:13,fontWeight:600,cursor:"pointer",width:"100%"}}
-            >
-              更新申請書を生成（準備中）
-            </button>
-          </div>
-
-          {/* 基本情報 */}
-          <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-              <h2 style={{margin:0,fontSize:15,fontWeight:600,color:"#000"}}>基本情報</h2>
-              <button onClick={handleOpenEditWorker}
-                style={{background:"none",border:"1px solid #d0d0d0",borderRadius:6,padding:"4px 12px",fontSize:12,cursor:"pointer",color:"#555"}}>
-                ✏️ 編集
-              </button>
-            </div>
-            {[
-              {label:"氏名（ローマ字）", value:worker.name_romaji},
-              {label:"生年月日", value:worker.date_of_birth},
-              {label:"国籍", value:worker.nationality},
-              {label:"性別", value:worker.gender === 'male' ? '男性' : worker.gender === 'female' ? '女性' : '-'},
-              {label:"パスポート番号", value:worker.passport_number, missingBadge:!worker.passport_number},
-              {label:"在留カード番号", value:activeStatus?.card_number || '-'},
-            ].map((item,i)=>(
-              <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<5?"1px solid #f0f0f0":"none"}}>
-                <span style={{fontSize:13,color:"#666"}}>{item.label}</span>
-                {item.missingBadge ? (
-                  <span style={{fontSize:11,fontWeight:600,color:"#92400e",background:"#fef3c7",border:"1px solid #fde68a",borderRadius:9999,padding:"2px 10px"}}>⚠️ 未入力</span>
-                ) : (
-                  <span style={{fontSize:13,color:"#000",fontWeight:500}}>{item.value}</span>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* 信頼スコア内訳（§6-1） */}
+        {/* 信頼スコア内訳（§6-1）— 賃金・面談・支援の蓄積から算出 */}
+        <div style={{marginBottom:16}}>
           <TrustScoreCard result={trust} snapshots={snapshots} />
-        </div>
-
-        {/* 雇用条件入力 */}
-        <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div>
-            <div style={{fontSize:15,fontWeight:600,color:"#000",marginBottom:2}}>雇用条件書</div>
-            <div style={{fontSize:13,color:"#888"}}>契約期間・労働時間・賃金などを入力します</div>
-          </div>
-          <button
-            onClick={() => router.push(`/employees/${worker.id}/employment-conditions`)}
-            style={{background:"#0066cc",border:"none",borderRadius:6,padding:"9px 18px",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer",flexShrink:0}}
-          >
-            ✏️ 雇用条件を入力
-          </button>
-        </div>
-
-        {/* 賃金台帳 */}
-        <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div>
-            <div style={{fontSize:15,fontWeight:600,color:"#000",marginBottom:2}}>賃金台帳</div>
-            <div style={{fontSize:13,color:"#888"}}>給与明細をAIで読み取り、月別に記録します</div>
-          </div>
-          <button
-            onClick={() => router.push(`/employees/${worker.id}/payroll`)}
-            style={{background:"#7c3aed",border:"none",borderRadius:6,padding:"9px 18px",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer",flexShrink:0}}
-          >
-            ✨ 賃金台帳を開く
-          </button>
         </div>
 
         {/* 書類生成セクション — 在留資格に応じて動的に表示 */}
         {applicableDocs.length > 0 && (
-          <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+          <div style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:12,padding:"20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
-              <h2 style={{margin:0,fontSize:15,fontWeight:600,color:"#000"}}>書類生成</h2>
+              <h2 style={{margin:0,fontSize:15,fontWeight:600,color:"#111827"}}>書類生成</h2>
               <span style={{fontSize:12,color:"#888",background:"#f5f5f5",padding:"2px 8px",borderRadius:4}}>
                 {activeStatus?.status_type}
               </span>
@@ -1261,7 +1270,7 @@ export default function EmployeeDetail() {
                     onClick={() => generateWordDoc(doc)}
                     disabled={docGenerating === doc.id}
                     style={{
-                      background: docGenerating === doc.id ? '#e5e7eb' : '#0066cc',
+                      background: docGenerating === doc.id ? '#e5e7eb' : '#2563eb',
                       color: docGenerating === doc.id ? '#9ca3af' : '#fff',
                       border: 'none',
                       borderRadius: 6,
@@ -1274,7 +1283,7 @@ export default function EmployeeDetail() {
                       gap: 6,
                     }}
                   >
-                    {docGenerating === doc.id ? '⏳ 生成中...' : `📄 ${doc.shortLabel}`}
+                    {docGenerating === doc.id ? '生成中...' : <><FileText size={13} style={{display:'inline',verticalAlign:'-2px',marginRight:5}} />{doc.shortLabel}</>}
                   </button>
                 ))}
               </div>
@@ -1282,7 +1291,7 @@ export default function EmployeeDetail() {
 
             {comingSoonDocs.length > 0 && (
               <div>
-                <div style={{fontSize:11,color:"#999",marginBottom:8}}>準備中</div>
+                <div style={{fontSize:11,color:"#9ca3af",marginBottom:8}}>準備中</div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
                   {comingSoonDocs.map(doc => (
                     <span
@@ -1307,13 +1316,13 @@ export default function EmployeeDetail() {
 
         {/* 在留資格履歴（時系列） */}
         {statusHistory.length > 0 && (
-          <div style={{background:"#fff",border:"1px solid #e0e0e0",borderRadius:12,padding:"20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
-            <h2 style={{margin:"0 0 14px",fontSize:15,fontWeight:600,color:"#000"}}>在留資格履歴</h2>
+          <div style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:12,padding:"20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+            <h2 style={{margin:"0 0 14px",fontSize:15,fontWeight:600,color:"#111827"}}>在留資格履歴</h2>
             <div style={{display:'flex',flexDirection:'column',gap:8}}>
               {statusHistory.map(s => (
-                <div key={s.id} style={{display:'flex',alignItems:'center',gap:12,border:s.is_active?'1px solid #bfdbfe':'1px solid #f0f0f0',background:s.is_active?'#eff6ff':'#fafafa',borderRadius:8,padding:'10px 14px'}}>
+                <div key={s.id} style={{display:'flex',alignItems:'center',gap:12,border:s.is_active?'1px solid #bfdbfe':'1px solid #f3f4f6',background:s.is_active?'#eff6ff':'#fafafa',borderRadius:8,padding:'10px 14px'}}>
                   <span style={{fontSize:11,fontWeight:600,padding:'2px 10px',borderRadius:9999,flexShrink:0,
-                    background:s.is_active?'#0066cc':'#e5e7eb',color:s.is_active?'#fff':'#6b7280'}}>
+                    background:s.is_active?'#2563eb':'#e5e7eb',color:s.is_active?'#fff':'#6b7280'}}>
                     {s.is_active ? '現在' : '過去'}
                   </span>
                   <div style={{flex:1,minWidth:0}}>

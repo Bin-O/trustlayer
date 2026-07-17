@@ -8,7 +8,8 @@ import { ensureQuarterlyInterviewTasks, interviewVariantOf, INTERVIEW_TASK_TYPES
 import { ensureIndustryTasks, industryTaskDefByType } from '@/lib/industryTasks'
 import { SUBTYPE_TOKUTEI_KATSUDO_55 } from '@/lib/industry/packages/transport'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
-import { Megaphone } from 'lucide-react'
+import { Megaphone, ClipboardList, CheckCircle2 } from 'lucide-react'
+import { semantic } from '@/lib/ui/tokens'
 
 const TOKUTEI_TYPES = ['特定技能1号', '特定技能2号']
 
@@ -54,7 +55,7 @@ type TimelineItem = {
   key: string
   kind: TimelineKind
   due: string
-  urgency: 'red' | 'amber' | 'green'
+  urgency: 'red' | 'amber' | 'gray'
   title: string
   detail: string
   actionLabel: string
@@ -80,7 +81,9 @@ type Snapshot = {
   expiryDist: { label: string; count: number; color: string }[]
 }
 
-const URGENCY_COLOR = { red: '#dc2626', amber: '#d97706', green: '#16a34a' } as const
+// 4色体系(docs/product-direction.md 原則3): 期日前タスクは灰。緑は完了・検証済にのみ使う
+const URGENCY_COLOR = { red: semantic.red.text, amber: semantic.orange.text, gray: '#9ca3af' } as const
+const DONE_GREEN = semantic.green.text
 const KIND_LABEL: Record<TimelineKind, string> = { expiry: '在留期限', todoke: '届出', mendan: '面談', industry: '業界研修' }
 
 function fmtDate(d: Date): string {
@@ -144,7 +147,8 @@ function buildSnapshot(
         key: `expiry-${w.id}`,
         kind: 'expiry',
         due: st.expiry_date,
-        urgency: d <= 30 ? 'red' : d <= 60 ? 'amber' : 'green',
+        // 在留期限は回復不能のため ≤30日=赤 / 31〜60日=橙 / 61〜90日=灰(赤の例外規定)
+        urgency: d <= 30 ? 'red' : d <= 60 ? 'amber' : 'gray',
         title: `${nameOf(w)}さんの在留期限`,
         detail: is55
           ? (d < 0 ? `期限を${-d}日超過（${st.expiry_date}）／免許取得→特技1号変更が必要`
@@ -176,7 +180,7 @@ function buildSnapshot(
       key: `todoke312-${w.id}`,
       kind: 'todoke',
       due,
-      urgency: d <= 7 ? 'red' : 'amber',
+      urgency: d < 0 ? 'red' : 'amber',
       title: `${nameOf(w)}さんの契約終了届出（3-1-2号）`,
       detail: d < 0
         ? `届出期限を${-d}日超過（退職日 ${termination}・期限 ${due}）`
@@ -201,7 +205,7 @@ function buildSnapshot(
         key: 'teiki-todoke',
         kind: 'todoke',
         due,
-        urgency: d <= 14 ? 'red' : 'amber',
+        urgency: d < 0 ? 'red' : 'amber',
         title: `定期届出（${prevFy}年度分・参考様式第3-6号）`,
         detail: d < 0 ? `提出期限を${-d}日超過（期限 ${due}）` : `提出期限 ${due}`,
         actionLabel: '定期届出ページへ',
@@ -222,7 +226,7 @@ function buildSnapshot(
       key: `mendan-${t.id}`,
       kind: 'mendan',
       due: t.due_date,
-      urgency: d < 0 ? 'red' : d <= 14 ? 'amber' : 'green',
+      urgency: d < 0 ? 'red' : d <= 14 ? 'amber' : 'gray',
       title: interviewVariantOf(t.task_type) === 'supervisor'
         ? `${name}さんの監督者面談（${t.period_key}）`
         : `${name}さんの四半期面談（${t.period_key}）`,
@@ -242,7 +246,7 @@ function buildSnapshot(
       key: `industry-${t.id}`,
       kind: 'industry',
       due: t.due_date,
-      urgency: d < 0 ? 'red' : d <= 14 ? 'amber' : 'green',
+      urgency: d < 0 ? 'red' : d <= 14 ? 'amber' : 'gray',
       title: `${name}さんの${def?.label ?? t.task_type}`,
       detail: d < 0 ? `期限を${-d}日超過しています（期限 ${t.due_date}）` : `期限 ${t.due_date}（残り${d}日）`,
       actionLabel: '従業員詳細へ',
@@ -263,7 +267,7 @@ function buildSnapshot(
   }
 
   // ── タイムラインを期日順（同日なら緊急度順）に整列 ──
-  const rank = { red: 0, amber: 1, green: 2 }
+  const rank = { red: 0, amber: 1, gray: 2 }
   timeline.sort((a, b) => a.due.localeCompare(b.due) || rank[a.urgency] - rank[b.urgency])
 
   // ── 全体ヘルス ──
@@ -292,9 +296,9 @@ function buildSnapshot(
     expiryDist: [
       { label: '30日以内', count: expiry30, color: URGENCY_COLOR.red },
       { label: '31〜60日', count: expiry60, color: URGENCY_COLOR.amber },
-      { label: '61〜90日', count: expiry90, color: '#3b82f6' },
-      { label: '91日以上', count: expiryOver90, color: URGENCY_COLOR.green },
-      { label: '期限未登録', count: expiryUnknown, color: '#e2e8f0' },
+      { label: '61〜90日', count: expiry90, color: '#9ca3af' },
+      { label: '91日以上', count: expiryOver90, color: '#d1d5db' },
+      { label: '期限未登録', count: expiryUnknown, color: '#e5e7eb' },
     ],
   }
 }
@@ -302,7 +306,7 @@ function buildSnapshot(
 // ── UI部品 ──────────────────────────────────────────────
 
 function Skeleton({ height, width }: { height: number; width?: number | string }) {
-  return <div style={{ height, width: width ?? '100%', borderRadius: 8, background: '#e9ecef', animation: 'dashPulse 1.4s ease-in-out infinite' }} />
+  return <div style={{ height, width: width ?? '100%', borderRadius: 8, background: '#f3f4f6', animation: 'dashPulse 1.4s ease-in-out infinite' }} />
 }
 
 const cardStyle: React.CSSProperties = {
@@ -337,13 +341,13 @@ function ActionTimeline({ items, todayStr, todayYear }: {
           style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 18px', borderBottom: i < visible.length - 1 || items.length > TL_COLLAPSED_COUNT ? '1px solid #f3f4f6' : 'none', flexWrap: 'wrap' }}>
           <span style={{ width: 9, height: 9, borderRadius: '50%', background: URGENCY_COLOR[t.urgency], flexShrink: 0 }} />
           {t.due < todayStr && (
-            <span data-testid="tl-overdue-tag" style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fee2e2', borderRadius: 4, padding: '2px 6px', flexShrink: 0, letterSpacing: '0.05em' }}>超過</span>
+            <span data-testid="tl-overdue-tag" style={{ fontSize: 10, fontWeight: 700, color: semantic.red.text, background: '#fee2e2', borderRadius: 4, padding: '2px 6px', flexShrink: 0, letterSpacing: '0.05em' }}>超過</span>
           )}
           {t.badge && (
-            <span data-testid="tl-badge" style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', background: '#f3e8ff', borderRadius: 4, padding: '2px 6px', flexShrink: 0, letterSpacing: '0.05em' }}>{t.badge}</span>
+            <span data-testid="tl-badge" style={{ fontSize: 10, fontWeight: 700, color: semantic.red.text, background: semantic.red.bg, border: `1px solid ${semantic.red.border}`, borderRadius: 4, padding: '2px 6px', flexShrink: 0, letterSpacing: '0.05em' }}>{t.badge}</span>
           )}
           <div style={{ width: 76, flexShrink: 0 }}>
-            <div style={{ fontSize: t.due.slice(0, 4) === todayYear ? 13 : 12, fontWeight: 700, color: '#111', fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ fontSize: t.due.slice(0, 4) === todayYear ? 13 : 12, fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>
               {t.due.slice(0, 4) === todayYear
                 ? t.due.slice(5).replace('-', '/')
                 : t.due.replace(/-/g, '/')}
@@ -351,7 +355,7 @@ function ActionTimeline({ items, todayStr, todayYear }: {
             <div style={{ fontSize: 10, color: '#9ca3af' }}>{KIND_LABEL[t.kind]}</div>
           </div>
           <div style={{ flex: 1, minWidth: 220 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>{t.title}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{t.title}</div>
             <div style={{ fontSize: 12, color: t.urgency === 'red' ? URGENCY_COLOR.red : '#6b7280', marginTop: 1 }}>{t.detail}</div>
           </div>
           <button className="tl-action" onClick={() => router.push(t.href)}>
@@ -364,7 +368,7 @@ function ActionTimeline({ items, todayStr, todayYear }: {
         <button
           data-testid="tl-toggle"
           onClick={() => setExpanded(v => !v)}
-          style={{ width: '100%', background: '#fafafa', border: 'none', padding: '10px 18px', fontSize: 12, fontWeight: 600, color: '#2563eb', cursor: 'pointer', fontFamily: 'inherit' }}
+          style={{ width: '100%', background: '#f9fafb', border: 'none', padding: '10px 18px', fontSize: 12, fontWeight: 600, color: '#2563eb', cursor: 'pointer', fontFamily: 'inherit' }}
         >
           {expanded ? '▲ 折りたたむ' : `▼ 他 ${hiddenCount} 件を表示`}
         </button>
@@ -405,7 +409,7 @@ function CompositionCard({ title, dist }: { title: string; dist: Dist[] }) {
               <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                 <span style={{ width: 8, height: 8, borderRadius: 2, background: CHART_COLORS[i % CHART_COLORS.length], flexShrink: 0 }} />
                 <span title={d.name} style={{ color: '#374151', flex: 1, lineHeight: 1.35 }}>{LEGEND_ABBREV[d.name] ?? d.name}</span>
-                <span style={{ color: '#111', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{d.value}</span>
+                <span style={{ color: '#111827', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{d.value}</span>
               </div>
             ))}
           </div>
@@ -504,9 +508,10 @@ export default function Dashboard() {
     width: '100%',
   }
 
+  // 統計カードは脇役(主役は要対応タイムライン)。数字は22px/600で一段引く
   const bigNum = (n: number, color: string): React.CSSProperties => ({
-    fontSize: 30,
-    fontWeight: 700,
+    fontSize: 22,
+    fontWeight: 600,
     lineHeight: 1.1,
     color,
     fontVariantNumeric: 'tabular-nums',
@@ -517,7 +522,7 @@ export default function Dashboard() {
       <style>{`
         @keyframes dashPulse { 0%,100% { opacity: .5 } 50% { opacity: 1 } }
         .tl-action {
-          border: 1px solid #e5e7eb; border-radius: 6px; padding: 7px 14px;
+          border: 1px solid #e5e7eb; border-radius: 8px; padding: 7px 14px;
           font-size: 12px; font-weight: 600; cursor: pointer; flex-shrink: 0;
           background: #fff; color: #6b7280; font-family: inherit; white-space: nowrap;
           transition: border-color .15s ease, color .15s ease, background .15s ease;
@@ -532,7 +537,7 @@ export default function Dashboard() {
         {announcements.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
             {announcements.map(a => (
-              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '11px 16px' }}>
+              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: '11px 16px' }}>
                 <Megaphone size={16} strokeWidth={2} color="#1e40af" style={{ flexShrink: 0 }} />
                 <span style={{ fontSize: 13, color: '#1e40af', fontWeight: 500, lineHeight: 1.5 }}>
                   <span style={{ fontWeight: 700, marginRight: 8 }}>制度改正</span>
@@ -545,93 +550,9 @@ export default function Dashboard() {
 
         {/* ページタイトル */}
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
-          <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, color: '#111', letterSpacing: '-0.01em' }}>コンプライアンス ダッシュボード</h1>
+          <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, color: '#111827', letterSpacing: '-0.01em' }}>コンプライアンス ダッシュボード</h1>
           <span style={{ fontSize: 13, color: '#9ca3af' }}>{todayLabel} 時点</span>
         </div>
-
-        {/* アラートサマリー */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 12, marginBottom: 28 }}>
-          {loading || !snap ? (
-            <>
-              {[0, 1, 2, 3].map(i => (
-                <div key={i} style={cardStyle}><Skeleton height={16} width={120} /><div style={{ height: 10 }} /><Skeleton height={36} width={80} /></div>
-              ))}
-            </>
-          ) : (
-            <>
-              {/* 在留期限警告 */}
-              <button data-testid="card-expiry" onClick={() => focusTimeline('expiry')} style={alertCardBtn}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em' }}>在留期限の警告</div>
-                <div style={{ display: 'flex', gap: 18 }}>
-                  {[
-                    { label: '30日以内', n: snap.expiry30, color: snap.expiry30 > 0 ? URGENCY_COLOR.red : '#d1d5db' },
-                    { label: '31〜60日', n: snap.expiry60, color: snap.expiry60 > 0 ? URGENCY_COLOR.amber : '#d1d5db' },
-                    { label: '61〜90日', n: snap.expiry90, color: snap.expiry90 > 0 ? '#374151' : '#d1d5db' },
-                  ].map(b => (
-                    <div key={b.label}>
-                      <div style={bigNum(b.n, b.color)}>{b.n}</div>
-                      <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 3 }}>{b.label}</div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ fontSize: 11, color: '#9ca3af' }}>クリックで該当一覧を表示</div>
-              </button>
-
-              {/* 未対応の届出 */}
-              <button data-testid="card-todoke" onClick={() => focusTimeline('todoke')} style={alertCardBtn}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em' }}>未対応の届出</div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <div style={bigNum(snap.todokeCount, snap.todokeCount > 0 ? URGENCY_COLOR.red : URGENCY_COLOR.green)}>{snap.todokeCount}</div>
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>件</span>
-                  {snap.todokeCount === 0 && <span style={{ fontSize: 12, color: URGENCY_COLOR.green, fontWeight: 600 }}>✓ すべて対応済み</span>}
-                </div>
-                <div style={{ fontSize: 11, color: '#9ca3af' }}>契約終了（3-1-2号）・定期届出（3-6号）</div>
-              </button>
-
-              {/* 四半期面談タスク */}
-              <button data-testid="card-mendan" onClick={() => focusTimeline('mendan')} style={alertCardBtn}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em' }}>四半期面談タスク</div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <div style={bigNum(snap.mendanCount, snap.mendanCount > 0 ? '#2563eb' : URGENCY_COLOR.green)}>{snap.mendanCount}</div>
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>件</span>
-                  {snap.mendanCount === 0 && <span style={{ fontSize: 12, color: URGENCY_COLOR.green, fontWeight: 600 }}>✓ すべて実施済み</span>}
-                </div>
-                <div style={{ fontSize: 11, color: '#9ca3af' }}>未完了の定期面談（本人+監督者・特定技能1号・3ヶ月に1回以上）</div>
-              </button>
-
-              {/* 賃金台帳 */}
-              <button data-testid="card-payroll" onClick={() => router.push('/reports/annual')} style={alertCardBtn}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em' }}>賃金台帳の未登録</div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <div style={bigNum(snap.payrollMissingCount, snap.payrollMissingCount > 0 ? URGENCY_COLOR.amber : URGENCY_COLOR.green)}>{snap.payrollMissingCount}</div>
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>名</span>
-                  {snap.payrollMissingCount === 0 && <span style={{ fontSize: 12, color: URGENCY_COLOR.green, fontWeight: 600 }}>✓ 今年度分は登録済み</span>}
-                </div>
-                <div style={{ fontSize: 11, color: '#9ca3af' }}>今年度の経過月に未登録あり（特定技能）→ 定期届出ページへ</div>
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* 支援業務レポートビューへの入口（柱1: 監査・投資家向けレポート） */}
-        <button
-          data-testid="entry-support-matrix"
-          onClick={() => router.push('/reports/support-matrix')}
-          style={{
-            ...cardStyle, cursor: 'pointer', fontFamily: 'inherit', width: '100%',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-            marginBottom: 28, padding: '14px 20px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-            <span style={{ fontSize: 20 }}>📋</span>
-            <div style={{ textAlign: 'left' }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#111' }}>支援業務の実施状況を見る</div>
-              <div style={{ fontSize: 12, color: '#9ca3af' }}>義務的支援10業務の実施記録を一覧化（監査用レポート）</div>
-            </div>
-          </div>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', flexShrink: 0 }}>開く →</span>
-        </button>
 
         {/* 要対応タイムライン */}
         <section id="action-timeline" style={{ marginBottom: 28, scrollMarginTop: 72 }}>
@@ -671,14 +592,99 @@ export default function Dashboard() {
             </div>
           ) : filteredTimeline.length === 0 ? (
             <div style={{ ...cardStyle, padding: '32px 20px', textAlign: 'center' }}>
-              <div style={{ fontSize: 22, marginBottom: 6 }}>✅</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: URGENCY_COLOR.green }}>現在、緊急の対応事項はありません</div>
+              <CheckCircle2 size={22} strokeWidth={2} color={DONE_GREEN} style={{ display: 'inline', marginBottom: 6 }} />
+              <div style={{ fontSize: 14, fontWeight: 600, color: DONE_GREEN }}>現在、緊急の対応事項はありません</div>
             </div>
           ) : (
             /* key=tlFilter でフィルタ切替時に展開状態をリセットする */
             <ActionTimeline key={tlFilter} items={filteredTimeline} todayStr={todayStr} todayYear={String(today.getFullYear())} />
           )}
         </section>
+
+        {/* アラートサマリー */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 12, marginBottom: 28 }}>
+          {loading || !snap ? (
+            <>
+              {[0, 1, 2, 3].map(i => (
+                <div key={i} style={cardStyle}><Skeleton height={16} width={120} /><div style={{ height: 10 }} /><Skeleton height={36} width={80} /></div>
+              ))}
+            </>
+          ) : (
+            <>
+              {/* 在留期限警告 */}
+              <button data-testid="card-expiry" onClick={() => focusTimeline('expiry')} style={alertCardBtn}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em' }}>在留期限の警告</div>
+                <div style={{ display: 'flex', gap: 18 }}>
+                  {[
+                    { label: '30日以内', n: snap.expiry30, color: snap.expiry30 > 0 ? URGENCY_COLOR.red : '#d1d5db' },
+                    { label: '31〜60日', n: snap.expiry60, color: snap.expiry60 > 0 ? URGENCY_COLOR.amber : '#d1d5db' },
+                    { label: '61〜90日', n: snap.expiry90, color: snap.expiry90 > 0 ? '#374151' : '#d1d5db' },
+                  ].map(b => (
+                    <div key={b.label}>
+                      <div style={bigNum(b.n, b.color)}>{b.n}</div>
+                      <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 3 }}>{b.label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: '#9ca3af' }}>クリックで該当一覧を表示</div>
+              </button>
+
+              {/* 未対応の届出 */}
+              <button data-testid="card-todoke" onClick={() => focusTimeline('todoke')} style={alertCardBtn}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em' }}>未対応の届出</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <div style={bigNum(snap.todokeCount, snap.todokeCount > 0 ? URGENCY_COLOR.red : DONE_GREEN)}>{snap.todokeCount}</div>
+                  <span style={{ fontSize: 12, color: '#6b7280' }}>件</span>
+                  {snap.todokeCount === 0 && <span style={{ fontSize: 12, color: DONE_GREEN, fontWeight: 600 }}>✓ すべて対応済み</span>}
+                </div>
+                <div style={{ fontSize: 11, color: '#9ca3af' }}>契約終了（3-1-2号）・定期届出（3-6号）</div>
+              </button>
+
+              {/* 四半期面談タスク */}
+              <button data-testid="card-mendan" onClick={() => focusTimeline('mendan')} style={alertCardBtn}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em' }}>四半期面談タスク</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  {/* 件数は状態色ではなく中立色(青=ブランド/アクション専用) */}
+                  <div style={bigNum(snap.mendanCount, snap.mendanCount > 0 ? '#111827' : DONE_GREEN)}>{snap.mendanCount}</div>
+                  <span style={{ fontSize: 12, color: '#6b7280' }}>件</span>
+                  {snap.mendanCount === 0 && <span style={{ fontSize: 12, color: DONE_GREEN, fontWeight: 600 }}>✓ すべて実施済み</span>}
+                </div>
+                <div style={{ fontSize: 11, color: '#9ca3af' }}>未完了の定期面談（本人+監督者・特定技能1号・3ヶ月に1回以上）</div>
+              </button>
+
+              {/* 賃金台帳 */}
+              <button data-testid="card-payroll" onClick={() => router.push('/reports/annual')} style={alertCardBtn}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em' }}>賃金台帳の未登録</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <div style={bigNum(snap.payrollMissingCount, snap.payrollMissingCount > 0 ? URGENCY_COLOR.amber : DONE_GREEN)}>{snap.payrollMissingCount}</div>
+                  <span style={{ fontSize: 12, color: '#6b7280' }}>名</span>
+                  {snap.payrollMissingCount === 0 && <span style={{ fontSize: 12, color: DONE_GREEN, fontWeight: 600 }}>✓ 今年度分は登録済み</span>}
+                </div>
+                <div style={{ fontSize: 11, color: '#9ca3af' }}>今年度の経過月に未登録あり（特定技能）→ 定期届出ページへ</div>
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* 支援業務レポートビューへの入口（柱1: 監査・投資家向けレポート） */}
+        <button
+          data-testid="entry-support-matrix"
+          onClick={() => router.push('/reports/support-matrix')}
+          style={{
+            ...cardStyle, cursor: 'pointer', fontFamily: 'inherit', width: '100%',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+            marginBottom: 28, padding: '14px 20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <ClipboardList size={20} strokeWidth={1.8} color="#6b7280" style={{ flexShrink: 0 }} />
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>支援業務の実施状況を見る</div>
+              <div style={{ fontSize: 12, color: '#9ca3af' }}>義務的支援10業務の実施記録を一覧化（監査用レポート）</div>
+            </div>
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', flexShrink: 0 }}>開く →</span>
+        </button>
 
         {/* 全体ヘルスビュー */}
         <section>
@@ -693,7 +699,7 @@ export default function Dashboard() {
               <div style={cardStyle}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', letterSpacing: '0.05em', marginBottom: 10 }}>在職者数</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <div style={bigNum(snap.headcount, '#111')}>{snap.headcount}</div>
+                  <div style={bigNum(snap.headcount, '#111827')}>{snap.headcount}</div>
                   <span style={{ fontSize: 12, color: '#6b7280' }}>名</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12, fontSize: 12, color: '#374151' }}>
@@ -713,7 +719,7 @@ export default function Dashboard() {
                   <div style={{ fontSize: 13, color: '#9ca3af', padding: '24px 0', textAlign: 'center' }}>データがありません</div>
                 ) : (
                   <>
-                    <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', background: '#f3f4f6', marginBottom: 12 }}>
+                    <div style={{ display: 'flex', height: 10, borderRadius: 9999, overflow: 'hidden', background: '#f3f4f6', marginBottom: 12 }}>
                       {snap.expiryDist.filter(b => b.count > 0).map(b => (
                         <div key={b.label} style={{ flexGrow: b.count, background: b.color }} />
                       ))}
@@ -723,7 +729,7 @@ export default function Dashboard() {
                         <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                           <span style={{ width: 8, height: 8, borderRadius: 2, background: b.color, flexShrink: 0 }} />
                           <span style={{ color: '#374151', flex: 1 }}>{b.label}</span>
-                          <span style={{ color: '#111', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{b.count}</span>
+                          <span style={{ color: '#111827', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{b.count}</span>
                         </div>
                       ))}
                     </div>

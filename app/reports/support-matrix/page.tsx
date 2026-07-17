@@ -139,11 +139,12 @@ export default function SupportMatrixPage() {
                       </td>
                       {row.statuses.map(s => {
                         const st = STATUS_STYLE[s.status]
+                        const Icon = st.icon
                         return (
                           <td key={s.key} style={td}>
                             <span data-testid={`cell-${row.workerId}-${s.key}`} title={STATUS_LABEL[s.status]}
-                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 6, background: st.bg, color: st.color, fontSize: 13 }}>
-                              {st.icon}
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 6, background: st.bg, color: st.color }}>
+                              <Icon size={14} strokeWidth={2.4} />
                             </span>
                           </td>
                         )
@@ -159,12 +160,15 @@ export default function SupportMatrixPage() {
 
             {/* 凡例 */}
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 14, fontSize: 12, color: '#6b7280' }}>
-              {(['done', 'due', 'not_yet', 'not_applicable'] as ServiceStatus[]).map(s => (
-                <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 5, background: STATUS_STYLE[s].bg, color: STATUS_STYLE[s].color, fontSize: 12 }}>{STATUS_STYLE[s].icon}</span>
-                  {STATUS_LABEL[s]}
-                </span>
-              ))}
+              {(['done', 'due', 'not_yet', 'not_applicable'] as ServiceStatus[]).map(s => {
+                const Icon = STATUS_STYLE[s].icon
+                return (
+                  <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 4, background: STATUS_STYLE[s].bg, color: STATUS_STYLE[s].color }}><Icon size={12} strokeWidth={2.4} /></span>
+                    {STATUS_LABEL[s]}
+                  </span>
+                )
+              })}
               <span style={{ marginLeft: 'auto', color: '#9ca3af' }}>実施率は常時義務の業務のみを分母とします（該当なしの業務は除外）。</span>
             </div>
           </>

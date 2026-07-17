@@ -32,7 +32,7 @@ const emptyRatings = (): EvaluatorRatings => ({ performance: 0, attendance: 0, c
 function StepBadge({ n, title }: { n: number; title: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-      <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#0066cc', color: '#fff', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{n}</span>
+      <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#2563eb', color: '#fff', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{n}</span>
       <span style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>{title}</span>
     </div>
   )
@@ -216,9 +216,9 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
 
   return (
     <div data-testid="interview-modal" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '32px 16px' }}>
-      <div style={{ background: '#f9fafb', borderRadius: 14, width: '100%', maxWidth: 620, padding: '22px 22px 18px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+      <div style={{ background: '#f9fafb', borderRadius: 12, width: '100%', maxWidth: 620, padding: '22px 22px 18px', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#111' }}>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#111827' }}>
             {taskLabel} — {workerName}さん（{task.period_key}）
           </h2>
           <button onClick={onClose} data-testid="interview-close" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9ca3af' }}>✕</button>
@@ -419,7 +419,7 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
                 {itemsExpanded ? '▲ 閉じる' : '▼ 個別に確認する'}
               </button>
               {issueCount > 0 && (
-                <span data-testid="items-issue-count" style={{ fontSize: 12, fontWeight: 700, color: '#dc2626' }}>
+                <span data-testid="items-issue-count" style={{ fontSize: 12, fontWeight: 700, color: '#d97706' }}>
                   問題あり {issueCount} 件
                 </span>
               )}
@@ -443,7 +443,7 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
                             <input type="checkbox" data-testid={`f-item-${item.key}-issue`} checked={c.hasIssue}
                               onChange={e => setItem(item.key, { hasIssue: e.target.checked })}
                               style={{ marginTop: 3 }} />
-                            <span>{itemLabelOf(item.key, variant)}<span style={{ color: c.hasIssue ? '#dc2626' : '#9ca3af', fontWeight: 600, marginLeft: 6 }}>{c.hasIssue ? '問題あり' : '問題なし'}</span></span>
+                            <span>{itemLabelOf(item.key, variant)}<span style={{ color: c.hasIssue ? '#d97706' : '#9ca3af', fontWeight: 600, marginLeft: 6 }}>{c.hasIssue ? '問題あり' : '問題なし'}</span></span>
                           </label>
                           {c.hasIssue && (
                             <textarea data-testid={`f-item-${item.key}-detail`} value={c.detail}
@@ -465,7 +465,7 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
           <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px', marginBottom: 12, background: form.violation.has ? '#fef2f2' : '#fff' }}>
             <div style={{ display: 'flex', gap: 14 }}>
               {([[false, 'なし'], [true, '有り']] as const).map(([v, label]) => (
-                <label key={String(v)} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: v ? '#dc2626' : '#374151', cursor: 'pointer', fontWeight: 600 }}>
+                <label key={String(v)} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: v ? '#d97706' : '#374151', cursor: 'pointer', fontWeight: 600 }}>
                   <input type="radio" data-testid={`f-violation-${v ? 'yes' : 'no'}`}
                     checked={form.violation.has === v}
                     onChange={() => set('violation', { ...form.violation, has: v })} />
@@ -523,7 +523,7 @@ export default function InterviewTaskModal({ task, workerName, prevNotes, orgPre
             キャンセル
           </button>
           <button data-testid="interview-save" onClick={handleSave} disabled={!canSave}
-            style={{ background: canSave ? '#0066cc' : '#e5e7eb', border: 'none', borderRadius: 8, padding: '10px 22px', fontSize: 13, fontWeight: 700, color: canSave ? '#fff' : '#9ca3af', cursor: canSave ? 'pointer' : 'not-allowed' }}>
+            style={{ background: canSave ? '#2563eb' : '#e5e7eb', border: 'none', borderRadius: 8, padding: '10px 22px', fontSize: 13, fontWeight: 700, color: canSave ? '#fff' : '#9ca3af', cursor: canSave ? 'pointer' : 'not-allowed' }}>
             {saving ? '保存中...' : '保存して面談を完了'}
           </button>
         </div>

@@ -13,6 +13,7 @@ import {
   quarterKey,
   type SupportTask,
 } from '@/lib/supportTasks'
+import { Check, AlertTriangle, Circle, Minus, type LucideIcon } from 'lucide-react'
 
 /** 業務の義務区分。always=常時義務 / on_event=事由発生時のみ（該当なし表示の基準） */
 export type Obligation = 'always' | 'on_event'
@@ -56,11 +57,12 @@ export const STATUS_LABEL: Record<ServiceStatus, string> = {
   not_applicable: '該当なし',
 }
 
-export const STATUS_STYLE: Record<ServiceStatus, { icon: string; color: string; bg: string }> = {
-  done:           { icon: '✅', color: '#166534', bg: '#dcfce7' },
-  due:            { icon: '⚠️', color: '#b45309', bg: '#fef3c7' },
-  not_yet:        { icon: '○',  color: '#9ca3af', bg: '#f3f4f6' },
-  not_applicable: { icon: '—',  color: '#cbd5e1', bg: '#f8fafc' },
+// アイコンは絵文字ではなく lucide コンポーネント参照(絵文字固有の色がトークン外のため)
+export const STATUS_STYLE: Record<ServiceStatus, { icon: LucideIcon; color: string; bg: string }> = {
+  done:           { icon: Check,         color: '#166534', bg: '#dcfce7' },
+  due:            { icon: AlertTriangle, color: '#b45309', bg: '#fef3c7' },
+  not_yet:        { icon: Circle,        color: '#9ca3af', bg: '#f3f4f6' },
+  not_applicable: { icon: Minus,         color: '#cbd5e1', bg: '#f8fafc' },
 }
 
 /** 集約に必要な最小レコード形。quarter は面談の当四半期判定に用いる（他業務は NULL 可） */
