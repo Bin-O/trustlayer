@@ -3,6 +3,8 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/AppHeader'
+import { CheckCircle2, AlertTriangle, FileText, Users } from 'lucide-react'
+import { semantic } from '@/lib/ui/tokens'
 
 type Worker = {
   id: string
@@ -139,29 +141,29 @@ export default function AnnualReportPage() {
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
         {/* ページヘッダー */}
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: '#000' }}>定期届出（参考様式第3-6号）</h1>
-          <p style={{ margin: 0, fontSize: 14, color: '#666' }}>対象者の賃金台帳充足状況を確認し、定期届出書を生成します</p>
+          <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: '#111827' }}>定期届出（参考様式第3-6号）</h1>
+          <p style={{ margin: 0, fontSize: 14, color: '#6b7280' }}>対象者の賃金台帳充足状況を確認し、定期届出書を生成します</p>
         </div>
 
         {/* 年度セレクター */}
-        <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 12, padding: '16px 24px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: '#333' }}>対象年度</span>
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '16px 24px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>対象年度</span>
           <button
             onClick={() => setFy(n => n - 1)}
-            style={{ background: '#f0f0f0', border: 'none', borderRadius: 6, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333' }}>
+            style={{ background: '#f3f4f6', border: 'none', borderRadius: 6, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#374151' }}>
             ‹
           </button>
-          <span style={{ fontSize: 16, fontWeight: 700, color: '#000', minWidth: 220, textAlign: 'center' }}>
+          <span style={{ fontSize: 16, fontWeight: 700, color: '#111827', minWidth: 220, textAlign: 'center' }}>
             {fy}年度（{fy}/4 〜 {fy + 1}/3）
           </span>
           <button
             onClick={() => setFy(n => n + 1)}
-            style={{ background: '#f0f0f0', border: 'none', borderRadius: 6, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333' }}>
+            style={{ background: '#f3f4f6', border: 'none', borderRadius: 6, width: 32, height: 32, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#374151' }}>
             ›
           </button>
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 13, color: '#888' }}>対象者</span>
-            <span style={{ fontSize: 15, fontWeight: 700, color: '#000' }}>{loading ? '—' : `${statuses.length}名`}</span>
+            <span style={{ fontSize: 13, color: '#6b7280' }}>対象者</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>{loading ? '—' : `${statuses.length}名`}</span>
           </div>
         </div>
 
@@ -173,38 +175,42 @@ export default function AnnualReportPage() {
             style={{
               padding: '11px 24px', borderRadius: 8, border: 'none', fontSize: 14, fontWeight: 700,
               cursor: allReady && !generating ? 'pointer' : 'not-allowed',
-              background: allReady && !generating ? '#0066cc' : '#e5e7eb',
+              background: allReady && !generating ? '#2563eb' : '#e5e7eb',
               color: allReady && !generating ? '#fff' : '#9ca3af',
               transition: 'background 0.2s',
+              display: 'inline-flex', alignItems: 'center', gap: 8,
             }}>
-            {generating ? '⏳ 生成中...' : '📄 定期届出書を一括生成'}
+            <FileText size={15} strokeWidth={2} />
+            {generating ? '生成中...' : '定期届出書を一括生成'}
           </button>
         </div>
 
         {/* サマリーバー */}
         {!loading && statuses.length > 0 && (
           <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-            <div style={{ flex: 1, background: allReady ? '#dcfce7' : '#fff', border: `1px solid ${allReady ? '#86efac' : '#e0e0e0'}`, borderRadius: 10, padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
-              {allReady
-                ? <><span style={{ fontSize: 20 }}>✅</span><span style={{ fontSize: 14, fontWeight: 600, color: '#15803d' }}>全員の賃金台帳が揃っています。届出書を生成できます。</span></>
-                : <>
-                    <span style={{ fontSize: 20 }}>⚠️</span>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: '#b45309' }}>
-                      {statuses.filter(s => s.missing.length > 0).length}名の賃金台帳が不足しています
-                    </span>
-                  </>
-              }
-            </div>
+            {allReady ? (
+              <div style={{ flex: 1, background: semantic.green.bg, border: `1px solid ${semantic.green.border}`, borderRadius: 10, padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <CheckCircle2 size={18} strokeWidth={2} color={semantic.green.text} style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: 14, fontWeight: 600, color: semantic.green.text }}>全員の賃金台帳が揃っています。届出書を生成できます。</span>
+              </div>
+            ) : (
+              <div style={{ flex: 1, background: semantic.orange.bg, border: `1px solid ${semantic.orange.border}`, borderRadius: 10, padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <AlertTriangle size={18} strokeWidth={2} color={semantic.orange.text} style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: 14, fontWeight: 600, color: semantic.orange.text }}>
+                  {statuses.filter(s => s.missing.length > 0).length}名の賃金台帳が不足しています
+                </span>
+              </div>
+            )}
           </div>
         )}
 
         {/* 対象者一覧 */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 60, color: '#666' }}>読み込み中...</div>
+          <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>読み込み中...</div>
         ) : statuses.length === 0 ? (
-          <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 12, padding: 48, textAlign: 'center', color: '#888', fontSize: 14 }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>👥</div>
-            特定技能1号・2号の在籍者がいません
+          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 48, textAlign: 'center', color: '#6b7280', fontSize: 14 }}>
+            <Users size={28} strokeWidth={1.5} color="#9ca3af" style={{ display: 'inline', marginBottom: 12 }} />
+            <div>特定技能1号・2号の在籍者がいません</div>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -212,22 +218,25 @@ export default function AnnualReportPage() {
               const ready = missing.length === 0
               return (
                 <div key={worker.id}
-                  style={{ background: '#fff', border: `1px solid ${ready ? '#e0e0e0' : '#fecaca'}`, borderRadius: 12, padding: '18px 22px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                  style={{ background: '#fff', border: `1px solid ${ready ? '#e5e7eb' : semantic.orange.border}`, borderRadius: 12, padding: '18px 22px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
                     {/* 従業員情報 */}
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                        <span style={{ fontWeight: 700, fontSize: 15, color: '#000' }}>{worker.name_kanji || worker.name_romaji}</span>
-                        <span style={{ background: '#f0f4ff', color: '#3b5bdb', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>
+                        <span style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{worker.name_kanji || worker.name_romaji}</span>
+                        <span style={{ background: semantic.blue.bg, color: semantic.blue.text, fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>
                           {getStatusType(worker)}
                         </span>
                         {/* ステータスバッジ */}
                         <span style={{
-                          background: ready ? '#dcfce7' : '#fee2e2',
-                          color: ready ? '#15803d' : '#dc2626',
+                          background: ready ? semantic.green.bg : semantic.orange.bg,
+                          color: ready ? semantic.green.text : semantic.orange.text,
                           fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 6,
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
                         }}>
-                          {ready ? '✅ 作成可能' : '❌ 台帳不足'}
+                          {ready
+                            ? <><CheckCircle2 size={13} strokeWidth={2.2} />作成可能</>
+                            : <><AlertTriangle size={13} strokeWidth={2.2} />台帳不足</>}
                         </span>
                       </div>
 
@@ -238,13 +247,13 @@ export default function AnnualReportPage() {
                             const ok = present.some(p => p.year === m.year && p.month === m.month)
                             return (
                               <div key={i} title={`${m.year}年${MONTH_LABELS[m.month]}`}
-                                style={{ width: 20, height: 20, borderRadius: 3, background: ok ? '#16a34a' : '#fca5a5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: ok ? '#fff' : '#7f1d1d', fontWeight: 700 }}>
+                                style={{ width: 20, height: 20, borderRadius: 3, background: ok ? semantic.green.text : semantic.gray.bg, border: ok ? 'none' : `1px solid ${semantic.gray.border}`, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: ok ? '#fff' : '#9ca3af', fontWeight: 700 }}>
                                 {m.month}
                               </div>
                             )
                           })}
                         </div>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: ready ? '#15803d' : '#dc2626' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: ready ? semantic.green.text : semantic.orange.text }}>
                           {present.length}/12ヶ月
                           {!ready && `（${missing.length}ヶ月不足）`}
                         </span>
@@ -252,7 +261,7 @@ export default function AnnualReportPage() {
 
                       {/* 不足月の詳細 */}
                       {!ready && (
-                        <div style={{ fontSize: 12, color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, padding: '6px 10px', display: 'inline-block' }}>
+                        <div style={{ fontSize: 12, color: semantic.orange.text, background: semantic.orange.bg, border: `1px solid ${semantic.orange.border}`, borderRadius: 6, padding: '6px 10px', display: 'inline-block' }}>
                           不足月：{formatMissing(missing)}
                         </div>
                       )}
@@ -263,13 +272,13 @@ export default function AnnualReportPage() {
                       {!ready && (
                         <button
                           onClick={() => router.push(`/employees/${worker.id}/payroll`)}
-                          style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #dc2626', background: '#fff', color: '#dc2626', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #2563eb', background: '#fff', color: '#2563eb', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                           賃金台帳を登録 →
                         </button>
                       )}
                       <button
                         onClick={() => router.push(`/employees/${worker.id}`)}
-                        style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #d0d0d0', background: '#fff', color: '#555', fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', color: '#374151', fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                         従業員詳細
                       </button>
                     </div>
@@ -282,14 +291,14 @@ export default function AnnualReportPage() {
 
         {/* 凡例 */}
         {!loading && statuses.length > 0 && (
-          <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, color: '#888' }}>
+          <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, color: '#6b7280' }}>
             <span>月別ブロック凡例：</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <div style={{ width: 16, height: 16, borderRadius: 3, background: '#16a34a' }} />
+              <div style={{ width: 16, height: 16, borderRadius: 3, background: semantic.green.text }} />
               <span>登録済み</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <div style={{ width: 16, height: 16, borderRadius: 3, background: '#fca5a5' }} />
+              <div style={{ width: 16, height: 16, borderRadius: 3, background: semantic.gray.bg, border: `1px solid ${semantic.gray.border}`, boxSizing: 'border-box' }} />
               <span>未登録</span>
             </div>
           </div>

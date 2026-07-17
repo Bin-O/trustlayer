@@ -14,7 +14,7 @@ export default function EmploymentConditionsPage() {
       <div style={{ maxWidth: 780, margin: '0 auto', padding: '28px 24px' }}>
         <button
           onClick={() => router.push(`/employees/${workerId}`)}
-          style={{ background: 'none', border: 'none', color: '#0066cc', fontSize: 14, cursor: 'pointer', marginBottom: 20, padding: 0 }}>
+          style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 14, cursor: 'pointer', marginBottom: 20, padding: 0 }}>
           ← 従業員詳細に戻る
         </button>
         <EmploymentConditionsWizard

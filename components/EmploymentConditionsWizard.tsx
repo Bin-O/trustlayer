@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { AlertTriangle, Check, CheckCircle2, FileText } from 'lucide-react'
 
 const ORG_ID = '11111111-1111-1111-1111-111111111111'
 const STEPS = ['基本情報', '就業時間', '休憩・休日', '賃金・手当', '控除', '保険確認']
@@ -170,26 +171,26 @@ function computeDiff(prev: Record<string, unknown>, next: Form): { item: DiffIte
 
 // モジュールスコープ定義でレンダリング毎の再生成を防ぐ
 const inp: React.CSSProperties = {
-  width: '100%', border: '1px solid #d0d0d0', borderRadius: 6,
-  padding: '9px 12px', fontSize: 14, color: '#111', outline: 'none', boxSizing: 'border-box',
+  width: '100%', border: '1px solid #d1d5db', borderRadius: 6,
+  padding: '9px 12px', fontSize: 14, color: '#111827', outline: 'none', boxSizing: 'border-box',
 }
 const sel: React.CSSProperties = { ...inp, background: '#fff' }
 
 const F = ({ label, req, half, children }: { label: string; req?: boolean; half?: boolean; children: React.ReactNode }) => (
   <div style={{ marginBottom: 14, gridColumn: half ? 'span 1' : undefined }}>
-    <label style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginBottom: 4 }}>
+    <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>
       {label}{req && <span style={{ color: '#dc2626', marginLeft: 2 }}>*</span>}
     </label>
     {children}
   </div>
 )
 const Toggle = ({ val, onChange, label, sub }: { val: boolean; onChange: (v: boolean) => void; label: string; sub?: string }) => (
-  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: '#f9f9f9', border: '1px solid #ececec', borderRadius: 8, marginBottom: 10 }}>
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 10 }}>
     <div>
-      <div style={{ fontSize: 14, fontWeight: 600, color: '#111' }}>{label}</div>
-      {sub && <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{sub}</div>}
+      <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{label}</div>
+      {sub && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{sub}</div>}
     </div>
-    <div onClick={() => onChange(!val)} style={{ position: 'relative', width: 44, height: 24, background: val ? '#0066cc' : '#ccc', borderRadius: 12, cursor: 'pointer', flexShrink: 0 }}>
+    <div onClick={() => onChange(!val)} style={{ position: 'relative', width: 44, height: 24, background: val ? '#2563eb' : '#ccc', borderRadius: 12, cursor: 'pointer', flexShrink: 0 }}>
       <div style={{ position: 'absolute', top: 3, left: val ? 23 : 3, width: 18, height: 18, background: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
     </div>
   </div>
@@ -201,7 +202,7 @@ const G3 = ({ children }: { children: React.ReactNode }) => (
   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>{children}</div>
 )
 const Divider = ({ label }: { label: string }) => (
-  <div style={{ fontSize: 12, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 1, borderBottom: '1px solid #ececec', paddingBottom: 6, marginBottom: 14, marginTop: 20 }}>{label}</div>
+  <div style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 1, borderBottom: '1px solid #e5e7eb', paddingBottom: 6, marginBottom: 14, marginTop: 20 }}>{label}</div>
 )
 
 type Props = {
@@ -550,8 +551,8 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
       {form.kotai_sei && (
         <>
           {([1, 2, 3] as const).map(n => (
-            <div key={n} style={{ background: '#f9f9f9', border: '1px solid #ececec', borderRadius: 8, padding: '12px 14px', marginBottom: 10 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#666', marginBottom: 10 }}>シフト {n}</div>
+            <div key={n} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '12px 14px', marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', marginBottom: 10 }}>シフト {n}</div>
               <G3>
                 <F label="始業">{timeInp(`shift${n}_start_time` as keyof Form)}</F>
                 <F label="終業">{timeInp(`shift${n}_end_time` as keyof Form)}</F>
@@ -600,8 +601,8 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
       </G2>
       <Divider label="手当（a〜d）" />
       {([1, 2, 3, 4] as const).map(n => (
-        <div key={n} style={{ background: '#f9f9f9', border: '1px solid #ececec', borderRadius: 8, padding: '12px 14px', marginBottom: 10 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#666', marginBottom: 10 }}>手当 {String.fromCharCode(96 + n).toUpperCase()}</div>
+        <div key={n} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '12px 14px', marginBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', marginBottom: 10 }}>手当 {String.fromCharCode(96 + n).toUpperCase()}</div>
           <G3>
             <F label="手当名">{txtInp(`allowance_${n}_name` as keyof Form, '例：通勤手当')}</F>
             <F label="金額（円）">{numInp(`allowance_${n}_amount` as keyof Form, 0)}</F>
@@ -654,7 +655,7 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
 
   const renderStep5 = () => (
     <>
-      <p style={{ fontSize: 13, color: '#888', margin: '0 0 16px' }}>月額の控除予定額（概算）を入力してください。空欄は未設定扱いです。</p>
+      <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 16px' }}>月額の控除予定額（概算）を入力してください。空欄は未設定扱いです。</p>
       <Divider label="法定控除" />
       <G2>
         <F label="所得税（円）">{numInp('deduction_tax', 0)}</F>
@@ -728,15 +729,15 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
     <>
       {/* タイトル */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#000' }}>
+        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#111827' }}>
           {isBulk ? `${workerIds.length}名に雇用条件を一括適用` : '雇用条件入力'}
         </h1>
-        {!isBulk && workerName && <p style={{ margin: 0, fontSize: 14, color: '#666' }}>{workerName}</p>}
-        {isBulk && <p style={{ margin: 0, fontSize: 13, color: '#888' }}>選択した{workerIds.length}名全員に同じ雇用条件を適用します</p>}
+        {!isBulk && workerName && <p style={{ margin: 0, fontSize: 14, color: '#6b7280' }}>{workerName}</p>}
+        {isBulk && <p style={{ margin: 0, fontSize: 13, color: '#6b7280' }}>選択した{workerIds.length}名全員に同じ雇用条件を適用します</p>}
       </div>
 
       {/* プログレスバー */}
-      <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 12, padding: '20px 24px', marginBottom: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '20px 24px', marginBottom: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           {STEPS.map((label, i) => {
             const n = i + 1
@@ -744,12 +745,12 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
             return (
               <div key={n} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
                 {i > 0 && (
-                  <div style={{ position: 'absolute', top: 14, right: '50%', width: '100%', height: 2, background: done ? '#0066cc' : '#e0e0e0', zIndex: 0 }} />
+                  <div style={{ position: 'absolute', top: 14, right: '50%', width: '100%', height: 2, background: done ? '#2563eb' : '#e5e7eb', zIndex: 0 }} />
                 )}
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: done ? '#0066cc' : active ? '#0066cc' : '#e0e0e0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, zIndex: 1, position: 'relative' }}>
-                  {done ? '✓' : n}
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: done ? '#2563eb' : active ? '#2563eb' : '#e5e7eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, zIndex: 1, position: 'relative' }}>
+                  {done ? <Check size={14} strokeWidth={3} /> : n}
                 </div>
-                <div style={{ fontSize: 11, color: active ? '#0066cc' : done ? '#0066cc' : '#999', fontWeight: active ? 700 : 400, marginTop: 4, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 11, color: active ? '#2563eb' : done ? '#2563eb' : '#9ca3af', fontWeight: active ? 700 : 400, marginTop: 4, textAlign: 'center', whiteSpace: 'nowrap' }}>
                   {label}
                 </div>
               </div>
@@ -760,10 +761,10 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
 
       {/* フォームカード */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: '#666' }}>読み込み中...</div>
+        <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>読み込み中...</div>
       ) : (
-        <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 12, padding: '28px 32px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-          <h2 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: '#000' }}>
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '28px 32px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <h2 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: '#111827' }}>
             Step {step}：{STEPS[step - 1]}
           </h2>
 
@@ -772,25 +773,25 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
           {errors.length > 0 && (
             <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', marginTop: 20 }}>
               {errors.map((e, i) => (
-                <div key={i} style={{ fontSize: 13, color: '#dc2626', fontWeight: 600 }}>⚠ {e}</div>
+                <div key={i} style={{ fontSize: 13, color: '#dc2626', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}><AlertTriangle size={14} strokeWidth={2} style={{ flexShrink: 0 }} />{e}</div>
               ))}
             </div>
           )}
 
-          <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 20, marginTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 20, marginTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <button onClick={step === 1 ? onCancel : goBack}
-              style={{ background: 'none', border: '1px solid #d0d0d0', borderRadius: 6, padding: '10px 24px', fontSize: 14, color: '#333', cursor: 'pointer' }}>
+              style={{ background: 'none', border: '1px solid #d1d5db', borderRadius: 6, padding: '10px 24px', fontSize: 14, color: '#374151', cursor: 'pointer' }}>
               {step === 1 ? 'キャンセル' : '← 前へ'}
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {saved && <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 600 }}>✓ 保存しました</span>}
+              {saved && <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={14} strokeWidth={2.2} />保存しました</span>}
               {step < STEPS.length ? (
-                <button onClick={goNext} style={{ background: '#0066cc', border: 'none', borderRadius: 6, padding: '10px 28px', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                <button onClick={goNext} style={{ background: '#2563eb', border: 'none', borderRadius: 6, padding: '10px 28px', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
                   次へ →
                 </button>
               ) : (
-                <button onClick={handleSave} disabled={saving} style={{ background: saving ? '#e0e0e0' : '#16a34a', border: 'none', borderRadius: 6, padding: '10px 28px', color: saving ? '#999' : '#fff', fontWeight: 700, fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer' }}>
-                  {saving ? '保存中...' : (isBulk ? `✓ ${workerIds.length}名に保存する` : '✓ 保存する')}
+                <button onClick={handleSave} disabled={saving} style={{ background: saving ? '#e5e7eb' : '#16a34a', border: 'none', borderRadius: 6, padding: '10px 28px', color: saving ? '#9ca3af' : '#fff', fontWeight: 700, fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer' }}>
+                  {saving ? '保存中...' : (isBulk ? `${workerIds.length}名に保存する` : '保存する')}
                 </button>
               )}
             </div>
@@ -803,10 +804,10 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ background: '#fff', borderRadius: 14, padding: '28px 32px', width: 620, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 40px rgba(0,0,0,0.18)' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 20 }}>
-              <div style={{ fontSize: 30, lineHeight: 1 }}>⚠️</div>
+              <AlertTriangle size={28} strokeWidth={2} color="#d97706" style={{ flexShrink: 0 }} />
               <div>
-                <h3 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700, color: '#b45309' }}>随時届出が必要です</h3>
-                <p style={{ margin: 0, fontSize: 13, color: '#555', lineHeight: 1.7 }}>
+                <h3 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700, color: '#d97706' }}>随時届出が必要です</h3>
+                <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.7 }}>
                   雇用条件を変更しました。<br />
                   <strong>14日以内に随時届出（参考様式第3-1-1号）</strong>の提出が必要です。
                 </p>
@@ -814,12 +815,12 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
             </div>
             {notifyModal.diffItems.length > 0 ? (
               <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '14px 16px', marginBottom: 24 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#92400e', marginBottom: 10 }}>変更内容</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#d97706', marginBottom: 10 }}>変更内容</div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #fde68a' }}>
-                      <th style={{ textAlign: 'left', padding: '4px 8px', color: '#555', fontWeight: 600, width: '36%' }}>項目</th>
-                      <th style={{ textAlign: 'left', padding: '4px 8px', color: '#dc2626', fontWeight: 600, width: '30%' }}>変更前</th>
+                      <th style={{ textAlign: 'left', padding: '4px 8px', color: '#374151', fontWeight: 600, width: '36%' }}>項目</th>
+                      <th style={{ textAlign: 'left', padding: '4px 8px', color: '#6b7280', fontWeight: 600, width: '30%' }}>変更前</th>
                       <th style={{ textAlign: 'left', padding: '4px 8px', color: '#16a34a', fontWeight: 600, width: '34%' }}>変更後</th>
                     </tr>
                   </thead>
@@ -827,7 +828,7 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
                     {notifyModal.diffItems.map(({ item }, idx) => (
                       <tr key={idx} style={{ borderBottom: '1px solid #fef3c7' }}>
                         <td style={{ padding: '6px 8px', color: '#374151', fontWeight: 500 }}>{item.label}</td>
-                        <td style={{ padding: '6px 8px', color: '#dc2626' }}>{item.before}</td>
+                        <td style={{ padding: '6px 8px', color: '#6b7280' }}>{item.before}</td>
                         <td style={{ padding: '6px 8px', color: '#16a34a', fontWeight: 600 }}>{item.after}</td>
                       </tr>
                     ))}
@@ -835,18 +836,18 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
                 </table>
               </div>
             ) : (
-              <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 18px', marginBottom: 24, fontSize: 13, color: '#666' }}>
+              <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 18px', marginBottom: 24, fontSize: 13, color: '#6b7280' }}>
                 変更内容を自動検出できませんでした。届出書で内容を確認してください。
               </div>
             )}
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button onClick={() => { setNotifyModal(null); onSaved(1) }}
-                style={{ padding: '10px 22px', borderRadius: 8, border: '1px solid #d0d0d0', background: '#fff', color: '#555', fontSize: 14, cursor: 'pointer', fontWeight: 500 }}>
+                style={{ padding: '10px 22px', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', color: '#374151', fontSize: 14, cursor: 'pointer', fontWeight: 500 }}>
                 後で作成
               </button>
               <button onClick={handleGenerateDoc} disabled={generatingDoc}
-                style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: generatingDoc ? '#e5e7eb' : '#0066cc', color: generatingDoc ? '#9ca3af' : '#fff', fontSize: 14, cursor: generatingDoc ? 'not-allowed' : 'pointer', fontWeight: 700 }}>
-                {generatingDoc ? '⏳ 生成中...' : '📄 今すぐ届出書を作成'}
+                style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: generatingDoc ? '#e5e7eb' : '#2563eb', color: generatingDoc ? '#9ca3af' : '#fff', fontSize: 14, cursor: generatingDoc ? 'not-allowed' : 'pointer', fontWeight: 700 }}>
+                {generatingDoc ? '生成中...' : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><FileText size={15} strokeWidth={2} />今すぐ届出書を作成</span>}
               </button>
             </div>
           </div>

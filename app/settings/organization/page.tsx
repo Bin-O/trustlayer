@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/AppHeader'
+import { CheckCircle2 } from 'lucide-react'
 
 const ORG_ID = '11111111-1111-1111-1111-111111111111'
 
@@ -274,11 +275,11 @@ export default function OrganizationSettings() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    border: '1px solid #d0d0d0',
+    border: '1px solid #d1d5db',
     borderRadius: 6,
     padding: '9px 12px',
     fontSize: 14,
-    color: '#111',
+    color: '#111827',
     background: '#fff',
     outline: 'none',
     boxSizing: 'border-box',
@@ -287,7 +288,7 @@ export default function OrganizationSettings() {
   const labelStyle: React.CSSProperties = {
     fontSize: 12,
     fontWeight: 600,
-    color: '#555',
+    color: '#374151',
     marginBottom: 4,
     display: 'block',
   }
@@ -301,7 +302,7 @@ export default function OrganizationSettings() {
     display: 'inline-block',
     width: 44,
     height: 24,
-    background: active ? '#0066cc' : '#ccc',
+    background: active ? '#2563eb' : '#d1d5db',
     borderRadius: 12,
     cursor: 'pointer',
     transition: 'background 0.2s',
@@ -328,12 +329,12 @@ export default function OrganizationSettings() {
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px' }}>
         {/* Page title */}
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: '#000' }}>設定</h1>
-          <p style={{ margin: 0, fontSize: 14, color: '#666' }}>会社情報・新規登録時の初期値・支援計画テンプレートを管理します</p>
+          <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: '#111827' }}>設定</h1>
+          <p style={{ margin: 0, fontSize: 14, color: '#6b7280' }}>会社情報・新規登録時の初期値・支援計画テンプレートを管理します</p>
         </div>
 
         {/* Tab bar */}
-        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e0e0e0', marginBottom: 24 }}>
+        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: 24 }}>
           {(['basic', 'defaults', 'shien'] as const).map(t => {
             const labels = { basic: '会社情報', defaults: '新規登録時の初期値', shien: '支援計画テンプレート（特定技能）' }
             const active = tab === t
@@ -344,11 +345,11 @@ export default function OrganizationSettings() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  borderBottom: active ? '2px solid #0066cc' : '2px solid transparent',
+                  borderBottom: active ? '2px solid #2563eb' : '2px solid transparent',
                   padding: '10px 20px',
                   fontSize: 14,
                   fontWeight: active ? 700 : 400,
-                  color: active ? '#0066cc' : '#555',
+                  color: active ? '#2563eb' : '#374151',
                   cursor: 'pointer',
                   marginBottom: -1,
                 }}
@@ -360,14 +361,14 @@ export default function OrganizationSettings() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 60, color: '#666' }}>読み込み中...</div>
+          <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>読み込み中...</div>
         ) : (
-          <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 12, padding: '28px 32px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '28px 32px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
 
             {/* ── Tab A: 基本情報 ── */}
             {tab === 'basic' && (
               <>
-                <p style={{ margin: '0 0 24px', fontSize: 13, color: '#888' }}>
+                <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>
                   雇用条件書や各種届出など、生成する書類に記載される会社の基本情報と支援担当者を登録します。
                 </p>
 
@@ -414,9 +415,9 @@ export default function OrganizationSettings() {
                 </div>
 
                 {/* 支援担当情報 */}
-                <div style={{ borderTop: '1px solid #f0f0f0', marginTop: 8, paddingTop: 24, marginBottom: 8 }}>
-                  <h3 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: '#111' }}>支援担当情報</h3>
-                  <p style={{ margin: '0 0 20px', fontSize: 12, color: '#888' }}>支援計画書（参考様式第1-17号）に記載します</p>
+                <div style={{ borderTop: '1px solid #f3f4f6', marginTop: 8, paddingTop: 24, marginBottom: 8 }}>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: '#111827' }}>支援担当情報</h3>
+                  <p style={{ margin: '0 0 20px', fontSize: 12, color: '#6b7280' }}>支援計画書（参考様式第1-17号）に記載します</p>
 
                   <div style={fieldStyle}>
                     <label style={labelStyle}>支援担当事務所の住所</label>
@@ -428,8 +429,8 @@ export default function OrganizationSettings() {
                     <input style={inputStyle} value={basic.support_office_phone} onChange={e => setBasic(p => ({ ...p, support_office_phone: e.target.value }))} placeholder="例：03-1234-5678" />
                   </div>
 
-                  <div style={{ borderLeft: '3px solid #e0e0e0', paddingLeft: 16, marginBottom: 20 }}>
-                    <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 600, color: '#555' }}>支援責任者</p>
+                  <div style={{ borderLeft: '3px solid #e5e7eb', paddingLeft: 16, marginBottom: 20 }}>
+                    <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 600, color: '#374151' }}>支援責任者</p>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                       <div style={fieldStyle}>
                         <label style={labelStyle}>氏名</label>
@@ -446,8 +447,8 @@ export default function OrganizationSettings() {
                     </div>
                   </div>
 
-                  <div style={{ borderLeft: '3px solid #e0e0e0', paddingLeft: 16, marginBottom: 20 }}>
-                    <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 600, color: '#555' }}>支援担当者</p>
+                  <div style={{ borderLeft: '3px solid #e5e7eb', paddingLeft: 16, marginBottom: 20 }}>
+                    <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 600, color: '#374151' }}>支援担当者</p>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                       <div style={fieldStyle}>
                         <label style={labelStyle}>氏名</label>
@@ -465,15 +466,15 @@ export default function OrganizationSettings() {
                   </div>
                 </div>
 
-                <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
                   <button
                     onClick={saveBasic}
                     disabled={saving}
-                    style={{ background: '#0066cc', border: 'none', borderRadius: 6, padding: '10px 28px', color: '#fff', fontWeight: 600, fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
+                    style={{ background: '#2563eb', border: 'none', borderRadius: 6, padding: '10px 28px', color: '#fff', fontWeight: 600, fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
                   >
                     {saving ? '保存中...' : '保存'}
                   </button>
-                  {saved && <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 600 }}>✓ 保存しました</span>}
+                  {saved && <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={14} strokeWidth={2.2} />保存しました</span>}
                   {error && <span style={{ fontSize: 13, color: '#dc2626' }}>{error}</span>}
                 </div>
               </>
@@ -482,7 +483,7 @@ export default function OrganizationSettings() {
             {/* ── Tab B: デフォルト設定 ── */}
             {tab === 'defaults' && (
               <>
-                <p style={{ margin: '0 0 24px', fontSize: 13, color: '#888' }}>
+                <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280' }}>
                   従業員の雇用条件を新しく登録するとき、自動で入力される初期値です。従業員ごとにあとから変更できます。
                 </p>
 
@@ -507,10 +508,10 @@ export default function OrganizationSettings() {
                     { key: 'has_flex_time', label: '変形労働時間制あり', sub: '1ヶ月単位・1年単位など' },
                     { key: 'social_insurance_enrolled', label: '社会保険加入', sub: '健康保険・厚生年金' },
                   ] as { key: keyof OrgDefaults; label: string; sub: string }[]).map(({ key, label, sub }) => (
-                    <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: '#f9f9f9', borderRadius: 8, border: '1px solid #ececec' }}>
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
                       <div>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: '#111' }}>{label}</div>
-                        <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{sub}</div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{label}</div>
+                        <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{sub}</div>
                       </div>
                       <div
                         style={toggleStyle(defaults[key] as boolean)}
@@ -522,15 +523,15 @@ export default function OrganizationSettings() {
                   ))}
                 </div>
 
-                <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 20, marginTop: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 20, marginTop: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
                   <button
                     onClick={saveDefaults}
                     disabled={saving}
-                    style={{ background: '#0066cc', border: 'none', borderRadius: 6, padding: '10px 28px', color: '#fff', fontWeight: 600, fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
+                    style={{ background: '#2563eb', border: 'none', borderRadius: 6, padding: '10px 28px', color: '#fff', fontWeight: 600, fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
                   >
                     {saving ? '保存中...' : '保存'}
                   </button>
-                  {saved && <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 600 }}>✓ 保存しました</span>}
+                  {saved && <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={14} strokeWidth={2.2} />保存しました</span>}
                   {error && <span style={{ fontSize: 13, color: '#dc2626' }}>{error}</span>}
                 </div>
               </>
@@ -539,10 +540,10 @@ export default function OrganizationSettings() {
             {/* ── Tab C: 支援計画書テンプレート ── */}
             {tab === 'shien' && (
               <>
-                <p style={{ margin: '0 0 6px', fontSize: 13, color: '#888' }}>
+                <p style={{ margin: '0 0 6px', fontSize: 13, color: '#6b7280' }}>
                   特定技能1号の従業員の支援計画書（参考様式第1-17号）に自動反映される支援内容のテンプレートです。
                 </p>
-                <p style={{ margin: '0 0 24px', fontSize: 13, color: '#0066cc', fontWeight: 600 }}>
+                <p style={{ margin: '0 0 24px', fontSize: 13, color: '#2563eb', fontWeight: 600 }}>
                   一度設定すれば全従業員の支援計画書に自動反映されます。
                 </p>
 
@@ -558,11 +559,11 @@ export default function OrganizationSettings() {
                 ] as { key: keyof ShienTemplate; planKey: keyof ShienTemplate; label: string; placeholder: string }[]).map(({ key, planKey, label, placeholder }) => {
                   const plan = shien[planKey] as boolean
                   return (
-                    <div key={key} style={{ ...fieldStyle, border: '1px solid #ececec', borderRadius: 8, padding: '14px 16px', background: plan ? '#fff' : '#fafafa' }}>
+                    <div key={key} style={{ ...fieldStyle, border: '1px solid #e5e7eb', borderRadius: 8, padding: '14px 16px', background: plan ? '#fff' : '#f9fafb' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                        <label style={{ ...labelStyle, marginBottom: 0, fontSize: 13, color: plan ? '#111' : '#999' }}>{label}</label>
+                        <label style={{ ...labelStyle, marginBottom: 0, fontSize: 13, color: plan ? '#111827' : '#9ca3af' }}>{label}</label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 12, color: '#555' }}>実施予定：</span>
+                          <span style={{ fontSize: 12, color: '#374151' }}>実施予定：</span>
                           {(['有', '無'] as const).map(opt => {
                             const isActive = opt === '有' ? plan : !plan
                             return (
@@ -571,9 +572,9 @@ export default function OrganizationSettings() {
                                 onClick={() => setShien(p => ({ ...p, [planKey]: opt === '有' }))}
                                 style={{
                                   padding: '3px 14px', borderRadius: 4, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                                  border: isActive ? '1.5px solid #0066cc' : '1px solid #ccc',
-                                  background: isActive ? '#e8f0fb' : '#fff',
-                                  color: isActive ? '#0066cc' : '#888',
+                                  border: isActive ? '1.5px solid #2563eb' : '1px solid #d1d5db',
+                                  background: isActive ? '#eff6ff' : '#fff',
+                                  color: isActive ? '#2563eb' : '#6b7280',
                                 }}
                               >{opt}</button>
                             )
@@ -584,8 +585,8 @@ export default function OrganizationSettings() {
                         rows={4}
                         disabled={!plan}
                         style={{
-                          width: '100%', border: '1px solid #d0d0d0', borderRadius: 6, padding: '9px 12px',
-                          fontSize: 14, color: plan ? '#111' : '#bbb', background: plan ? '#fff' : '#f5f5f5',
+                          width: '100%', border: '1px solid #d1d5db', borderRadius: 6, padding: '9px 12px',
+                          fontSize: 14, color: plan ? '#111827' : '#9ca3af', background: plan ? '#fff' : '#f3f4f6',
                           outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.6,
                         }}
                         value={shien[key] as string}
@@ -597,11 +598,11 @@ export default function OrganizationSettings() {
                 })}
 
                 {/* 委託・担当者住所 */}
-                <div style={{ borderTop: '1px solid #f0f0f0', marginTop: 8, paddingTop: 20 }}>
+                <div style={{ borderTop: '1px solid #f3f4f6', marginTop: 8, paddingTop: 20 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>委託の有無</div>
-                      <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>支援業務を外部委託している場合は「有」を選択</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>委託の有無</div>
+                      <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>支援業務を外部委託している場合は「有」を選択</div>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       {(['有', '無'] as const).map(opt => {
@@ -609,8 +610,8 @@ export default function OrganizationSettings() {
                         return (
                           <button key={opt} onClick={() => setShien(p => ({ ...p, shien_outsource: opt === '有' }))}
                             style={{ padding: '3px 14px', borderRadius: 4, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                              border: isActive ? '1.5px solid #0066cc' : '1px solid #ccc',
-                              background: isActive ? '#e8f0fb' : '#fff', color: isActive ? '#0066cc' : '#888' }}
+                              border: isActive ? '1.5px solid #2563eb' : '1px solid #d1d5db',
+                              background: isActive ? '#eff6ff' : '#fff', color: isActive ? '#2563eb' : '#6b7280' }}
                           >{opt}</button>
                         )
                       })}
@@ -628,15 +629,15 @@ export default function OrganizationSettings() {
                   </div>
                 </div>
 
-                <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
                   <button
                     onClick={saveShien}
                     disabled={saving}
-                    style={{ background: '#0066cc', border: 'none', borderRadius: 6, padding: '10px 28px', color: '#fff', fontWeight: 600, fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
+                    style={{ background: '#2563eb', border: 'none', borderRadius: 6, padding: '10px 28px', color: '#fff', fontWeight: 600, fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
                   >
                     {saving ? '保存中...' : '保存'}
                   </button>
-                  {saved && <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 600 }}>✓ 保存しました</span>}
+                  {saved && <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={14} strokeWidth={2.2} />保存しました</span>}
                   {error && <span style={{ fontSize: 13, color: '#dc2626' }}>{error}</span>}
                 </div>
               </>

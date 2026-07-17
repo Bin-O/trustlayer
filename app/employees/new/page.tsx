@@ -3,6 +3,8 @@ import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 import AppHeader from '@/components/AppHeader'
 import { COUNTRIES, NATIONALITY_TO_LANGUAGE, normalizeNationality } from '@/lib/countries'
+import { AlertTriangle, CheckCircle2, Camera } from 'lucide-react'
+import { residenceDeadlineColor } from '@/lib/ui/tokens'
 
 const LANGUAGES = [
   { value: 'vi', label: 'ベトナム語' },
@@ -64,7 +66,7 @@ type CardExtracted = {
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 16 }}>
-      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 6 }}>
+      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
         {label}{required && <span style={{ color: '#dc2626', marginLeft: 4 }}>*</span>}
       </label>
       {children}
@@ -74,7 +76,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
 
 const inputStyle: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db',
-  borderRadius: 6, padding: '9px 12px', fontSize: 14, color: '#111',
+  borderRadius: 6, padding: '9px 12px', fontSize: 14, color: '#111827',
   outline: 'none', background: '#fff',
 }
 
@@ -186,31 +188,31 @@ export default function NewEmployee() {
       <AppHeader currentPage="employees" />
 
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px' }}>
-        <button onClick={() => router.push('/employees')} style={{ background: 'none', border: 'none', color: '#0066cc', fontSize: 13, cursor: 'pointer', marginBottom: 20, padding: 0 }}>← 一覧に戻る</button>
+        <button onClick={() => router.push('/employees')} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 13, cursor: 'pointer', marginBottom: 20, padding: 0 }}>← 一覧に戻る</button>
 
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: '#000' }}>新規外国人登録</h1>
-          <p style={{ margin: 0, fontSize: 14, color: '#666' }}>基本情報と在留資格を入力してください</p>
+          <h1 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 700, color: '#111827' }}>新規外国人登録</h1>
+          <p style={{ margin: 0, fontSize: 14, color: '#6b7280' }}>基本情報と在留資格を入力してください</p>
         </div>
 
         {error && (
-          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', marginBottom: 20, color: '#dc2626', fontSize: 13 }}>
-            ⚠️ {error}
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', marginBottom: 20, color: '#dc2626', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertTriangle size={15} strokeWidth={2} style={{ flexShrink: 0 }} />{error}
           </div>
         )}
 
         {/* 在留カードAIリーダー */}
-        <div style={{ background: '#fff', border: '1px dashed #93c5fd', borderRadius: 12, padding: 20, marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+        <div style={{ background: '#fff', border: '1px dashed #bfdbfe', borderRadius: 12, padding: 20, marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
             <div>
-              <h2 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: '#000' }}>📷 在留カードをアップロードして自動入力</h2>
-              <p style={{ margin: 0, fontSize: 12, color: '#666' }}>在留カード表面の画像（またはPDF）をAIが読み取り、下のフォームに自動反映します。反映後、内容を確認・修正してから登録してください。</p>
+              <h2 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: '#111827', display: 'flex', alignItems: 'center', gap: 7 }}><Camera size={16} strokeWidth={2} color="#2563eb" />在留カードをアップロードして自動入力</h2>
+              <p style={{ margin: 0, fontSize: 12, color: '#6b7280' }}>在留カード表面の画像（またはPDF）をAIが読み取り、下のフォームに自動反映します。反映後、内容を確認・修正してから登録してください。</p>
             </div>
             <button
               type="button"
               disabled={extracting}
               onClick={() => cardInputRef.current?.click()}
-              style={{ background: extracting ? '#9ca3af' : '#0066cc', border: 'none', borderRadius: 6, padding: '10px 20px', fontSize: 14, color: '#fff', cursor: extracting ? 'not-allowed' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+              style={{ background: extracting ? '#9ca3af' : '#2563eb', border: 'none', borderRadius: 6, padding: '10px 20px', fontSize: 14, color: '#fff', cursor: extracting ? 'not-allowed' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
             >
               {extracting ? 'AI読み取り中...' : '画像を選択'}
             </button>
@@ -218,8 +220,8 @@ export default function NewEmployee() {
               onChange={e => { const f = e.target.files?.[0]; if (f) handleCardFile(f) }} />
           </div>
           {extractNote && (
-            <div style={{ marginTop: 12, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#1d4ed8' }}>
-              ✅ 読み取り結果をフォームに反映しました。内容を確認・修正してください。
+            <div style={{ marginTop: 12, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#2563eb' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><CheckCircle2 size={15} strokeWidth={2.2} style={{ flexShrink: 0 }} />読み取り結果をフォームに反映しました。内容を確認・修正してください。</span>
               {extractNote.workRestriction && (
                 <span style={{ display: 'block', marginTop: 4, color: '#374151' }}>
                   就労制限の有無：{extractNote.workRestriction}（参考表示のみ・保存されません）
@@ -231,8 +233,8 @@ export default function NewEmployee() {
 
         <form onSubmit={handleSubmit}>
           {/* 基本情報 */}
-          <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 12, padding: 24, marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-            <h2 style={{ margin: '0 0 20px', fontSize: 15, fontWeight: 600, color: '#000' }}>基本情報</h2>
+          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 24, marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <h2 style={{ margin: '0 0 20px', fontSize: 15, fontWeight: 600, color: '#111827' }}>基本情報</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
               <Field label="氏名（漢字）">
                 <input style={inputStyle} value={form.name_kanji} onChange={set('name_kanji')} placeholder="漢字併記がある場合のみ（例: 阮 文 安）" />
@@ -243,7 +245,7 @@ export default function NewEmployee() {
               <Field label="氏名（カタカナ）">
                 <input style={inputStyle} value={form.name_kana} onChange={e => { setKanaFromAI(false); set('name_kana')(e) }} placeholder="グエン・ヴァン・アン" />
                 {kanaFromAI && (
-                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#d97706' }}>⚠️ AI推定です。必ず確認してください</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#d97706', display: 'flex', alignItems: 'center', gap: 5 }}><AlertTriangle size={13} strokeWidth={2} style={{ flexShrink: 0 }} />AI推定です。必ず確認してください</p>
                 )}
               </Field>
               <Field label="国籍" required>
@@ -278,8 +280,8 @@ export default function NewEmployee() {
           </div>
 
           {/* 在留資格情報 */}
-          <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 12, padding: 24, marginBottom: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-            <h2 style={{ margin: '0 0 20px', fontSize: 15, fontWeight: 600, color: '#000' }}>在留資格情報</h2>
+          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 24, marginBottom: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <h2 style={{ margin: '0 0 20px', fontSize: 15, fontWeight: 600, color: '#111827' }}>在留資格情報</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
               <Field label="在留資格" required>
                 <select style={inputStyle} value={form.status_type} onChange={set('status_type')}>
@@ -289,7 +291,7 @@ export default function NewEmployee() {
               <div /> {/* spacer */}
               <Field label="在留カード発行日（交付年月日）">
                 <input style={inputStyle} type="date" value={form.issued_date} onChange={set('issued_date')} />
-                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>新様式のカードには記載がないため任意です</p>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280' }}>新様式のカードには記載がないため任意です</p>
               </Field>
               <Field label="在留期限" required>
                 <input style={inputStyle} type="date" value={form.expiry_date} onChange={set('expiry_date')} />
@@ -298,7 +300,7 @@ export default function NewEmployee() {
 
             {form.expiry_date && (() => {
               const days = Math.ceil((new Date(form.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-              const color = days < 0 ? '#dc2626' : days <= 30 ? '#d97706' : '#16a34a'
+              const color = residenceDeadlineColor(days).text
               const label = days < 0 ? `期限切れ（${Math.abs(days)}日超過）` : `残り ${days} 日`
               return <p style={{ margin: '-8px 0 0', fontSize: 12, color }}>{label}</p>
             })()}
@@ -309,14 +311,14 @@ export default function NewEmployee() {
             <button
               type="button"
               onClick={() => router.push('/employees')}
-              style={{ background: '#fff', border: '1px solid #d1d5db', borderRadius: 6, padding: '10px 24px', fontSize: 14, color: '#333', cursor: 'pointer', fontWeight: 500 }}
+              style={{ background: '#fff', border: '1px solid #d1d5db', borderRadius: 6, padding: '10px 24px', fontSize: 14, color: '#374151', cursor: 'pointer', fontWeight: 500 }}
             >
               キャンセル
             </button>
             <button
               type="submit"
               disabled={submitting}
-              style={{ background: submitting ? '#9ca3af' : '#0066cc', border: 'none', borderRadius: 6, padding: '10px 32px', fontSize: 14, color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+              style={{ background: submitting ? '#9ca3af' : '#2563eb', border: 'none', borderRadius: 6, padding: '10px 32px', fontSize: 14, color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 600 }}
             >
               {submitting ? '登録中...' : '登録する'}
             </button>

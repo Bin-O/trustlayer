@@ -3,6 +3,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/AppHeader'
+import { CheckCircle2, FileText, Sparkles, Plus } from 'lucide-react'
 
 type PayrollRecord = {
   id: string
@@ -216,39 +217,39 @@ export default function PayrollPage() {
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
         <button onClick={() => router.push(`/employees/${workerId}`)}
-          style={{ background: 'none', border: 'none', color: '#0066cc', fontSize: 13, cursor: 'pointer', marginBottom: 20, padding: 0 }}>
+          style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 13, cursor: 'pointer', marginBottom: 20, padding: 0 }}>
           ← 従業員詳細に戻る
         </button>
 
-        <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 12, padding: '24px', marginBottom: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '24px', marginBottom: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
             <div>
               <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>賃金台帳</h1>
-              {workerName && <div style={{ fontSize: 13, color: '#666', marginTop: 4 }}>{workerName}</div>}
+              {workerName && <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>{workerName}</div>}
             </div>
 
             {/* 年切替 */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <button onClick={() => setYear(y => y - 1)}
-                style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 14px', background: '#fff', cursor: 'pointer', fontSize: 14 }}>
+                style={{ border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 14px', background: '#fff', cursor: 'pointer', fontSize: 14 }}>
                 ← {year - 1}
               </button>
               <span style={{ fontWeight: 700, fontSize: 18, minWidth: 60, textAlign: 'center' }}>{year}年</span>
               <button onClick={() => setYear(y => y + 1)}
-                style={{ border: '1px solid #ccc', borderRadius: 6, padding: '6px 14px', background: '#fff', cursor: 'pointer', fontSize: 14 }}>
+                style={{ border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 14px', background: '#fff', cursor: 'pointer', fontSize: 14 }}>
                 {year + 1} →
               </button>
             </div>
           </div>
 
           {loading ? (
-            <div style={{ textAlign: 'center', color: '#888', padding: 40 }}>読み込み中...</div>
+            <div style={{ textAlign: 'center', color: '#6b7280', padding: 40 }}>読み込み中...</div>
           ) : uuidError ? (
             <div style={{ textAlign: 'center', color: '#dc2626', padding: 40 }}>
               <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>URLエラー</div>
               <div style={{ fontSize: 14 }}>従業員IDが無効です。<br />従業員一覧から対象の従業員を選んで再度アクセスしてください。</div>
               <button onClick={() => router.push('/employees')}
-                style={{ marginTop: 20, padding: '8px 20px', borderRadius: 6, border: 'none', background: '#0066cc', color: '#fff', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
+                style={{ marginTop: 20, padding: '8px 20px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
                 従業員一覧へ
               </button>
             </div>
@@ -261,27 +262,27 @@ export default function PayrollPage() {
                     onClick={() => openModal(m)}
                     style={{
                       borderRadius: 10, padding: '16px 14px', cursor: 'pointer',
-                      border: rec ? '1px solid #86efac' : '1px solid #e5e7eb',
+                      border: rec ? '1px solid #bbf7d0' : '1px solid #e5e7eb',
                       background: rec ? '#f0fdf4' : '#fafafa',
                       transition: 'box-shadow 0.15s',
                     }}
                     onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.10)')}
                     onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
                   >
-                    <div style={{ fontSize: 13, fontWeight: 600, color: rec ? '#16a34a' : '#aaa', marginBottom: 6 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: rec ? '#16a34a' : '#9ca3af', marginBottom: 6 }}>
                       {MONTH_LABELS[m - 1]}
                     </div>
                     {rec ? (
                       <>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>
                           {fmt(rec.net_pay)}
                         </div>
-                        <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
+                        <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
                           支給 {fmt(rec.gross_pay)}
                         </div>
                       </>
                     ) : (
-                      <div style={{ fontSize: 28, color: '#d1d5db', textAlign: 'center', marginTop: 4 }}>＋</div>
+                      <div style={{ textAlign: 'center', marginTop: 4 }}><Plus size={24} strokeWidth={2} color="#d1d5db" /></div>
                     )}
                   </div>
                 )
@@ -292,7 +293,7 @@ export default function PayrollPage() {
 
         {/* 年間サマリー */}
         {records.length > 0 && (
-          <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 12, padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <h2 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 600 }}>{year}年 年間集計</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
               {[
@@ -301,8 +302,8 @@ export default function PayrollPage() {
                 { label: '手取り合計（年）', val: records.reduce((s, r) => s + (r.net_pay ?? 0), 0) },
               ].map(({ label, val }) => (
                 <div key={label} style={{ background: '#f9fafb', borderRadius: 8, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>{label}</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: '#111' }}>
+                  <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>{label}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: '#111827' }}>
                     {val.toLocaleString('ja-JP')} 円
                   </div>
                 </div>
@@ -320,7 +321,7 @@ export default function PayrollPage() {
               <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>
                 {year}年{modal.month}月 賃金台帳
               </h3>
-              <button onClick={closeModal} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#888', lineHeight: 1 }}>×</button>
+              <button onClick={closeModal} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6b7280', lineHeight: 1 }}>×</button>
             </div>
 
             {/* ① ファイルアップロードエリア */}
@@ -330,23 +331,23 @@ export default function PayrollPage() {
               onDragLeave={() => setDragOver(false)}
               onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
               style={{
-                border: `2px dashed ${dragOver ? '#0066cc' : '#d0d0d0'}`,
+                border: `2px dashed ${dragOver ? '#2563eb' : '#d1d5db'}`,
                 borderRadius: 10, padding: '28px 20px', textAlign: 'center', cursor: 'pointer',
                 background: dragOver ? '#eff6ff' : '#fafafa', marginBottom: 16, transition: 'all 0.15s',
               }}
             >
-              <div style={{ fontSize: 32, marginBottom: 8 }}>📄</div>
+              <div style={{ marginBottom: 8 }}><FileText size={32} strokeWidth={1.5} color="#9ca3af" /></div>
               {file ? (
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#111' }}>{file.name}</div>
-                  <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{file.name}</div>
+                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
                     {(file.size / 1024).toFixed(1)} KB — クリックで変更
                   </div>
                 </div>
               ) : (
                 <div>
-                  <div style={{ fontSize: 14, color: '#555' }}>クリックまたはドラッグ＆ドロップ</div>
-                  <div style={{ fontSize: 12, color: '#aaa', marginTop: 4 }}>PDF・画像（PNG/JPG）対応</div>
+                  <div style={{ fontSize: 14, color: '#374151' }}>クリックまたはドラッグ＆ドロップ</div>
+                  <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>PDF・画像（PNG/JPG）対応</div>
                 </div>
               )}
             </div>
@@ -359,34 +360,34 @@ export default function PayrollPage() {
               disabled={!file || extracting}
               style={{
                 width: '100%', padding: '11px', borderRadius: 8, border: 'none', marginBottom: 20,
-                background: !file || extracting ? '#e5e7eb' : '#7c3aed',
+                background: !file || extracting ? '#e5e7eb' : '#2563eb',
                 color: !file || extracting ? '#9ca3af' : '#fff',
                 fontSize: 15, fontWeight: 700, cursor: !file || extracting ? 'not-allowed' : 'pointer',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               }}
             >
-              {extracting ? '⏳ AI読み取り中...' : '✨ AIで読み取る'}
+              {extracting ? 'AI読み取り中...' : <><Sparkles size={16} strokeWidth={2} />AIで読み取る</>}
             </button>
 
             {/* ③ 読取結果の確認・編集フォーム */}
             {extracted && (
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#16a34a', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  ✅ 読み取り完了 — 内容を確認・編集してください
+                  <CheckCircle2 size={15} strokeWidth={2.2} />読み取り完了 — 内容を確認・編集してください
                 </div>
 
                 {(['labor', 'pay', 'ded'] as const).map(section => {
                   const sectionFields = FIELDS.filter(f => f.section === section && f.key !== 'net_pay')
                   const title = section === 'labor' ? '【勤怠・賞与】' : section === 'pay' ? '【支給】' : '【控除】'
-                  const color = section === 'labor' ? '#059669' : section === 'pay' ? '#1d4ed8' : '#dc2626'
                   return (
                     <div key={section} style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color, marginBottom: 8, paddingBottom: 4, borderBottom: `2px solid ${color}` }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 8, paddingBottom: 4, borderBottom: '2px solid #e5e7eb' }}>
                         {title}
-                        {section === 'labor' && <span style={{ fontSize: 11, fontWeight: 400, color: '#888', marginLeft: 8 }}>定期届出（第3-6号）の集計に使用</span>}
+                        {section === 'labor' && <span style={{ fontSize: 11, fontWeight: 400, color: '#6b7280', marginLeft: 8 }}>定期届出（第3-6号）の集計に使用</span>}
                       </div>
                       {sectionFields.map(({ key, label, unit, decimal }) => (
                         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                          <label style={{ fontSize: 13, color: '#555', width: 130, flexShrink: 0 }}>{label}</label>
+                          <label style={{ fontSize: 13, color: '#374151', width: 130, flexShrink: 0 }}>{label}</label>
                           <input
                             type="number"
                             step={decimal ? '0.5' : '1'}
@@ -395,7 +396,7 @@ export default function PayrollPage() {
                             placeholder="未取得"
                             style={inputStyle}
                           />
-                          <span style={{ fontSize: 12, color: '#888', flexShrink: 0 }}>{unit}</span>
+                          <span style={{ fontSize: 12, color: '#6b7280', flexShrink: 0 }}>{unit}</span>
                         </div>
                       ))}
                     </div>
@@ -404,15 +405,15 @@ export default function PayrollPage() {
 
                 {/* 差引支給額 */}
                 <div style={{ background: '#eff6ff', borderRadius: 8, padding: '12px 14px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <label style={{ fontSize: 14, fontWeight: 700, color: '#1d4ed8', width: 120, flexShrink: 0 }}>差引支給額</label>
+                  <label style={{ fontSize: 14, fontWeight: 700, color: '#2563eb', width: 120, flexShrink: 0 }}>差引支給額</label>
                   <input
                     type="text"
                     value={extracted.net_pay != null ? String(extracted.net_pay) : ''}
                     onChange={e => setField('net_pay', e.target.value)}
                     placeholder="未取得"
-                    style={{ ...inputStyle, fontWeight: 700, fontSize: 16, color: '#1d4ed8' }}
+                    style={{ ...inputStyle, fontWeight: 700, fontSize: 16, color: '#2563eb' }}
                   />
-                  <span style={{ fontSize: 13, color: '#1d4ed8', fontWeight: 700, flexShrink: 0 }}>円</span>
+                  <span style={{ fontSize: 13, color: '#2563eb', fontWeight: 700, flexShrink: 0 }}>円</span>
                 </div>
 
                 {/* ④ 保存ボタン */}
@@ -421,12 +422,12 @@ export default function PayrollPage() {
                   disabled={saving}
                   style={{
                     width: '100%', padding: '12px', borderRadius: 8, border: 'none',
-                    background: saving ? '#e5e7eb' : '#0066cc',
+                    background: saving ? '#e5e7eb' : '#2563eb',
                     color: saving ? '#9ca3af' : '#fff',
                     fontSize: 15, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  {saving ? '⏳ 保存中...' : '💾 保存する'}
+                  {saving ? '保存中...' : '保存する'}
                 </button>
               </div>
             )}
