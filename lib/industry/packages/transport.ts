@@ -13,6 +13,7 @@ export const SUBTYPE_TOKUTEI_KATSUDO_55 = '特定活動55号'
 export const transportPackage: IndustryPackage = {
   code: 'transport',
   label: '自動車運送業',
+  labelShort: '運送',
   tasks: [
     {
       key: 'transport_shonin_kyoshu',
@@ -53,4 +54,14 @@ export const transportPackage: IndustryPackage = {
     },
   ],
   workQualRules: [],  // 運送業の作業資格は段Bで拡充
+  // 叙事層(支援・義務フロー)の業界層。点呼(輸送安全規則7条・毎日)は日次運行管理の
+  // 粒度のため義務軸対象外(docs Phase B メモ参照)
+  obligations: [
+    { key: 'council', stage: 'pre_hire', text: '◆ 分野別協議会への加入(組織・受入要件)', implemented: false,
+      legalBasis: '特定技能基準省令(受入要件)。運送はさらに働きやすい職場認証 or Gマーク(トラック)が条件付き要件' },
+    { key: 'shonin', stage: 'onboarding', text: '◇ 初任講習・初任診断(乗務前)', implemented: true,
+      legalBasis: '貨物自動車運送事業輸送安全規則10条・指導監督告示' },
+    { key: 'safety_edu', stage: 'employed', text: '◇ 継続的な安全教育(年間計画)', implemented: false,
+      legalBasis: '輸送安全規則10条・指導監督告示(12項目)' },
+  ],
 }

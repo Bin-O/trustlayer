@@ -41,9 +41,25 @@ export type WorkQualRule = {
   penalty: string              // 例 '119条（6月以下の懲役 or 50万円以下の罰金）'
 }
 
+/**
+ * 業界特有の時系列義務(叙事層=支援・義務フローの業界層)。
+ * 共通義務は lib/obligations.ts 側。在籍従業員の業界から純導出で表示され、
+ * データ格子の判定には関与しない(2026-07-18 裁定)。
+ */
+export type IndustryObligation = {
+  key: string
+  stage: import('@/lib/supportServices').LifecycleStage
+  /** ◆=全員一律 / ◇=条件触発 を文頭に含む表示文言 */
+  text: string
+  implemented: boolean
+  legalBasis?: string
+}
+
 export type IndustryPackage = {
   code: IndustryCode
   label: string
+  labelShort: string       // 叙事層の業界タグ・切替タブ表示用(例 '運送')
   tasks: IndustryTaskDef[]
   workQualRules: WorkQualRule[]
+  obligations: IndustryObligation[]
 }

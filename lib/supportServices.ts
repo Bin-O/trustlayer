@@ -17,13 +17,14 @@ import {
 /** 業務の義務区分。always=常時義務 / on_event=事由発生時のみ（該当なし表示の基準） */
 export type Obligation = 'always' | 'on_event'
 
-/** 雇用ライフサイクル上の段階(マトリクスの工程順表示に使用) */
-export type LifecycleStage = 'pre_hire' | 'onboarding' | 'employed'
+/** 雇用ライフサイクル上の段階(マトリクスの工程順表示・叙事層の4段骨格に使用) */
+export type LifecycleStage = 'pre_hire' | 'onboarding' | 'employed' | 'offboarding'
 
 export const STAGE_LABEL: Record<LifecycleStage, string> = {
   pre_hire: '入社前',
   onboarding: '入社時',
   employed: '在職中',
+  offboarding: '離職時',
 }
 
 export type SupportServiceDef = {
@@ -61,7 +62,7 @@ export const SUPPORT_SERVICES_DEF: SupportServiceDef[] = [
     desc: '本人が理解できる言語で相談・苦情に応じ、助言や必要な案内を行う義務' },
   { key: 'exchange',        no: 8,  label: '日本人との交流促進',        short: '交流促進', stage: 'employed',   obligation: 'always',   recordTypes: ['exchange'],
     desc: '地域行事の案内や参加支援等により日本人との交流機会を設ける義務' },
-  { key: 'job_change',      no: 9,  label: '転職支援（非自発的離職時）', short: '転職支援', stage: 'employed',   obligation: 'on_event', recordTypes: ['job_change'],
+  { key: 'job_change',      no: 9,  label: '転職支援（非自発的離職時）', short: '転職支援', stage: 'offboarding', obligation: 'on_event', recordTypes: ['job_change'],
     desc: '会社都合等の非自発的離職時に、次の受入れ先探しを支援する義務' },
   { key: 'interview',       no: 10, label: '定期的な面談・行政通報',    short: '定期面談', stage: 'employed',   obligation: 'always',   recordTypes: ['interview_worker', 'interview_supervisor'], taskType: TASK_TYPE_QUARTERLY_INTERVIEW,
     desc: '3ヶ月に1回以上本人と監督者に面談し、法令違反を把握した場合は通報する義務' },

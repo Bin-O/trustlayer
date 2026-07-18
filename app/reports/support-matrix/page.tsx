@@ -13,6 +13,9 @@ import {
   STATUS_LABEL, STATUS_LEGEND_NOTE,
   type ServiceStatus, type SupportServiceDef, type LifecycleStage,
 } from '@/lib/supportServices'
+import { COMMON_OBLIGATIONS, STAGE_PERIOD_NOTE } from '@/lib/obligations'
+import { resolveIndustry, industryPackageOf, type IndustryCode, type IndustryPackage } from '@/lib/industry'
+import { ArrowRight } from 'lucide-react'
 
 type WorkerRow = {
   id: string
@@ -28,6 +31,86 @@ type RowResult = {
   rate: { done: number; total: number }
   /** 未完了の面談タスク(期限最近接)。⚠️/空き枠セルからフォーム直行に使う */
   interviewTaskId: string | null
+  /** 在籍業界(employment_conditions.industry_field から解決)。タブ絞込みに使用 */
+  industry: IndustryCode | null
+}
+
+/** 叙事層の4段骨格の描画順 */
+const FLOW_STAGES: LifecycleStage[] = ['pre_hire', 'onboarding', 'employed', 'offboarding']
+
+const SERIF = "'Hiragino Mincho ProN','Yu Mincho','Noto Serif JP',serif"
+
+/** 義務1行の表示。未実装は灰色破線+「— 対応予定」(4色体系と衝突しない灰のみ) */
+function ObligationRow({ text, implemented, legalBasis }: {
+  text: string; implemented: boolean; legalBasis?: string
+}) {
+  const color = implemented ? '#374151' : '#9ca3af'
+  // 注記(トリガー条件・周期)を欠かさないため省略せず折り返す
+  return (
+    <div title={legalBasis} style={{ fontSize: 11, color, lineHeight: 1.7 }}>
+      {implemented ? text : <span style={{ borderBottom: '1px dashed #d1d5db' }}>{text} — 対応予定</span>}
+    </div>
+  )
+}
+
+/**
+ * 叙事層(読む層): 4段の工程カード+矢印。共通義務は常に表示し、業界層は
+ * 在籍従業員の業界パッケージから純導出(タブ選択時は当該業界のみ)。
+ * 明朝体の段名でデータ格子(引く層)と書体を分離する。
+ */
+function ObligationFlowStrip({ packages, activeIndustry }: {
+  packages: IndustryPackage[]
+  activeIndustry: IndustryCode | 'all'
+}) {
+  const visiblePkgs = activeIndustry === 'all' ? packages : packages.filter(p => p.code === activeIndustry)
+  return (
+    <div data-testid="obligation-flow-strip" style={{ display: 'flex', alignItems: 'stretch', marginBottom: 16 }}>
+      {FLOW_STAGES.map((stage, i) => {
+        const common = COMMON_OBLIGATIONS.filter(o => o.stage === stage)
+        // 業界層: 同一文言(協議会加入等)は業界タグをまとめて1行に統合する
+        const industryLines = new Map<string, { tags: string[]; implemented: boolean; legalBasis?: string }>()
+        for (const pkg of visiblePkgs) {
+          for (const o of pkg.obligations.filter(o => o.stage === stage)) {
+            const line = industryLines.get(o.text)
+            if (line) line.tags.push(pkg.labelShort)
+            else industryLines.set(o.text, { tags: [pkg.labelShort], implemented: o.implemented, legalBasis: o.legalBasis })
+          }
+        }
+        return (
+          <div key={stage} style={{ display: 'contents' }}>
+            {i > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', padding: '0 2px', color: '#9ca3af', flexShrink: 0 }}>
+                <ArrowRight size={14} strokeWidth={2} />
+              </div>
+            )}
+            <div data-testid={`flow-stage-${stage}`}
+              style={{ flex: 1, minWidth: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 10px' }}>
+              <div style={{ fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: '#111827', letterSpacing: '0.08em' }}>
+                {STAGE_LABEL[stage]}
+              </div>
+              <div style={{ fontFamily: SERIF, fontSize: 10, color: '#9ca3af', marginBottom: 5 }}>{STAGE_PERIOD_NOTE[stage]}</div>
+              {common.map(o => (
+                <ObligationRow key={o.key} text={o.text} implemented={o.implemented} legalBasis={o.legalBasis} />
+              ))}
+              {industryLines.size > 0 && (
+                <div style={{ borderTop: '1px dashed #f3f4f6', marginTop: 5, paddingTop: 4 }}>
+                  {[...industryLines.entries()].map(([text, line]) => (
+                    <div key={text} title={line.legalBasis}
+                      style={{ fontSize: 11, color: line.implemented ? '#6b7280' : '#9ca3af', lineHeight: 1.7 }}>
+                      {line.tags.map(t => (
+                        <span key={t} style={{ border: '1px solid #e5e7eb', borderRadius: 3, padding: '0 3px', color: '#9ca3af', fontSize: 10, marginRight: 3 }}>{t}</span>
+                      ))}
+                      {line.implemented ? text : <span style={{ borderBottom: '1px dashed #d1d5db' }}>{text} — 対応予定</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 /** 工程順の列を段階ごとに区切るためのグループ(colSpan と境界罫線の計算) */
@@ -62,6 +145,8 @@ export default function SupportMatrixPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [rows, setRows] = useState<RowResult[]>([])
+  // 業界タブ(在籍業界が2つ以上の場合のみ表示)。'all'=共通層+全在籍業界層
+  const [tab, setTab] = useState<IndustryCode | 'all'>('all')
 
   useEffect(() => {
     const supabase = createClient()
@@ -79,14 +164,18 @@ export default function SupportMatrixPage() {
 
       if (ids.length === 0) { setRows([]); setLoading(false); return }
 
-      const [recsRes, tasksRes] = await Promise.all([
+      const [recsRes, tasksRes, condsRes] = await Promise.all([
         supabase.from('support_records').select('worker_id, type, completed, quarter').in('worker_id', ids),
         supabase.from('support_tasks')
           .select('id, worker_id, task_type, status, due_date')
           .in('worker_id', ids)
           .in('task_type', [...INTERVIEW_TASK_TYPES])
           .eq('status', 'pending'),
+        // 叙事層の業界層・タブの導出元(在籍従業員の業界フィールド)
+        supabase.from('employment_conditions').select('worker_id, industry_field').in('worker_id', ids),
       ])
+      const industryBy = new Map<string, IndustryCode | null>()
+      for (const c of condsRes.data ?? []) industryBy.set(c.worker_id, resolveIndustry(c.industry_field))
       const recsBy = new Map<string, { type: string; completed: boolean | null; quarter: string | null }[]>()
       for (const r of recsRes.data ?? []) {
         const list = recsBy.get(r.worker_id) ?? []
@@ -110,6 +199,7 @@ export default function SupportMatrixPage() {
           statuses: Object.fromEntries(matrix.map(m => [m.def.key, m.status])),
           rate: completionRate(matrix),
           interviewTaskId: nextTask?.id ?? null,
+          industry: industryBy.get(w.id) ?? null,
         }
       })
       setRows(result)
@@ -118,7 +208,13 @@ export default function SupportMatrixPage() {
     load()
   }, [])
 
-  const totalRate = rows.reduce((acc, r) => ({ done: acc.done + r.rate.done, total: acc.total + r.rate.total }), { done: 0, total: 0 })
+  // 在籍業界のパッケージ(純導出)。2つ以上ある場合のみタブを表示する
+  const presentPackages = [...new Set(rows.map(r => r.industry).filter((c): c is IndustryCode => c !== null))]
+    .map(c => industryPackageOf(c))
+    .filter((p): p is IndustryPackage => p !== null)
+  const visibleRows = tab === 'all' ? rows : rows.filter(r => r.industry === tab)
+  const rateScope = tab === 'all' ? '全体' : (presentPackages.find(p => p.code === tab)?.labelShort ?? '')
+  const totalRate = visibleRows.reduce((acc, r) => ({ done: acc.done + r.rate.done, total: acc.total + r.rate.total }), { done: 0, total: 0 })
 
   // セルクリック: 面談の未完了(要対応/未実施)は面談フォーム直行、それ以外は詳細の該当セクションへ
   const openCell = (row: RowResult, def: SupportServiceDef, status: ServiceStatus) => {
@@ -155,16 +251,40 @@ export default function SupportMatrixPage() {
       `}</style>
       <AppHeader currentPage="reports" />
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: '28px 24px 48px' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
-          <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, color: '#111', letterSpacing: '-0.01em' }}>支援業務の実施状況</h1>
-          {!loading && rows.length > 0 && (
-            <span style={{ fontSize: 13, color: '#6b7280' }}>
-              全体の常時義務実施率 <span data-testid="total-rate" style={{ fontWeight: 700, color: '#111' }}>{totalRate.done}/{totalRate.total}</span>
-            </span>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
+          <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700, color: '#111', letterSpacing: '-0.01em' }}>支援・義務フロー — 入社前から離職まで</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            {/* 業界タブ: 在籍業界が2つ以上の場合のみ表示(1業界の会社ではタブなし) */}
+            {presentPackages.length >= 2 && (
+              <div style={{ display: 'flex', gap: 4 }}>
+                {([{ code: 'all' as const, labelShort: '全体' }, ...presentPackages]).map(p => {
+                  const active = tab === p.code
+                  return (
+                    <button key={p.code} data-testid={`industry-tab-${p.code}`}
+                      onClick={() => setTab(p.code as IndustryCode | 'all')}
+                      style={{
+                        fontSize: 12, fontWeight: active ? 600 : 400, padding: '4px 12px', borderRadius: 6, cursor: 'pointer',
+                        background: active ? '#eff6ff' : '#fff', color: active ? '#2563eb' : '#6b7280',
+                        border: `1px solid ${active ? '#bfdbfe' : '#e5e7eb'}`,
+                      }}>
+                      {p.labelShort}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            {!loading && rows.length > 0 && (
+              <span style={{ fontSize: 13, color: '#6b7280' }}>
+                {rateScope}の常時義務実施率 <span data-testid="total-rate" style={{ fontWeight: 700, color: '#111' }}>{totalRate.done}/{totalRate.total}</span>
+              </span>
+            )}
+          </div>
         </div>
-        <p style={{ margin: '0 0 20px', fontSize: 13, color: '#6b7280' }}>
-          特定技能1号の在職者について、義務的支援10業務の実施記録を雇用ライフサイクルの工程順に一覧化した監査用レポートです。セルをクリックすると記録・詳細に移動します。
+        <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6b7280' }}>
+          特定技能1号の在職者{!loading && rows.length > 0 ? `${rows.length}名(${presentPackages.map(p => `${p.labelShort}${rows.filter(r => r.industry === p.code).length}`).join('・')})` : ''}について、雇用ライフサイクル上の義務と実施記録を一覧化した監査用レポートです。セルをクリックすると記録・詳細に移動します。
+          <span style={{ marginLeft: 10, color: '#374151', whiteSpace: 'nowrap' }}>◆ 全員一律</span>
+          <span style={{ marginLeft: 6, color: '#374151', whiteSpace: 'nowrap' }}>◇ 条件触発</span>
+          <span style={{ marginLeft: 6, color: '#9ca3af', whiteSpace: 'nowrap' }}>破線=対応予定</span>
         </p>
 
         {loading ? (
@@ -175,6 +295,8 @@ export default function SupportMatrixPage() {
           </div>
         ) : (
           <>
+            {/* 叙事層(読む層): 4段の工程軸。データ格子(引く層)とは書体・階層で分離 */}
+            <ObligationFlowStrip packages={presentPackages} activeIndustry={tab} />
             <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflowX: 'auto' }}>
               <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 900 }}>
                 <thead>
@@ -212,7 +334,7 @@ export default function SupportMatrixPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map(row => (
+                  {visibleRows.map(row => (
                     <tr key={row.workerId} className="mx-row" data-testid={`matrix-worker-row`}>
                       <td style={{ ...td, textAlign: 'left', position: 'sticky', left: 0, background: '#fff', zIndex: 1 }}>
                         <button onClick={() => router.push(`/employees/${row.workerId}`)} className="mx-name-btn"
