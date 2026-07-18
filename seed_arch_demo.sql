@@ -248,6 +248,14 @@ INSERT INTO qualifications (organization_id, worker_id, type, level, verified_le
 INSERT INTO worker_work_assignments (organization_id, worker_id, work_key, planned_start_date, status) VALUES
 ('11111111-1111-1111-1111-111111111111','a1000000-0000-4000-8000-000000000005','forklift_1t','2026-08-01','planned');
 
+-- 【デモ実演の復位用】⑥(製造・割当なし・資格なし)にUIで forklift_1t を現場追加すると
+-- 橙119条カードが即出現する。実演後は下記SQLで復位する。
+-- ※ worker_work_assignments には DELETE ポリシーが無い(anon/authenticated からの直接DELETEは
+--   0行=無音失敗)。復位は RLS を迂回する Management API(service role)経由で実行すること。
+-- ※ demo-runbook に転記すること。
+-- DELETE FROM worker_work_assignments
+--   WHERE worker_id='a1000000-0000-4000-8000-000000000006' AND work_key='forklift_1t';
+
 
 -- ======================= STEP 11: 帳票生成記録 document_generations =========================
 -- 機関単位: teiki_hokoku を1件（worker_id NULL, 提出期間開始2026-04-01以降）→ ダッシュボード

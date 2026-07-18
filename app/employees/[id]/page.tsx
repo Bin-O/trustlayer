@@ -12,7 +12,7 @@ import { INTERVIEW_TASK_TYPES, interviewVariantOf, interviewDocumentIdOf, type S
 import { industryTaskDefByType } from '@/lib/industryTasks'
 import { SUBTYPE_TOKUTEI_KATSUDO_55 } from '@/lib/industry/packages/transport'
 import { resolveIndustry } from '@/lib/industry/codes'
-import { industryPackageOf } from '@/lib/industry'
+import { industryPackageOf, type WorkQualRule } from '@/lib/industry'
 import { computeQualGap, type QualGap } from '@/lib/qualGap'
 import { computeServiceMatrix, completionRate, STATUS_STYLE, STATUS_LABEL, type ServiceStatus, type SupportServiceDef } from '@/lib/supportServices'
 import SupportStatusGlyph from '@/components/SupportStatusGlyph'
@@ -142,6 +142,12 @@ export default function EmployeeDetail() {
   const [industryTasks, setIndustryTasks] = useState<SupportTask[]>([])
   // 作業資格ギャップ（作業割当 × 保有資格・段3。未充足=労安衛法119条リスク）
   const [qualGaps, setQualGaps] = useState<QualGap[]>([])
+  // 当該業界パッケージの資格対象作業ルール（セクション表示可否＋「作業を追加」の選択肢の正本）
+  const [workQualRules, setWorkQualRules] = useState<WorkQualRule[]>([])
+  // 「作業を追加」インラインフォーム（Phase A=追加のみ。削除・状態変更はPhase B）
+  const [addWork, setAddWork] = useState<{ open: boolean; work_key: string; planned_start_date: string; status: 'planned' | 'active'; saving: boolean }>({
+    open: false, work_key: '', planned_start_date: '', status: 'planned', saving: false,
+  })
   const [openTask, setOpenTask] = useState<SupportTask | null>(null)
   // プリフィル用の前回記録（variant ごとに保持）
   const [prevNotesByType, setPrevNotesByType] = useState<{
@@ -244,6 +250,7 @@ export default function EmployeeDetail() {
 
     // 段3: 業界パッケージの workQualRules × 作業割当 × 保有資格 → ギャップ
     const pkg = industryPackageOf(resolveIndustry(condRes.data?.industry_field))
+    setWorkQualRules(pkg?.workQualRules ?? [])   // 資格対象作業が無い業界(運送等)はセクションごと非表示
     setQualGaps(pkg
       ? computeQualGap(pkg.workQualRules, assignRes.data ?? [], qualRes.data ?? [])
       : [])
@@ -256,6 +263,28 @@ export default function EmployeeDetail() {
     if (autoOpenTaskId) {
       const t = tasks.find(t => t.id === autoOpenTaskId)
       if (t) setOpenTask(t)
+    }
+  }
+
+  // 作業割当の追加（Phase A=追加のみ）。INSERT後に再取得→computeQualGap再評価で橙カード即出現。
+  // 既存RLS(anon/authenticated INSERT許可済)で通る。organization_id は worker.org_id(NOT NULL)を供給。
+  const handleAddAssignment = async () => {
+    if (!worker || !addWork.work_key) return
+    setAddWork(p => ({ ...p, saving: true }))
+    try {
+      const { error } = await supabase.from('worker_work_assignments').insert({
+        organization_id: worker.org_id,
+        worker_id: worker.id,
+        work_key: addWork.work_key,
+        planned_start_date: addWork.planned_start_date || null,
+        status: addWork.status,
+      })
+      if (error) throw error
+      await fetchInterviewTasks()   // 割当・保有資格を再取得し qualGaps を再計算
+      setAddWork({ open: false, work_key: '', planned_start_date: '', status: 'planned', saving: false })
+    } catch (err) {
+      console.error('[handleAddAssignment]', err)
+      setAddWork(p => ({ ...p, saving: false }))
     }
   }
 
@@ -1177,10 +1206,17 @@ export default function EmployeeDetail() {
           </div>
         )}
 
-        {/* 作業資格チェック（段3・作業割当 × 保有資格・未充足=労安衛法119条リスク） */}
-        {qualGaps.length > 0 && (
+        {/* 作業資格チェック（段3・作業割当 × 保有資格・未充足=労安衛法119条リスク）
+            資格対象作業が定義された業界(製造)のみ表示。運送等(workQualRules空)はセクションごと非表示 */}
+        {workQualRules.length > 0 && (() => {
+          const assignedKeys = new Set(qualGaps.map(g => g.rule.work))
+          const availableRules = workQualRules.filter(r => !assignedKeys.has(r.work))
+          return (
           <div data-testid="qual-gap-section" style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
             <div style={{fontSize:15,fontWeight:600,color:"#111827",marginBottom:10}}>作業資格チェック（労働安全衛生法）</div>
+            {qualGaps.length === 0 && !addWork.open && (
+              <div style={{fontSize:13,color:"#6b7280",padding:"4px 0 10px"}}>登録済みの作業はありません。</div>
+            )}
             {qualGaps.map((g, i) => {
               const bad = !g.satisfied
               return (
@@ -1210,8 +1246,60 @@ export default function EmployeeDetail() {
                 </div>
               )
             })}
+
+            {/* 作業を追加（Phase A=追加のみ・削除/状態変更はPhase B）。選択肢は未割当のworkQualRules */}
+            {addWork.open ? (
+              <div data-testid="add-assignment-form" style={{marginTop:qualGaps.length>0?10:0,padding:"12px 13px",background:"#f3f4f6",border:"1px solid #e5e7eb",borderRadius:8}}>
+                <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                  <label style={{display:"flex",flexDirection:"column",gap:4}}>
+                    <span style={{fontSize:12,fontWeight:600,color:"#374151"}}>作業</span>
+                    <select data-testid="add-assignment-work" value={addWork.work_key}
+                      onChange={e => setAddWork(p => ({ ...p, work_key: e.target.value }))}
+                      style={{fontSize:13,padding:"7px 9px",border:"1px solid #d1d5db",borderRadius:8,background:"#fff",color:"#111"}}>
+                      <option value="">選択してください</option>
+                      {availableRules.map(r => <option key={r.work} value={r.work}>{r.label}</option>)}
+                    </select>
+                  </label>
+                  <label style={{display:"flex",flexDirection:"column",gap:4}}>
+                    <span style={{fontSize:12,fontWeight:600,color:"#374151"}}>従事予定日</span>
+                    <input data-testid="add-assignment-date" type="date" value={addWork.planned_start_date}
+                      onChange={e => setAddWork(p => ({ ...p, planned_start_date: e.target.value }))}
+                      style={{fontSize:13,padding:"7px 9px",border:"1px solid #d1d5db",borderRadius:8,background:"#fff",color:"#111",width:170}} />
+                  </label>
+                  <label style={{display:"flex",flexDirection:"column",gap:4}}>
+                    <span style={{fontSize:12,fontWeight:600,color:"#374151"}}>状態</span>
+                    <select data-testid="add-assignment-status" value={addWork.status}
+                      onChange={e => setAddWork(p => ({ ...p, status: e.target.value as 'planned' | 'active' }))}
+                      style={{fontSize:13,padding:"7px 9px",border:"1px solid #d1d5db",borderRadius:8,background:"#fff",color:"#111",width:170}}>
+                      <option value="planned">予定</option>
+                      <option value="active">従事中</option>
+                    </select>
+                  </label>
+                  <div style={{display:"flex",gap:8,marginTop:2}}>
+                    <button data-testid="add-assignment-save" onClick={handleAddAssignment}
+                      disabled={!addWork.work_key || addWork.saving}
+                      style={{background:(!addWork.work_key||addWork.saving)?"#93c5fd":"#2563eb",color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:13,fontWeight:600,cursor:(!addWork.work_key||addWork.saving)?"not-allowed":"pointer"}}>
+                      {addWork.saving ? '追加中...' : '追加する'}
+                    </button>
+                    <button onClick={() => setAddWork({ open:false, work_key:'', planned_start_date:'', status:'planned', saving:false })}
+                      disabled={addWork.saving}
+                      style={{background:"#fff",border:"1px solid #d1d5db",borderRadius:8,padding:"8px 16px",fontSize:13,fontWeight:600,color:"#374151",cursor:"pointer"}}>
+                      キャンセル
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : availableRules.length > 0 ? (
+              <button data-testid="add-assignment-open" onClick={() => setAddWork(p => ({ ...p, open: true }))}
+                style={{marginTop:qualGaps.length>0?10:0,background:"none",border:"none",color:"#2563eb",fontSize:13,fontWeight:600,cursor:"pointer",padding:0}}>
+                ＋ 作業を追加
+              </button>
+            ) : (
+              <div style={{marginTop:10,fontSize:12,color:"#9ca3af"}}>追加できる対象作業はありません。</div>
+            )}
           </div>
-        )}
+          )
+        })()}
 
         {/* 実施済み面談記録（定期面談報告書 5-5号 の再ダウンロード） */}
         {interviewRecords.length > 0 && (
