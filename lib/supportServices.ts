@@ -13,15 +13,25 @@ import {
   quarterKey,
   type SupportTask,
 } from '@/lib/supportTasks'
-import { Check, AlertTriangle, Circle, Minus, type LucideIcon } from 'lucide-react'
 
 /** 業務の義務区分。always=常時義務 / on_event=事由発生時のみ（該当なし表示の基準） */
 export type Obligation = 'always' | 'on_event'
+
+/** 雇用ライフサイクル上の段階(マトリクスの工程順表示に使用) */
+export type LifecycleStage = 'pre_hire' | 'onboarding' | 'employed'
+
+export const STAGE_LABEL: Record<LifecycleStage, string> = {
+  pre_hire: '入社前',
+  onboarding: '入社時',
+  employed: '在職中',
+}
 
 export type SupportServiceDef = {
   key: string
   no: number                 // 法定10業務の番号
   label: string
+  desc: string               // 義務の一句説明(表頭tooltip・三段式フォームで共用)
+  stage: LifecycleStage      // 雇用ライフサイクル段階(マトリクスの列グループ)
   short: string              // マトリクス縦書きヘッダー用の短縮表記（全文は title 属性で表示）
   obligation: Obligation
   recordTypes: string[]      // 実施済み判定に用いる support_records.type（複数可）
@@ -35,17 +45,42 @@ export type SupportServiceDef = {
  * always→未実施○ / on_event→該当なし— で表示される（実施記録UIは次フェーズ）。
  */
 export const SUPPORT_SERVICES_DEF: SupportServiceDef[] = [
-  { key: 'guidance',        no: 1,  label: '事前ガイダンス',            short: '事前案内',   obligation: 'always',   recordTypes: ['guidance'] },
-  { key: 'airport_pickup',  no: 2,  label: '出入国する際の送迎',        short: '送迎',       obligation: 'on_event', recordTypes: ['airport_pickup'] },
-  { key: 'housing',         no: 3,  label: '住居確保・生活契約支援',    short: '住居確保',   obligation: 'always',   recordTypes: ['housing'] },
-  { key: 'life_orientation',no: 4,  label: '生活オリエンテーション',    short: '生活案内',   obligation: 'always',   recordTypes: ['orientation'] },
-  { key: 'accompaniment',   no: 5,  label: '公的手続等への同行',        short: '手続同行',   obligation: 'on_event', recordTypes: ['accompaniment'] },
-  { key: 'japanese',        no: 6,  label: '日本語学習の機会提供',      short: '日本語学習', obligation: 'always',   recordTypes: ['japanese', 'training'] },
-  { key: 'consultation',    no: 7,  label: '相談・苦情への対応',        short: '相談対応',   obligation: 'on_event', recordTypes: ['consultation'] },
-  { key: 'exchange',        no: 8,  label: '日本人との交流促進',        short: '交流促進',   obligation: 'always',   recordTypes: ['exchange'] },
-  { key: 'job_change',      no: 9,  label: '転職支援（非自発的離職時）', short: '転職支援',   obligation: 'on_event', recordTypes: ['job_change'] },
-  { key: 'interview',       no: 10, label: '定期的な面談・行政通報',    short: '定期面談',   obligation: 'always',   recordTypes: ['interview_worker', 'interview_supervisor'], taskType: TASK_TYPE_QUARTERLY_INTERVIEW },
+  { key: 'guidance',        no: 1,  label: '事前ガイダンス',            short: '事前案内', stage: 'pre_hire',   obligation: 'always',   recordTypes: ['guidance'],
+    desc: '雇用契約後・入国前に、労働条件や活動内容、入国手続等を説明する義務' },
+  { key: 'airport_pickup',  no: 2,  label: '出入国する際の送迎',        short: '空港送迎', stage: 'onboarding', obligation: 'on_event', recordTypes: ['airport_pickup'],
+    desc: '入国時に空港から事業所・住居まで、帰国時に空港の保安検査場まで送迎する義務' },
+  { key: 'housing',         no: 3,  label: '住居確保・生活契約支援',    short: '住居確保', stage: 'onboarding', obligation: 'always',   recordTypes: ['housing'],
+    desc: '住居の確保と、銀行口座・携帯電話・ライフライン等の契約手続を支援する義務' },
+  { key: 'life_orientation',no: 4,  label: '生活オリエンテーション',    short: '生活案内', stage: 'onboarding', obligation: 'always',   recordTypes: ['orientation'],
+    desc: '入国後に日本の生活ルールや公共機関の利用方法等を説明する義務' },
+  { key: 'accompaniment',   no: 5,  label: '公的手続等への同行',        short: '手続同行', stage: 'employed',   obligation: 'on_event', recordTypes: ['accompaniment'],
+    desc: '住居地届出・社会保険・税等の手続に必要に応じて同行し書類作成を補助する義務' },
+  { key: 'japanese',        no: 6,  label: '日本語学習の機会提供',      short: '語学支援', stage: 'employed',   obligation: 'always',   recordTypes: ['japanese', 'training'],
+    desc: '日本語教室の入学案内や学習教材の提供等により学習機会を確保する義務' },
+  { key: 'consultation',    no: 7,  label: '相談・苦情への対応',        short: '相談対応', stage: 'employed',   obligation: 'on_event', recordTypes: ['consultation'],
+    desc: '本人が理解できる言語で相談・苦情に応じ、助言や必要な案内を行う義務' },
+  { key: 'exchange',        no: 8,  label: '日本人との交流促進',        short: '交流促進', stage: 'employed',   obligation: 'always',   recordTypes: ['exchange'],
+    desc: '地域行事の案内や参加支援等により日本人との交流機会を設ける義務' },
+  { key: 'job_change',      no: 9,  label: '転職支援（非自発的離職時）', short: '転職支援', stage: 'employed',   obligation: 'on_event', recordTypes: ['job_change'],
+    desc: '会社都合等の非自発的離職時に、次の受入れ先探しを支援する義務' },
+  { key: 'interview',       no: 10, label: '定期的な面談・行政通報',    short: '定期面談', stage: 'employed',   obligation: 'always',   recordTypes: ['interview_worker', 'interview_supervisor'], taskType: TASK_TYPE_QUARTERLY_INTERVIEW,
+    desc: '3ヶ月に1回以上本人と監督者に面談し、法令違反を把握した場合は通報する義務' },
 ]
+
+/**
+ * マトリクスの列順（雇用ライフサイクルの工程順）。
+ * SUPPORT_SERVICES_DEF は公式番号順の正本のまま変更しない（詳細ページの縦リスト・
+ * 業界パッケージ拡張が公式順に依存）。列位置だけ工程順にし、公式番号は表示で維持する。
+ * 在職中は公式順を保ちつつ、定期面談（反復義務）→転職支援（ライフサイクル終端）の順で締める。
+ */
+const MATRIX_COLUMN_KEYS = [
+  'guidance',
+  'airport_pickup', 'housing', 'life_orientation',
+  'accompaniment', 'japanese', 'consultation', 'exchange', 'interview', 'job_change',
+] as const
+
+export const SUPPORT_SERVICES_MATRIX_ORDER: SupportServiceDef[] =
+  MATRIX_COLUMN_KEYS.map(k => SUPPORT_SERVICES_DEF.find(d => d.key === k)!)
 
 /** マトリクスのセル状態 */
 export type ServiceStatus = 'done' | 'due' | 'not_yet' | 'not_applicable'
@@ -57,12 +92,21 @@ export const STATUS_LABEL: Record<ServiceStatus, string> = {
   not_applicable: '該当なし',
 }
 
-// アイコンは絵文字ではなく lucide コンポーネント参照(絵文字固有の色がトークン外のため)
-export const STATUS_STYLE: Record<ServiceStatus, { icon: LucideIcon; color: string; bg: string }> = {
-  done:           { icon: Check,         color: '#166534', bg: '#dcfce7' },
-  due:            { icon: AlertTriangle, color: '#b45309', bg: '#fef3c7' },
-  not_yet:        { icon: Circle,        color: '#9ca3af', bg: '#f3f4f6' },
-  not_applicable: { icon: Minus,         color: '#cbd5e1', bg: '#f8fafc' },
+/** 凡例用の補足(未実施=空き枠/該当なし=対象外の区別を文言でも支える) */
+export const STATUS_LEGEND_NOTE: Record<ServiceStatus, string> = {
+  done: '実施済',
+  due: '要対応',
+  not_yet: '未実施(記録待ち)',
+  not_applicable: '該当なし(対象外)',
+}
+
+// 記号の描画は components/SupportStatusGlyph に集約(未実施=破線の空き枠、○×文化との衝突回避)。
+// ここは色定義のみ。該当なしは背景を持たず、未実施(空き枠)より一段薄い。
+export const STATUS_STYLE: Record<ServiceStatus, { color: string; bg: string }> = {
+  done:           { color: '#166534', bg: '#dcfce7' },
+  due:            { color: '#b45309', bg: '#fef3c7' },
+  not_yet:        { color: '#9ca3af', bg: '#f3f4f6' },
+  not_applicable: { color: '#d1d5db', bg: 'transparent' },
 }
 
 /** 集約に必要な最小レコード形。quarter は面談の当四半期判定に用いる（他業務は NULL 可） */

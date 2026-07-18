@@ -15,6 +15,7 @@ import { resolveIndustry } from '@/lib/industry/codes'
 import { industryPackageOf } from '@/lib/industry'
 import { computeQualGap, type QualGap } from '@/lib/qualGap'
 import { computeServiceMatrix, completionRate, STATUS_STYLE, STATUS_LABEL, type ServiceStatus, type SupportServiceDef } from '@/lib/supportServices'
+import SupportStatusGlyph from '@/components/SupportStatusGlyph'
 import { AlertTriangle, CheckCircle2, FileText, Pencil, Camera, Sparkles } from 'lucide-react'
 
 type Worker = {
@@ -151,6 +152,9 @@ export default function EmployeeDetail() {
   const [serviceMatrix, setServiceMatrix] = useState<{ def: SupportServiceDef; status: ServiceStatus }[]>([])
   const [orgPrefill, setOrgPrefill] = useState<OrgPrefill>(null)
   const [trustRefresh, setTrustRefresh] = useState(0)
+  // マトリクスのセルクリック(?section=)で遷移してきた時のスクロール先ハイライト
+  const [highlightSection, setHighlightSection] = useState<string | null>(null)
+  const sectionScrolledRef = useRef(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -306,6 +310,25 @@ export default function EmployeeDetail() {
     fetchInterviewTasks(taskParam)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
+
+  // マトリクスのセルクリック（?section=support|interviews）からの遷移:
+  // 対象カードは非同期データの描画後に現れるため、データ到着を待ってスクロールする
+  useEffect(() => {
+    if (sectionScrolledRef.current) return
+    const section = new URLSearchParams(window.location.search).get('section')
+    if (!section) { sectionScrolledRef.current = true; return }
+    const targetId = section === 'interviews' ? 'interview-records' : section === 'support' ? 'support-services' : null
+    if (!targetId) { sectionScrolledRef.current = true; return }
+    // 面談記録が無い場合は支援業務セクションにフォールバック
+    const el = document.getElementById(targetId) ?? document.getElementById('support-services')
+    if (!el) return
+    sectionScrolledRef.current = true
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    // ハイライトはスクロール開始後のフレームで点灯し、しばらくして消す
+    const raf = requestAnimationFrame(() => setHighlightSection(el.id))
+    const timer = setTimeout(() => setHighlightSection(null), 1800)
+    return () => { cancelAnimationFrame(raf); clearTimeout(timer) }
+  }, [serviceMatrix, interviewRecords])
 
   // TODO: 在留資格更新許可申請書の自動生成（正式様式対応）が実装されたら復元する
   // const generateRenewalDoc = async () => {
@@ -1192,7 +1215,9 @@ export default function EmployeeDetail() {
 
         {/* 実施済み面談記録（定期面談報告書 5-5号 の再ダウンロード） */}
         {interviewRecords.length > 0 && (
-          <div data-testid="interview-records-section" style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+          <div id="interview-records" data-testid="interview-records-section"
+            style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:12,padding:"16px 20px",marginBottom:16,
+              boxShadow:highlightSection==="interview-records"?"0 0 0 2px #bfdbfe":"0 1px 3px rgba(0,0,0,0.06)",transition:"box-shadow 0.4s",scrollMarginTop:80}}>
             <div style={{fontSize:15,fontWeight:600,color:"#111827",marginBottom:10}}>面談記録（定期面談報告書 参考様式第5-5号／5-6号）</div>
             {interviewRecords.map((r, i) => (
               <div key={r.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"9px 0",borderTop:i>0?"1px solid #f3f4f6":"none",flexWrap:"wrap"}}>
@@ -1216,7 +1241,9 @@ export default function EmployeeDetail() {
         {activeStatus?.status_type === '特定技能1号' && serviceMatrix.length > 0 && (() => {
           const rate = completionRate(serviceMatrix)
           return (
-            <div data-testid="service-matrix-card" style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+            <div id="support-services" data-testid="service-matrix-card"
+              style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:12,padding:"16px 20px",marginBottom:16,
+                boxShadow:highlightSection==="support-services"?"0 0 0 2px #bfdbfe":"0 1px 3px rgba(0,0,0,0.06)",transition:"box-shadow 0.4s",scrollMarginTop:80}}>
               <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:10}}>
                 <div style={{fontSize:15,fontWeight:600,color:"#111827"}}>支援業務の実施状況</div>
                 <div style={{fontSize:12,color:"#6b7280"}}>
@@ -1226,15 +1253,14 @@ export default function EmployeeDetail() {
               <div style={{display:"flex",flexDirection:"column"}}>
                 {serviceMatrix.map(({ def, status }, i) => {
                   const s = STATUS_STYLE[status]
-                  const StatusIcon = s.icon
                   return (
                     <div key={def.key} data-testid={`matrix-row-${def.key}`}
                       style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderTop:i>0?"1px solid #f3f4f6":"none"}}>
                       <span style={{width:22,fontSize:12,color:"#9ca3af",fontVariantNumeric:"tabular-nums",flexShrink:0}}>{def.no}</span>
                       <span style={{flex:1,minWidth:0,fontSize:13,color:"#374151"}}>{def.label}</span>
-                      <span data-testid={`matrix-status-${def.key}`}
-                        style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:12,fontWeight:600,color:s.color,background:s.bg,borderRadius:9999,padding:"3px 10px",flexShrink:0}}>
-                        <StatusIcon size={12} strokeWidth={2.4} /> {STATUS_LABEL[status]}
+                      <span data-testid={`matrix-status-${def.key}`} data-status={status}
+                        style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:12,fontWeight:600,color:status==="not_applicable"?"#9ca3af":s.color,background:s.bg,borderRadius:9999,padding:"3px 10px",flexShrink:0}}>
+                        <SupportStatusGlyph status={status} variant="inline" size={12} /> {STATUS_LABEL[status]}
                       </span>
                     </div>
                   )
