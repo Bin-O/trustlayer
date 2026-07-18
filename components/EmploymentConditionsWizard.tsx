@@ -2,8 +2,15 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { AlertTriangle, Check, CheckCircle2, FileText } from 'lucide-react'
+import { allIndustryPackages, resolveIndustry, industryPackageOf } from '@/lib/industry'
 
 const ORG_ID = '11111111-1111-1111-1111-111111111111'
+
+// 業界選択肢はパッケージの label から生成し、resolveIndustry と確実に一致させる
+const INDUSTRY_OPTIONS = allIndustryPackages().map(p => p.label)
+const JOB_OTHER = '__other__'
+const jobCategoriesFor = (industryField: string): string[] =>
+  industryPackageOf(resolveIndustry(industryField))?.jobCategories ?? []
 const STEPS = ['基本情報', '就業時間', '休憩・休日', '賃金・手当', '控除', '保険確認']
 
 type N = number | null
@@ -227,6 +234,7 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
   const [isEditing, setIsEditing] = useState(false)
   const [notifyModal, setNotifyModal] = useState<{ diffItems: { item: DiffItem; section: ChangedSection }[]; changedSections: ChangedSection[] } | null>(null)
   const [generatingDoc, setGeneratingDoc] = useState(false)
+  const [jobOther, setJobOther] = useState(false)  // 職種「その他(自由入力)」モード
 
   const s = <K extends keyof Form>(k: K, v: Form[K]) => setForm(p => ({ ...p, [k]: v }))
 
@@ -236,6 +244,7 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
     setErrors([])
     setSaved(false)
     setIsEditing(false)
+    setJobOther(false)
     setForm({ ...INIT, effective_date: new Date().toISOString().slice(0, 10) })
     setLoading(true)
 
@@ -504,10 +513,38 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
       </G2>
       <F label="就業場所住所">{txtInp('workplace_address', '東京都千代田区丸の内1-1-1')}</F>
       <Divider label="業務内容" />
-      <G2>
-        <F label="業務の種類・分野" req>{txtInp('industry_field', '飲食料品製造業')}</F>
-        <F label="従事すべき業務の内容" req>{txtInp('job_category', '飲食料品製造業務')}</F>
-      </G2>
+      {(() => {
+        const jobCandidates = jobCategoriesFor(form.industry_field)
+        const jobIsOther = jobOther || (!!form.job_category && !jobCandidates.includes(form.job_category))
+        return (
+          <>
+            <G2>
+              <F label="業務の種類・分野" req>
+                <select style={sel} value={form.industry_field}
+                  onChange={e => { setJobOther(false); s('industry_field', e.target.value); s('job_category', '') }}>
+                  <option value="">選択してください</option>
+                  {INDUSTRY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </F>
+              <F label="従事すべき業務の内容" req>
+                <select style={sel} value={jobIsOther ? JOB_OTHER : form.job_category}
+                  disabled={!form.industry_field}
+                  onChange={e => {
+                    if (e.target.value === JOB_OTHER) { setJobOther(true); s('job_category', '') }
+                    else { setJobOther(false); s('job_category', e.target.value) }
+                  }}>
+                  <option value="">選択してください</option>
+                  {jobCandidates.map(o => <option key={o} value={o}>{o}</option>)}
+                  <option value={JOB_OTHER}>その他（自由入力）</option>
+                </select>
+              </F>
+            </G2>
+            {jobIsOther && (
+              <F label="従事すべき業務の内容（自由入力）" req>{txtInp('job_category', '例：飲食料品製造業務')}</F>
+            )}
+          </>
+        )
+      })()}
     </>
   )
 

@@ -14,6 +14,7 @@ export const transportPackage: IndustryPackage = {
   code: 'transport',
   label: '自動車運送業',
   labelShort: '運送',
+  jobCategories: ['自動車運転業務', 'トラック運転業務', 'タクシー運転業務', 'バス運転業務'],
   tasks: [
     {
       key: 'transport_shonin_kyoshu',

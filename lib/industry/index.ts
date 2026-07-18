@@ -14,6 +14,14 @@ const PACKAGES: Record<IndustryCode, IndustryPackage> = {
   manufacturing: manufacturingPackage,
 }
 
+/** 表示・選択肢生成の並び順（登録の正順） */
+export const INDUSTRY_CODES: IndustryCode[] = ['transport', 'manufacturing']
+
+/** 全業界パッケージを登録順で返す（雇用条件の業界選択肢生成などに使用） */
+export function allIndustryPackages(): IndustryPackage[] {
+  return INDUSTRY_CODES.map(code => PACKAGES[code])
+}
+
 /** 業界コードからパッケージを解決する。未設定・未対応は null */
 export function industryPackageOf(code: IndustryCode | null): IndustryPackage | null {
   return code ? PACKAGES[code] : null

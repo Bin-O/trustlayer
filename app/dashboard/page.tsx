@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/AppHeader'
 import { getActiveAnnouncements } from '@/lib/announcements'
 import { ensureQuarterlyInterviewTasks, interviewVariantOf, INTERVIEW_TASK_TYPES } from '@/lib/supportTasks'
+import { loadSupportMatrixRows, summarizeSupportMatrix, type SupportMatrixSummary } from '@/lib/supportMatrixData'
 import { ensureIndustryTasks, industryTaskDefByType } from '@/lib/industryTasks'
 import { SUBTYPE_TOKUTEI_KATSUDO_55 } from '@/lib/industry/packages/transport'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
@@ -425,6 +426,7 @@ export default function Dashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [snap, setSnap] = useState<Snapshot | null>(null)
+  const [supportSummary, setSupportSummary] = useState<SupportMatrixSummary | null>(null)
   const [tlFilter, setTlFilter] = useState<TlFilter>('all')
   const announcements = getActiveAnnouncements()
 
@@ -481,6 +483,10 @@ export default function Dashboard() {
         now,
       ))
       setLoading(false)
+
+      // 支援サマリー(実施率・要対応件数)は /reports/support-matrix と同じ loader を通し数値を一致させる
+      const supportRows = await loadSupportMatrixRows()
+      setSupportSummary(summarizeSupportMatrix(supportRows))
     }
     fetchAll()
   }, [])
@@ -679,11 +685,34 @@ export default function Dashboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
             <ClipboardList size={20} strokeWidth={1.8} color="#6b7280" style={{ flexShrink: 0 }} />
             <div style={{ textAlign: 'left' }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>支援業務の実施状況を見る</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>支援業務の実施状況</div>
               <div style={{ fontSize: 12, color: '#9ca3af' }}>義務的支援10業務の実施記録を一覧化（監査用レポート）</div>
             </div>
           </div>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', flexShrink: 0 }}>開く →</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+            {supportSummary && (
+              <>
+                {/* 常時義務実施率(マトリクスの「全体の常時義務実施率」と一致) */}
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600, letterSpacing: '0.03em' }}>常時義務実施率</div>
+                  <div data-testid="support-summary-rate" style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.2 }}>
+                    {supportSummary.rateDone}<span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 600 }}>/{supportSummary.rateTotal}</span>
+                  </div>
+                </div>
+                {/* 要対応(⚠️)件数: >0 は橙、0 は緑 */}
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600, letterSpacing: '0.03em' }}>要対応</div>
+                  <div data-testid="support-summary-due" style={{
+                    fontSize: 16, fontWeight: 700, lineHeight: 1.2,
+                    color: supportSummary.dueCount > 0 ? semantic.orange.text : DONE_GREEN,
+                  }}>
+                    {supportSummary.dueCount > 0 ? `${supportSummary.dueCount}件` : '0件'}
+                  </div>
+                </div>
+              </>
+            )}
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#2563eb', flexShrink: 0 }}>開く →</span>
+          </div>
         </button>
 
         {/* 全体ヘルスビュー */}

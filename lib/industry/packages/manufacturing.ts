@@ -11,6 +11,7 @@ export const manufacturingPackage: IndustryPackage = {
   code: 'manufacturing',
   label: '工業製品製造業',
   labelShort: '製造',
+  jobCategories: ['工業製品製造業務', '機械金属加工業務', '電気電子機器組立て業務', '金属表面処理業務'],
   tasks: [],  // 製造業の定期タスクは段Bで拡充
   workQualRules: [
     {

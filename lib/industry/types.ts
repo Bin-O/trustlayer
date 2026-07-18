@@ -59,6 +59,7 @@ export type IndustryPackage = {
   code: IndustryCode
   label: string
   labelShort: string       // 叙事層の業界タグ・切替タブ表示用(例 '運送')
+  jobCategories: string[]  // 雇用条件の職種(従事すべき業務)選択肢。先頭にデモ既定値
   tasks: IndustryTaskDef[]
   workQualRules: WorkQualRule[]
   obligations: IndustryObligation[]

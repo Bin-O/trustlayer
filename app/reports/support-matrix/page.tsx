@@ -1,39 +1,19 @@
 'use client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import AppHeader from '@/components/AppHeader'
 import SupportStatusGlyph from '@/components/SupportStatusGlyph'
 import {
-  ensureQuarterlyInterviewTasks, INTERVIEW_TASK_TYPES, type SupportTask,
-} from '@/lib/supportTasks'
-import {
   SUPPORT_SERVICES_MATRIX_ORDER, STAGE_LABEL,
-  computeServiceMatrix, completionRate,
   STATUS_LABEL, STATUS_LEGEND_NOTE,
   type ServiceStatus, type SupportServiceDef, type LifecycleStage,
 } from '@/lib/supportServices'
+import { loadSupportMatrixRows, type SupportMatrixRow } from '@/lib/supportMatrixData'
 import { COMMON_OBLIGATIONS, STAGE_PERIOD_NOTE } from '@/lib/obligations'
-import { resolveIndustry, industryPackageOf, type IndustryCode, type IndustryPackage } from '@/lib/industry'
+import { industryPackageOf, type IndustryCode, type IndustryPackage } from '@/lib/industry'
 import { ArrowRight } from 'lucide-react'
 
-type WorkerRow = {
-  id: string
-  name_kanji: string | null
-  name_romaji: string
-  residence_statuses: { status_type: string | null; is_active: boolean }[]
-}
-
-type RowResult = {
-  workerId: string
-  name: string
-  statuses: Record<string, ServiceStatus>
-  rate: { done: number; total: number }
-  /** 未完了の面談タスク(期限最近接)。⚠️/空き枠セルからフォーム直行に使う */
-  interviewTaskId: string | null
-  /** 在籍業界(employment_conditions.industry_field から解決)。タブ絞込みに使用 */
-  industry: IndustryCode | null
-}
+type RowResult = SupportMatrixRow
 
 /** 叙事層の4段骨格の描画順 */
 const FLOW_STAGES: LifecycleStage[] = ['pre_hire', 'onboarding', 'employed', 'offboarding']
@@ -136,6 +116,8 @@ const STAGE_FIRST_KEYS = new Set(
 /** セルの title(操作ヒント込み)。記号の意味+クリック先を1行で伝える */
 function cellHint(def: SupportServiceDef, status: ServiceStatus): string {
   const base = STATUS_LABEL[status]
+  if (status === 'not_applicable' && def.notApplicableReason)
+    return `${base} — ${def.notApplicableReason}`
   if (def.key === 'interview' && status !== 'done') return `${base} — クリックで面談を記録`
   if (status === 'done') return `${base} — クリックで記録を確認`
   return `${base} — クリックで詳細を確認`
@@ -149,59 +131,8 @@ export default function SupportMatrixPage() {
   const [tab, setTab] = useState<IndustryCode | 'all'>('all')
 
   useEffect(() => {
-    const supabase = createClient()
     const load = async () => {
-      // 面談タスクのレイジー生成(未実施面談の「要対応」を正確に表示するため)
-      await ensureQuarterlyInterviewTasks()
-
-      const { data: workers } = await supabase.from('foreign_workers')
-        .select('id, name_kanji, name_romaji, residence_statuses(status_type, is_active)')
-        .eq('status', 'active')
-        .order('name_kanji')
-      const actives = ((workers ?? []) as WorkerRow[])
-        .filter(w => w.residence_statuses?.find(s => s.is_active)?.status_type === '特定技能1号')
-      const ids = actives.map(w => w.id)
-
-      if (ids.length === 0) { setRows([]); setLoading(false); return }
-
-      const [recsRes, tasksRes, condsRes] = await Promise.all([
-        supabase.from('support_records').select('worker_id, type, completed, quarter').in('worker_id', ids),
-        supabase.from('support_tasks')
-          .select('id, worker_id, task_type, status, due_date')
-          .in('worker_id', ids)
-          .in('task_type', [...INTERVIEW_TASK_TYPES])
-          .eq('status', 'pending'),
-        // 叙事層の業界層・タブの導出元(在籍従業員の業界フィールド)
-        supabase.from('employment_conditions').select('worker_id, industry_field').in('worker_id', ids),
-      ])
-      const industryBy = new Map<string, IndustryCode | null>()
-      for (const c of condsRes.data ?? []) industryBy.set(c.worker_id, resolveIndustry(c.industry_field))
-      const recsBy = new Map<string, { type: string; completed: boolean | null; quarter: string | null }[]>()
-      for (const r of recsRes.data ?? []) {
-        const list = recsBy.get(r.worker_id) ?? []
-        list.push({ type: r.type, completed: r.completed, quarter: r.quarter })
-        recsBy.set(r.worker_id, list)
-      }
-      const tasksBy = new Map<string, (Pick<SupportTask, 'task_type' | 'status' | 'due_date'> & { id: string })[]>()
-      for (const t of tasksRes.data ?? []) {
-        const list = tasksBy.get(t.worker_id) ?? []
-        list.push({ id: t.id, task_type: t.task_type, status: t.status, due_date: t.due_date })
-        tasksBy.set(t.worker_id, list)
-      }
-
-      const result: RowResult[] = actives.map(w => {
-        const tasks = tasksBy.get(w.id) ?? []
-        const matrix = computeServiceMatrix(recsBy.get(w.id) ?? [], tasks)
-        const nextTask = [...tasks].sort((a, b) => a.due_date.localeCompare(b.due_date))[0]
-        return {
-          workerId: w.id,
-          name: w.name_kanji || w.name_romaji,
-          statuses: Object.fromEntries(matrix.map(m => [m.def.key, m.status])),
-          rate: completionRate(matrix),
-          interviewTaskId: nextTask?.id ?? null,
-          industry: industryBy.get(w.id) ?? null,
-        }
-      })
+      const result = await loadSupportMatrixRows()
       setRows(result)
       setLoading(false)
     }
