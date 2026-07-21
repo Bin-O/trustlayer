@@ -3,7 +3,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { LogOut, Settings } from 'lucide-react'
-import LogoMark from '@/components/LogoMark'
+import { Logo } from '@/components/brand/Logo'
 
 const ORG_ID = '11111111-1111-1111-1111-111111111111'
 
@@ -50,11 +50,13 @@ export default function AppHeader({ currentPage }: { currentPage: Page }) {
   return (
     <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, position: 'sticky', top: 0, zIndex: 100 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-        <LogoMark size={34} />
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 16, color: '#000', lineHeight: 1.2 }}>TrustLayer</div>
-          {orgName && <div style={{ fontSize: 11, color: '#888', lineHeight: 1.2 }}>{orgName}</div>}
-        </div>
+        <Logo variant="light-bg" withText size={30} />
+        {orgName && (
+          <>
+            <span style={{ width: 1, height: 20, background: '#e5e7eb', flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: '#888', lineHeight: 1.2, whiteSpace: 'nowrap' }}>{orgName}</span>
+          </>
+        )}
       </div>
 
       <nav style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
