@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { generateKoyouJoken } from '@/lib/documents/generator'
+import { generateKoyouJokenTemplate } from '@/lib/documents/generatorKoyouJokenTemplate'
 import { generateTodokeJokenHenkou } from '@/lib/documents/generatorExcel'
 import { generateShienKeikaku } from '@/lib/documents/generatorShienKeikaku'
 import { generateKeiyakuShuryo } from '@/lib/documents/generatorKeiyakuShuryo'
@@ -13,6 +14,10 @@ import type { KeiyakuShuryoData } from '@/lib/documents/generatorKeiyakuShuryo'
 import type { TeikiHokokuData, LaborStats } from '@/lib/documents/templates/teikiHokoku'
 
 const ORG_ID = '11111111-1111-1111-1111-111111111111'
+
+// 雇用条件書の生成方式切替。true=公式docxテンプレート差し込み（令和6年4月改正版）／
+// false=旧コード組立(generator.ts)。問題時はこの1行を false に戻せば即座に旧方式へ復帰。
+const KOYOU_JOKEN_USE_TEMPLATE = true
 
 /** 年度Nの12ヶ月リスト（N年4月〜N+1年3月） */
 function fiscalMonths(fy: number) {
@@ -233,7 +238,9 @@ export async function POST(req: NextRequest) {
     const input: KoyouJokenData = { worker, org: org ?? null, conditions: conditions ?? null, contract: contract ?? null }
 
     try {
-      const buffer = await generateKoyouJoken(input)
+      const buffer = KOYOU_JOKEN_USE_TEMPLATE
+        ? await generateKoyouJokenTemplate(input)
+        : await generateKoyouJoken(input)
       await recordGeneration('koyou_joken', workerId)
       const filename = `雇用条件書_${worker.name_romaji}.docx`
 

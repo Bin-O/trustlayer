@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { AlertTriangle, Check, CheckCircle2, FileText } from 'lucide-react'
 import { allIndustryPackages, resolveIndustry, industryPackageOf } from '@/lib/industry'
+import { isTodokeRequired } from '@/lib/documents/todokeRequirement'
 
 const ORG_ID = '11111111-1111-1111-1111-111111111111'
 
@@ -53,6 +54,25 @@ export type Form = {
   insurance_koyo: boolean; insurance_rousai: boolean
   insurance_kokumin_nenkin: boolean; insurance_kokumin_kenko: boolean
   health_checkup_on_hire: string; health_checkup_first: string; health_checkup_interval: string
+  // ── 令和6年4月改正 新設項目 ──
+  // Ⅰ 契約更新（worker_contracts）
+  contract_renewal_type: string  // '' | 'auto' | 'possible' | 'none'（''=未選択）
+  renewal_criteria_workload: boolean; renewal_criteria_performance: boolean; renewal_criteria_ability: boolean
+  renewal_criteria_company: boolean; renewal_criteria_progress: boolean; renewal_criteria_other: boolean
+  renewal_criteria_other_text: string
+  renewal_limit_exists: boolean; renewal_limit_count: N; renewal_limit_years: N
+  muki_tenkan_date: string; muki_conditions_change_exists: boolean
+  // Ⅱ 就業場所の変更の範囲（employment_conditions）
+  workplace_change_none: boolean; workplace_change_name: string
+  workplace_change_address: string; workplace_change_phone: string
+  // Ⅲ 従事すべき業務の変更の範囲
+  job_change_none: boolean; job_change_field: string; job_change_category: string
+  // Ⅶ 固定残業代（手当(a〜d)とは別枠）
+  fixed_overtime_exists: boolean; fixed_overtime_name: string
+  fixed_overtime_amount: N; fixed_overtime_hours: N; fixed_overtime_threshold_hours: N
+  // Ⅸ 相談窓口・就業規則
+  consultation_desk_dept: string; consultation_desk_person: string; consultation_desk_contact: string
+  work_rules_location: string
   change_reason: string
   effective_date: string
 }
@@ -90,6 +110,19 @@ const INIT: Form = {
   insurance_kosei_nenkin: true, insurance_kenko: true, insurance_koyo: true,
   insurance_rousai: true, insurance_kokumin_nenkin: false, insurance_kokumin_kenko: false,
   health_checkup_on_hire: '', health_checkup_first: '', health_checkup_interval: '1年ごと',
+  // ── 令和6年4月改正 新設項目 ──
+  contract_renewal_type: '',
+  renewal_criteria_workload: false, renewal_criteria_performance: false, renewal_criteria_ability: false,
+  renewal_criteria_company: false, renewal_criteria_progress: false, renewal_criteria_other: false,
+  renewal_criteria_other_text: '',
+  renewal_limit_exists: false, renewal_limit_count: null, renewal_limit_years: null,
+  muki_tenkan_date: '', muki_conditions_change_exists: false,
+  workplace_change_none: false, workplace_change_name: '', workplace_change_address: '', workplace_change_phone: '',
+  job_change_none: false, job_change_field: '', job_change_category: '',
+  fixed_overtime_exists: false, fixed_overtime_name: '',
+  fixed_overtime_amount: null, fixed_overtime_hours: null, fixed_overtime_threshold_hours: null,
+  consultation_desk_dept: '', consultation_desk_person: '', consultation_desk_contact: '',
+  work_rules_location: '',
   change_reason: '',
   effective_date: '',
 }
@@ -202,6 +235,12 @@ const Toggle = ({ val, onChange, label, sub }: { val: boolean; onChange: (v: boo
     </div>
   </div>
 )
+const Check2 = ({ val, onChange, label }: { val: boolean; onChange: (v: boolean) => void; label: string }) => (
+  <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: val ? '#eff6ff' : '#f9fafb', border: `1px solid ${val ? '#bfdbfe' : '#e5e7eb'}`, borderRadius: 8, cursor: 'pointer', fontSize: 13, color: '#374151' }}>
+    <input type="checkbox" checked={val} onChange={e => onChange(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#2563eb', flexShrink: 0 }} />
+    {label}
+  </label>
+)
 const G2 = ({ children }: { children: React.ReactNode }) => (
   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>{children}</div>
 )
@@ -224,7 +263,9 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
   const primaryId = workerIds[0]
 
   const [step, setStep] = useState(1)
-  const [form, setForm] = useState<Form>(() => ({ ...INIT, effective_date: new Date().toISOString().slice(0, 10) }))
+  // effective_date（変更年月日）は既定値を持たせない。届出期限の起算日そのものであり、
+  // 「今日」を既定にすると未修正のまま保存され期限計算が全件ずれるため、編集時は必須入力とする。
+  const [form, setForm] = useState<Form>(() => ({ ...INIT }))
   const [workerName, setWorkerName] = useState('')
   const [workerStatusType, setWorkerStatusType] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -232,7 +273,7 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
   const [errors, setErrors] = useState<string[]>([])
   const [saved, setSaved] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [notifyModal, setNotifyModal] = useState<{ diffItems: { item: DiffItem; section: ChangedSection }[]; changedSections: ChangedSection[] } | null>(null)
+  const [notifyModal, setNotifyModal] = useState<{ diffItems: { item: DiffItem; section: ChangedSection }[]; changedSections: ChangedSection[]; historyId: string | null } | null>(null)
   const [generatingDoc, setGeneratingDoc] = useState(false)
   const [jobOther, setJobOther] = useState(false)  // 職種「その他(自由入力)」モード
 
@@ -245,7 +286,7 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
     setSaved(false)
     setIsEditing(false)
     setJobOther(false)
-    setForm({ ...INIT, effective_date: new Date().toISOString().slice(0, 10) })
+    setForm({ ...INIT })
     setLoading(true)
 
     const supabase = createClient()
@@ -274,6 +315,20 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
             contract_end_date: ct.contract_end_date ?? '',
             planned_entry_date: ct.planned_entry_date ?? '',
             contract_renewable: ct.contract_renewable ?? true,
+            // 令和6年4月改正（worker_contracts）— contract_renewal_type を正本とする
+            contract_renewal_type: ct.contract_renewal_type ?? '',
+            renewal_criteria_workload: ct.renewal_criteria_workload ?? false,
+            renewal_criteria_performance: ct.renewal_criteria_performance ?? false,
+            renewal_criteria_ability: ct.renewal_criteria_ability ?? false,
+            renewal_criteria_company: ct.renewal_criteria_company ?? false,
+            renewal_criteria_progress: ct.renewal_criteria_progress ?? false,
+            renewal_criteria_other: ct.renewal_criteria_other ?? false,
+            renewal_criteria_other_text: ct.renewal_criteria_other_text ?? '',
+            renewal_limit_exists: ct.renewal_limit_exists ?? false,
+            renewal_limit_count: ct.renewal_limit_count ?? null,
+            renewal_limit_years: ct.renewal_limit_years ?? null,
+            muki_tenkan_date: ct.muki_tenkan_date ?? '',
+            muki_conditions_change_exists: ct.muki_conditions_change_exists ?? false,
             workplace_name: c.workplace_name ?? '', workplace_address: c.workplace_address ?? '',
             workplace_phone: c.workplace_phone ?? '', industry_field: c.industry_field ?? '',
             job_category: c.job_category ?? '', henkou_roudou_jikan_unit: c.henkou_roudou_jikan_unit ?? '',
@@ -291,6 +346,13 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
             deduction_other_1_name: c.deduction_other_1_name ?? '', deduction_other_2_name: c.deduction_other_2_name ?? '',
             health_checkup_on_hire: c.health_checkup_on_hire ?? '', health_checkup_first: c.health_checkup_first ?? '',
             health_checkup_interval: c.health_checkup_interval ?? '1年ごと',
+            // 令和6年4月改正（employment_conditions）: テキスト列は null→'' に補正
+            workplace_change_name: c.workplace_change_name ?? '', workplace_change_address: c.workplace_change_address ?? '',
+            workplace_change_phone: c.workplace_change_phone ?? '',
+            job_change_field: c.job_change_field ?? '', job_change_category: c.job_change_category ?? '',
+            fixed_overtime_name: c.fixed_overtime_name ?? '',
+            consultation_desk_dept: c.consultation_desk_dept ?? '', consultation_desk_person: c.consultation_desk_person ?? '',
+            consultation_desk_contact: c.consultation_desk_contact ?? '', work_rules_location: c.work_rules_location ?? '',
           }))
         } else if (dRes.data) {
           const d = dRes.data
@@ -339,11 +401,19 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
 
   const handleSave = async () => {
     const e = validate(step, form)
+    // 編集時は変更年月日を必須化（届出期限の起算日。未入力なら保存を止める）
+    if (!isBulk && isEditing && !form.effective_date) {
+      e.push('変更年月日は必須です（届出期限の起算日になります）')
+    }
     if (e.length) { setErrors(e); return }
     setSaving(true)
     const supabase = createClient()
 
     let prevSnapshot: Record<string, unknown> | null = null
+    // computeDiff は発火判定より前に確定させる（差分ゼロならポップアップを出さないため）
+    let diffResult: { item: DiffItem; section: ChangedSection }[] = []
+    let reportable = false            // 随時届出（3-1-1号）の届出対象か
+    let historyId: string | null = null  // 生成済マーク更新用に履歴行 id を捕捉
 
     // 単独編集時のみスナップショット保存
     if (!isBulk && isEditing) {
@@ -353,13 +423,21 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
       ])
       if (prevCond.data) {
         prevSnapshot = prevCond.data as Record<string, unknown>
-        await supabase.from('employment_condition_history').insert({
+        diffResult = computeDiff(prevSnapshot, form)
+        // 届出要否の判定は lib/documents/todokeRequirement に集約（次セッションで精緻化）
+        reportable = showTodokeNotify && workerStatusType === '特定技能1号'
+          && isTodokeRequired(diffResult, prevSnapshot, form)
+        // 起算日は changed_at（= 変更年月日 effective_date）が唯一の正本。
+        // 届出対象なら pending（未対応）、それ以外は not_required としてダッシュボードに残す。
+        const insertRes = await supabase.from('employment_condition_history').insert({
           worker_id: primaryId,
           change_reason: form.change_reason || null,
           snapshot_data: prevCond.data,
           contract_snapshot: prevContract.data ?? null,
+          todoke_status: reportable ? 'pending' : 'not_required',
           ...(form.effective_date ? { changed_at: form.effective_date } : {}),
-        })
+        }).select('id').single()
+        historyId = (insertRes.data as { id: string } | null)?.id ?? null
       }
     }
 
@@ -410,12 +488,49 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
       insurance_kokumin_nenkin: form.insurance_kokumin_nenkin, insurance_kokumin_kenko: form.insurance_kokumin_kenko,
       health_checkup_on_hire: form.health_checkup_on_hire || null, health_checkup_first: form.health_checkup_first || null,
       health_checkup_interval: form.health_checkup_interval || null,
+      // ── 令和6年4月改正 新設項目（employment_conditions）──
+      workplace_change_none: form.workplace_change_none,
+      workplace_change_name: form.workplace_change_name || null,
+      workplace_change_address: form.workplace_change_address || null,
+      workplace_change_phone: form.workplace_change_phone || null,
+      job_change_none: form.job_change_none,
+      job_change_field: form.job_change_field || null,
+      job_change_category: form.job_change_category || null,
+      fixed_overtime_exists: form.fixed_overtime_exists,
+      fixed_overtime_name: form.fixed_overtime_name || null,
+      fixed_overtime_amount: form.fixed_overtime_amount,
+      fixed_overtime_hours: form.fixed_overtime_hours,
+      fixed_overtime_threshold_hours: form.fixed_overtime_threshold_hours,
+      consultation_desk_dept: form.consultation_desk_dept || null,
+      consultation_desk_person: form.consultation_desk_person || null,
+      consultation_desk_contact: form.consultation_desk_contact || null,
+      work_rules_location: form.work_rules_location || null,
     }
+    // 判断基準=「更新する場合があり得る」のみ / 更新上限=更新があり得る場合のみ
+    const renewCriteriaValid = form.contract_renewal_type === 'possible'
+    const renewLimitValid = form.contract_renewal_type === 'auto' || form.contract_renewal_type === 'possible'
     const baseContract = {
       contract_start_date: form.contract_start_date || null,
       contract_end_date: form.contract_end_date || null,
       planned_entry_date: form.planned_entry_date || null,
-      contract_renewable: form.contract_renewable,
+      // 令和6年4月改正: 更新の有無は contract_renewal_type が正本。
+      // 旧 contract_renewable は deprecated のため書き込まない（サイレント不整合防止）。
+      contract_renewal_type: form.contract_renewal_type || null,
+      // 判断基準は「更新する場合があり得る」時のみ有効。それ以外では画面上非表示のため
+      // DBにも矛盾値を残さないよう false/null に正規化して保存する。
+      renewal_criteria_workload: renewCriteriaValid && form.renewal_criteria_workload,
+      renewal_criteria_performance: renewCriteriaValid && form.renewal_criteria_performance,
+      renewal_criteria_ability: renewCriteriaValid && form.renewal_criteria_ability,
+      renewal_criteria_company: renewCriteriaValid && form.renewal_criteria_company,
+      renewal_criteria_progress: renewCriteriaValid && form.renewal_criteria_progress,
+      renewal_criteria_other: renewCriteriaValid && form.renewal_criteria_other,
+      renewal_criteria_other_text: (renewCriteriaValid && form.renewal_criteria_other) ? (form.renewal_criteria_other_text || null) : null,
+      // 更新上限は更新があり得る場合（自動更新・更新の場合あり）のみ有効。
+      renewal_limit_exists: renewLimitValid && form.renewal_limit_exists,
+      renewal_limit_count: (renewLimitValid && form.renewal_limit_exists) ? form.renewal_limit_count : null,
+      renewal_limit_years: (renewLimitValid && form.renewal_limit_exists) ? form.renewal_limit_years : null,
+      muki_tenkan_date: form.muki_tenkan_date || null,
+      muki_conditions_change_exists: form.muki_conditions_change_exists,
     }
 
     // 全 worker_id に対して並列 UPSERT
@@ -431,10 +546,11 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
       setErrors([firstErr.error.message ?? 'エラーが発生しました'])
     } else {
       setSaved(true)
-      if (!isBulk && isEditing && showTodokeNotify && workerStatusType === '特定技能1号' && prevSnapshot) {
-        const diffResult = computeDiff(prevSnapshot, form)
+      // 差分ゼロ・非対象は通常の保存フローへ（ポップアップを出さない）。
+      // reportable のときのみ随時届出ポップアップを表示する。
+      if (reportable) {
         const sections = [...new Set(diffResult.map(d => d.section))] as ChangedSection[]
-        setNotifyModal({ diffItems: diffResult, changedSections: sections })
+        setNotifyModal({ diffItems: diffResult, changedSections: sections, historyId })
       } else {
         setTimeout(() => onSaved(workerIds.length), 1500)
       }
@@ -469,6 +585,18 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
       a.download = `随時届出_条件変更_${workerName || primaryId}.xlsx`
       a.click()
       URL.revokeObjectURL(url)
+      // 生成済を履歴行に反映（ダッシュボードの四色で緑＝対応済みになる）。
+      // RLS で UPDATE が無音失敗しないよう .select() で更新行を検証する。
+      if (notifyModal.historyId) {
+        const upd = await createClient()
+          .from('employment_condition_history')
+          .update({ todoke_status: 'generated', todoke_generated_at: new Date().toISOString() })
+          .eq('id', notifyModal.historyId)
+          .select('id')
+        if (upd.error || !upd.data?.length) {
+          console.error('[wizard] 届出生成済マークの更新に失敗:', upd.error?.message ?? '更新0行')
+        }
+      }
       setNotifyModal(null)
       onSaved(1)
     } catch {
@@ -499,7 +627,49 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
         <F label="契約終了日"><input type="date" style={inp} value={form.contract_end_date} onChange={e => s('contract_end_date', e.target.value)} /></F>
         <F label="入国予定日"><input type="date" style={inp} value={form.planned_entry_date} onChange={e => s('planned_entry_date', e.target.value)} /></F>
       </G2>
-      <Toggle val={form.contract_renewable} onChange={v => s('contract_renewable', v)} label="契約更新あり" />
+      <F label="契約の更新の有無">
+        <select style={sel} value={form.contract_renewal_type} onChange={e => s('contract_renewal_type', e.target.value)}>
+          <option value="">未選択</option>
+          <option value="auto">自動的に更新する</option>
+          <option value="possible">更新する場合があり得る</option>
+          <option value="none">契約の更新はしない</option>
+        </select>
+      </F>
+      {/* 判断基準は「更新する場合があり得る」のみ（様式Ⅰ-2の対象）。自動更新は無条件のため対象外 */}
+      {form.contract_renewal_type === 'possible' && (
+        <>
+          <F label="更新の判断基準（該当するものを選択）">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <Check2 val={form.renewal_criteria_workload} onChange={v => s('renewal_criteria_workload', v)} label="契約期間満了時の業務量" />
+              <Check2 val={form.renewal_criteria_performance} onChange={v => s('renewal_criteria_performance', v)} label="勤務成績・態度" />
+              <Check2 val={form.renewal_criteria_ability} onChange={v => s('renewal_criteria_ability', v)} label="業務を遂行する能力" />
+              <Check2 val={form.renewal_criteria_company} onChange={v => s('renewal_criteria_company', v)} label="会社の経営状況" />
+              <Check2 val={form.renewal_criteria_progress} onChange={v => s('renewal_criteria_progress', v)} label="従事している業務の進捗状況" />
+              <Check2 val={form.renewal_criteria_other} onChange={v => s('renewal_criteria_other', v)} label="その他" />
+            </div>
+          </F>
+          {form.renewal_criteria_other && (
+            <F label="その他の判断基準（内容）">{txtInp('renewal_criteria_other_text', '例：関連法令の改正状況 など')}</F>
+          )}
+        </>
+      )}
+      {/* 更新上限は更新があり得る場合（自動更新・更新の場合あり）に定め得る */}
+      {(form.contract_renewal_type === 'auto' || form.contract_renewal_type === 'possible') && (
+        <>
+          <Toggle val={form.renewal_limit_exists} onChange={v => s('renewal_limit_exists', v)} label="更新上限あり" sub="更新回数・通算契約期間の上限を定める場合" />
+          {form.renewal_limit_exists && (
+            <G2>
+              <F label="更新回数の上限（回）">{numInp('renewal_limit_count', 0)}</F>
+              <F label="通算契約期間の上限（年）">{numInp('renewal_limit_years', 0)}</F>
+            </G2>
+          )}
+        </>
+      )}
+      <Divider label="無期転換" />
+      <G2>
+        <F label="無期転換申込権の発生日"><input type="date" style={inp} value={form.muki_tenkan_date} onChange={e => s('muki_tenkan_date', e.target.value)} /></F>
+      </G2>
+      <Toggle val={form.muki_conditions_change_exists} onChange={v => s('muki_conditions_change_exists', v)} label="無期転換後の労働条件の変更あり" sub="変更ありの場合は別途書面での明示が必要" />
       <Divider label="就業場所" />
       <F label="派遣形態">
         <select style={sel} value={form.workplace_type} onChange={e => s('workplace_type', e.target.value)}>
@@ -512,6 +682,17 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
         <F label="電話番号">{txtInp('workplace_phone', '03-1234-5678')}</F>
       </G2>
       <F label="就業場所住所">{txtInp('workplace_address', '東京都千代田区丸の内1-1-1')}</F>
+      <Toggle val={form.workplace_change_none} onChange={v => s('workplace_change_none', v)} label="就業場所の変更の可能性なし" sub="将来にわたり上記から変更しない場合はON" />
+      {!form.workplace_change_none && (
+        <>
+          <F label="変更の範囲（就業する可能性のある場所）"><span style={{ fontSize: 11, color: '#9ca3af' }}>※ 令和6年4月改正で明示が義務化</span></F>
+          <G2>
+            <F label="事業所名">{txtInp('workplace_change_name', '例：各支店・出張先')}</F>
+            <F label="連絡先">{txtInp('workplace_change_phone', '03-1234-5678')}</F>
+          </G2>
+          <F label="所在地">{txtInp('workplace_change_address', '例：当社の全事業所')}</F>
+        </>
+      )}
       <Divider label="業務内容" />
       {(() => {
         const jobCandidates = jobCategoriesFor(form.industry_field)
@@ -545,6 +726,13 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
           </>
         )
       })()}
+      <Toggle val={form.job_change_none} onChange={v => s('job_change_none', v)} label="業務の変更の可能性なし" sub="将来にわたり上記から変更しない場合はON" />
+      {!form.job_change_none && (
+        <G2>
+          <F label="変更の範囲：分野">{txtInp('job_change_field', '例：飲食料品製造業')}</F>
+          <F label="変更の範囲：業務区分">{txtInp('job_change_category', '例：製造・加工全般')}</F>
+        </G2>
+      )}
     </>
   )
 
@@ -647,6 +835,19 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
           </G3>
         </div>
       ))}
+      <Divider label="固定残業代（みなし残業代）" />
+      <Toggle val={form.fixed_overtime_exists} onChange={v => s('fixed_overtime_exists', v)} label="固定残業代あり" sub="手当(a〜d)とは別枠。基本給・手当には含めないこと" />
+      {form.fixed_overtime_exists && (
+        <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '12px 14px', marginBottom: 10 }}>
+          <F label="手当名称">{txtInp('fixed_overtime_name', '例：固定残業手当')}</F>
+          <G3>
+            <F label="金額（円）">{numInp('fixed_overtime_amount', 0)}</F>
+            <F label="何時間分か（時間）">{numInp('fixed_overtime_hours', 0)}</F>
+            <F label="超過支給の基準時間（時間）">{numInp('fixed_overtime_threshold_hours', 0)}</F>
+          </G3>
+          <p style={{ fontSize: 11, color: '#9ca3af', margin: '4px 0 0' }}>※ 基準時間を超えた時間外労働分は別途割増賃金を支給する必要があります。</p>
+        </div>
+      )}
       <Divider label="割増賃金率（%）" />
       <G3>
         <F label="時間外（60時間未満）">{numInp('overtime_rate_under60', 0)}</F>
@@ -720,7 +921,7 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
       {!isBulk && isEditing && (
         <>
           <Divider label="変更情報" />
-          <F label="変更適用日">
+          <F label="変更年月日（労使の合意により効力が生じた日）" req>
             <input type="date" style={inp} value={form.effective_date} onChange={e => s('effective_date', e.target.value)} />
           </F>
           <F label="変更理由（随時届出・変更内容の記録用）">
@@ -757,6 +958,14 @@ export default function EmploymentConditionsWizard({ workerIds, onSaved, onCance
           </select>
         </F>
       </G3>
+      <Divider label="相談窓口（雇用管理の改善等）" />
+      <G3>
+        <F label="部署名">{txtInp('consultation_desk_dept', '例：総務部')}</F>
+        <F label="担当者 職・氏名">{txtInp('consultation_desk_person', '例：課長 田中太郎')}</F>
+        <F label="連絡先">{txtInp('consultation_desk_contact', '例：03-1234-5678')}</F>
+      </G3>
+      <Divider label="就業規則" />
+      <F label="就業規則を確認できる場所や方法">{txtInp('work_rules_location', '例：社内共有サーバー／総務部にて閲覧可')}</F>
     </>
   )
 

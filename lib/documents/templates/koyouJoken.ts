@@ -139,11 +139,42 @@ export type KoyouJokenData = {
     health_checkup_on_hire: string | null
     health_checkup_first: string | null
     health_checkup_interval: string | null
+    // 令和6年4月改正 新設（employment_conditions）
+    workplace_change_none: boolean | null
+    workplace_change_name: string | null
+    workplace_change_address: string | null
+    workplace_change_phone: string | null
+    job_change_none: boolean | null
+    job_change_field: string | null
+    job_change_category: string | null
+    fixed_overtime_exists: boolean | null
+    fixed_overtime_name: string | null
+    fixed_overtime_amount: number | null
+    fixed_overtime_hours: number | null
+    fixed_overtime_threshold_hours: number | null
+    consultation_desk_dept: string | null
+    consultation_desk_person: string | null
+    consultation_desk_contact: string | null
+    work_rules_location: string | null
   } | null
   contract: {
     contract_start_date: string | null
     contract_end_date: string | null
     planned_entry_date: string | null
     contract_renewable: boolean | null
+    // 令和6年4月改正 新設（worker_contracts）
+    contract_renewal_type: 'auto' | 'possible' | 'none' | null
+    renewal_criteria_workload: boolean | null
+    renewal_criteria_performance: boolean | null
+    renewal_criteria_ability: boolean | null
+    renewal_criteria_company: boolean | null
+    renewal_criteria_progress: boolean | null
+    renewal_criteria_other: boolean | null
+    renewal_criteria_other_text: string | null
+    renewal_limit_exists: boolean | null
+    renewal_limit_count: number | null
+    renewal_limit_years: number | null
+    muki_tenkan_date: string | null
+    muki_conditions_change_exists: boolean | null
   } | null
 }

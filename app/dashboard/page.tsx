@@ -41,6 +41,12 @@ type GenRow = {
   generated_at: string
 }
 
+type EchPendingRow = {
+  id: string
+  worker_id: string
+  changed_at: string
+}
+
 type TaskRow = {
   id: string
   worker_id: string
@@ -118,6 +124,7 @@ function buildSnapshot(
   retired: WorkerRow[],
   contracts: ContractRow[],
   gens: GenRow[],
+  echPending: EchPendingRow[],
   tasks: TaskRow[],
   industryTasks: TaskRow[],
   payrollKeys: Set<string>,
@@ -191,7 +198,34 @@ function buildSnapshot(
     })
   }
 
-  // ── 未対応の届出②：定期届出3-6号（前年度分・提出期間開始後に生成記録なし） ──
+  // ── 未対応の届出②：随時届出3-1-1号（雇用条件変更・届出書未生成の在職者） ──
+  // 起算日は変更年月日（employment_condition_history.changed_at）。
+  // 生成済（todoke_status='generated'）は echPending に含めない＝緑相当で非表示。
+  let todoke311 = 0
+  const activeNameFor311 = new Map(actives.map(w => [w.id, nameOf(w)]))
+  for (const h of echPending) {
+    const name = activeNameFor311.get(h.worker_id)
+    if (!name) continue  // 在職一覧にいない従業員（退職者等）は表示しない
+    const changeDate = h.changed_at.slice(0, 10)  // TIMESTAMPTZ から日付部分（3-1-2号と同手法）
+    todoke311++
+    const due = addDays(changeDate, 14)
+    const d = daysUntil(due, now)
+    timeline.push({
+      key: `todoke311-${h.id}`,
+      kind: 'todoke',
+      due,
+      // 変更年月日から14日以内=橙 / 超過=赤
+      urgency: d < 0 ? 'red' : 'amber',
+      title: `${name}さんの雇用条件変更届出（3-1-1号）`,
+      detail: d < 0
+        ? `届出期限を${-d}日超過（変更年月日 ${changeDate}・期限 ${due}）`
+        : `変更年月日 ${changeDate}・届出期限 ${due}`,
+      actionLabel: '従業員詳細へ',
+      href: `/employees/${h.worker_id}`,
+    })
+  }
+
+  // ── 未対応の届出③：定期届出3-6号（前年度分・提出期間開始後に生成記録なし） ──
   const tokuteiActives = actives.filter(isTokutei)
   let teikiPending = 0
   const prevFy = currentFiscalYear(now) - 1
@@ -288,7 +322,7 @@ function buildSnapshot(
     expiry30,
     expiry60,
     expiry90,
-    todokeCount: todoke312 + teikiPending,
+    todokeCount: todoke312 + todoke311 + teikiPending,
     mendanCount,
     payrollMissingCount,
     timeline,
@@ -440,7 +474,7 @@ export default function Dashboard() {
       await ensureQuarterlyInterviewTasks()
       await ensureIndustryTasks(now)
 
-      const [activesRes, retiredRes, contractsRes, gensRes, tasksRes, industryTasksRes, payrollRes] = await Promise.all([
+      const [activesRes, retiredRes, contractsRes, gensRes, echRes, tasksRes, industryTasksRes, payrollRes] = await Promise.all([
         supabase.from('foreign_workers')
           .select('id, name_kanji, name_romaji, nationality, residence_statuses(status_type, status_subtype, expiry_date, is_active)')
           .eq('status', 'active'),
@@ -449,6 +483,9 @@ export default function Dashboard() {
           .eq('status', 'retired'),
         supabase.from('worker_contracts').select('worker_id, contract_start_date, termination_date'),
         supabase.from('document_generations').select('worker_id, document_id, generated_at'),
+        supabase.from('employment_condition_history')
+          .select('id, worker_id, changed_at')
+          .eq('todoke_status', 'pending'),
         supabase.from('support_tasks')
           .select('id, worker_id, task_type, period_key, due_date')
           .in('task_type', [...INTERVIEW_TASK_TYPES])
@@ -466,6 +503,10 @@ export default function Dashboard() {
         // document_generations 未作成でもページ自体は動かす（届出はすべて未対応扱いになる）
         console.warn('[dashboard] document_generations の取得に失敗:', gensRes.error.message)
       }
+      if (echRes.error) {
+        // todoke_status カラム未追加（移行前）でもページは動かす（3-1-1号は非表示になる）
+        console.warn('[dashboard] employment_condition_history の取得に失敗:', echRes.error.message)
+      }
 
       const payrollKeys = new Set(
         (payrollRes.data ?? []).map((r: { worker_id: string; target_year: number; target_month: number }) =>
@@ -477,6 +518,7 @@ export default function Dashboard() {
         (retiredRes.data ?? []) as WorkerRow[],
         (contractsRes.data ?? []) as ContractRow[],
         (gensRes.data ?? []) as GenRow[],
+        (echRes.data ?? []) as EchPendingRow[],
         (tasksRes.data ?? []) as TaskRow[],
         (industryTasksRes.data ?? []) as TaskRow[],
         payrollKeys,
@@ -643,7 +685,7 @@ export default function Dashboard() {
                   <span style={{ fontSize: 12, color: '#6b7280' }}>件</span>
                   {snap.todokeCount === 0 && <span style={{ fontSize: 12, color: DONE_GREEN, fontWeight: 600 }}>✓ すべて対応済み</span>}
                 </div>
-                <div style={{ fontSize: 11, color: '#9ca3af' }}>契約終了（3-1-2号）・定期届出（3-6号）</div>
+                <div style={{ fontSize: 11, color: '#9ca3af' }}>条件変更（3-1-1号）・契約終了（3-1-2号）・定期届出（3-6号）</div>
               </button>
 
               {/* 四半期面談タスク */}
