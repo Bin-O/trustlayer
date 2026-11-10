@@ -54,7 +54,6 @@ export const transportPackage: IndustryPackage = {
       },
     },
   ],
-  workQualRules: [],  // 運送業の作業資格は段Bで拡充
   // 叙事層(支援・義務フロー)の業界層。点呼(輸送安全規則7条・毎日)は日次運行管理の
   // 粒度のため義務軸対象外(docs Phase B メモ参照)
   obligations: [

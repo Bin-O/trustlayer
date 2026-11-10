@@ -13,17 +13,9 @@ export const manufacturingPackage: IndustryPackage = {
   labelShort: '製造',
   jobCategories: ['工業製品製造業務', '機械金属加工業務', '電気電子機器組立て業務', '金属表面処理業務'],
   tasks: [],  // 製造業の定期タスクは段Bで拡充
-  workQualRules: [
-    {
-      work: 'forklift_1t',
-      label: 'フォークリフト運転（最大荷重1t以上）',
-      requiredQualType: 'skill_training',   // 技能講習
-      requiredLevel: 'forklift',
-      legalBasis: '労働安全衛生法61条・同施行令20条',
-      penalty: '労安衛法119条（6月以下の懲役 or 50万円以下の罰金）',
-    },
-    // 段Bで追加: 玉掛け / 床上クレーン / 研削といし / 粉じん / フルハーネス
-  ],
+  // 作業資格ルール（旧 workQualRules）はセッションAで義務マスタ obligations テーブルへ移行済み。
+  //   正本: create_obligations_master.sql（code MFG_FORKLIFT_GE1T）／読込: lib/obligationMaster.ts
+  //   未投入: 玉掛け / 床上クレーン / 研削といし / 粉じん / フルハーネス
   // 叙事層(支援・義務フロー)の業界層
   obligations: [
     { key: 'council', stage: 'pre_hire', text: '◆ 分野別協議会への加入(組織・受入要件)', implemented: false,

@@ -38,7 +38,7 @@ export type WorkQualRule = {
   requiredQualType: string     // = qualifications.type（例 'skill_training'）
   requiredLevel?: string       // = qualifications.level（type だけで一意なら省略）
   legalBasis: string           // 例 '労働安全衛生法61条'
-  penalty: string              // 例 '119条（6月以下の懲役 or 50万円以下の罰金）'
+  penalty: string              // 例 '119条（6月以下の拘禁刑 or 50万円以下の罰金）'
 }
 
 /**
@@ -61,6 +61,6 @@ export type IndustryPackage = {
   labelShort: string       // 叙事層の業界タグ・切替タブ表示用(例 '運送')
   jobCategories: string[]  // 雇用条件の職種(従事すべき業務)選択肢。先頭にデモ既定値
   tasks: IndustryTaskDef[]
-  workQualRules: WorkQualRule[]
+  // workQualRules はセッションAで obligations テーブルへ移行（lib/obligationMaster.ts の loadWorkQualRules）
   obligations: IndustryObligation[]
 }

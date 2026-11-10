@@ -12,8 +12,9 @@ import { INTERVIEW_TASK_TYPES, interviewVariantOf, interviewDocumentIdOf, type S
 import { industryTaskDefByType } from '@/lib/industryTasks'
 import { SUBTYPE_TOKUTEI_KATSUDO_55 } from '@/lib/industry/packages/transport'
 import { resolveIndustry } from '@/lib/industry/codes'
-import { industryPackageOf, type WorkQualRule } from '@/lib/industry'
+import { type WorkQualRule } from '@/lib/industry'
 import { computeQualGap, type QualGap } from '@/lib/qualGap'
+import { loadWorkQualRules } from '@/lib/obligationMaster'
 import { computeServiceMatrix, completionRate, STATUS_STYLE, STATUS_LABEL, type ServiceStatus, type SupportServiceDef } from '@/lib/supportServices'
 import SupportStatusGlyph from '@/components/SupportStatusGlyph'
 import { AlertTriangle, CheckCircle2, FileText, Pencil, Camera, Sparkles } from 'lucide-react'
@@ -144,6 +145,9 @@ export default function EmployeeDetail() {
   const [qualGaps, setQualGaps] = useState<QualGap[]>([])
   // 当該業界パッケージの資格対象作業ルール（セクション表示可否＋「作業を追加」の選択肢の正本）
   const [workQualRules, setWorkQualRules] = useState<WorkQualRule[]>([])
+  // 作業資格ルール(obligations)の読み込み失敗。true の間はセクションを消さずエラー行を表示する
+  //   （消すと「資格が必要な作業は無い」と読めてしまい、119条リスクの見落としになるため）
+  const [qualRulesError, setQualRulesError] = useState(false)
   // 「作業を追加」インラインフォーム（Phase A=追加のみ。削除・状態変更はPhase B）
   const [addWork, setAddWork] = useState<{ open: boolean; work_key: string; planned_start_date: string; status: 'planned' | 'active'; saving: boolean }>({
     open: false, work_key: '', planned_start_date: '', status: 'planned', saving: false,
@@ -248,12 +252,23 @@ export default function EmployeeDetail() {
     setInterviewTasks(tasks)
     setIndustryTasks((industryTasksRes.data ?? []) as SupportTask[])
 
-    // 段3: 業界パッケージの workQualRules × 作業割当 × 保有資格 → ギャップ
-    const pkg = industryPackageOf(resolveIndustry(condRes.data?.industry_field))
-    setWorkQualRules(pkg?.workQualRules ?? [])   // 資格対象作業が無い業界(運送等)はセクションごと非表示
-    setQualGaps(pkg
-      ? computeQualGap(pkg.workQualRules, assignRes.data ?? [], qualRes.data ?? [])
-      : [])
+    // 段3: 義務マスタ(obligations)の資格型ルール × 作業割当 × 保有資格 → ギャップ
+    //   セッションA: ルールの正本を業界パッケージのハードコードから obligations テーブルへ移行
+    const industry = resolveIndustry(condRes.data?.industry_field)
+    let rules: WorkQualRule[] = []
+    let rulesError = false
+    if (industry) {
+      try {
+        rules = await loadWorkQualRules(supabase, industry)
+      } catch (e) {
+        // 握りつぶさない: qualRulesError を立て、セクション位置にエラー行を出す
+        console.error('[obligations] 作業資格ルールの取得に失敗:', e)
+        rulesError = true
+      }
+    }
+    setQualRulesError(rulesError)
+    setWorkQualRules(rules)   // 資格対象作業が無い業界(運送等)はセクションごと非表示（読込失敗時を除く）
+    setQualGaps(computeQualGap(rules, assignRes.data ?? [], qualRes.data ?? []))
     setInterviewRecords(recs.map(r => ({ id: r.id, type: r.type, quarter: r.quarter, completed_date: r.completed_date })))
     setPrevNotesByType({
       worker: (recs.find(r => r.type === 'interview_worker')?.notes as Record<string, unknown> | undefined) ?? null,
@@ -1207,8 +1222,18 @@ export default function EmployeeDetail() {
         )}
 
         {/* 作業資格チェック（段3・作業割当 × 保有資格・未充足=労安衛法119条リスク）
-            資格対象作業が定義された業界(製造)のみ表示。運送等(workQualRules空)はセクションごと非表示 */}
-        {workQualRules.length > 0 && (() => {
+            資格対象作業が定義された業界(製造)のみ表示。運送等(workQualRules空)はセクションごと非表示。
+            ただしルール(obligations)の読み込み失敗時は、セクションを消さずにエラー行だけを表示する
+            （割当一覧・「作業を追加」は不完全なルールで描くと誤読を招くため出さない） */}
+        {qualRulesError && (
+          <div data-testid="qual-gap-section" style={{background:"#fff",border:"1px solid #e5e7eb",borderRadius:12,padding:"16px 20px",marginBottom:16,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+            <div style={{fontSize:15,fontWeight:600,color:"#111827",marginBottom:10}}>作業資格チェック（労働安全衛生法）</div>
+            <div data-testid="qual-rules-error" role="alert" style={{fontSize:13,fontWeight:600,color:"#dc2626"}}>
+              作業資格ルールを読み込めませんでした。この欄の表示は不完全です。
+            </div>
+          </div>
+        )}
+        {!qualRulesError && workQualRules.length > 0 && (() => {
           const assignedKeys = new Set(qualGaps.map(g => g.rule.work))
           const availableRules = workQualRules.filter(r => !assignedKeys.has(r.work))
           return (
