@@ -1,0 +1,1092 @@
+[
+ {
+  "category": "クレーン等",
+  "role": "クレーン・デリック運転者",
+  "work": "つり上げ荷重が5t以上のクレーン・デリックの運転",
+  "requirement": "免許(クレーン・デリック運転士、 クレーンのみ運転できる限定免 許を設定)",
+  "legal_basis": "安衛令20(6)(8) クレーン則22、108",
+  "page": 1,
+  "requirement_type": "免許",
+  "logistics_relevant": true
+ },
+ {
+  "category": "クレーン等",
+  "role": "クレーン・デリック運転者",
+  "work": "つり上げ荷重が5t以上の床上で運転し、かつ、運転者が荷 の移動とともに移動する方式",
+  "requirement": "免許(クレーン・デリック運転士) 又は技能講習修了者",
+  "legal_basis": "安衛令20(6) クレーン則22",
+  "page": 1,
+  "requirement_type": "免許/技能講習",
+  "logistics_relevant": true
+ },
+ {
+  "category": "クレーン等",
+  "role": "クレーン・デリック運転者",
+  "work": "1.つり上げ荷重が5t未満のクレーン・デリックの運転 2.つり上げ荷重が5t以上の跨線テルハの運転",
+  "requirement": "免許(クレーン・デリック運転士) 技能講習修了者 特別教育修了者",
+  "legal_basis": "安衛則36(15)(17) クレーン則21、107",
+  "page": 1,
+  "requirement_type": "免許/技能講習/特別教育",
+  "logistics_relevant": true
+ },
+ {
+  "category": "クレーン等",
+  "role": "移動式クレーン運転者",
+  "work": "つり上げ荷重が5t以上の移動式クレーンの運転",
+  "requirement": "免許(移動式クレーン運転士)",
+  "legal_basis": "安衛令20(7) クレーン則68",
+  "page": 1,
+  "requirement_type": "免許",
+  "logistics_relevant": true
+ },
+ {
+  "category": "クレーン等",
+  "role": "移動式クレーン運転者",
+  "work": "つり上げ荷重が1t以上5t未満の移動式クレーンの運転",
+  "requirement": "免許(移動式クレーン運転士) 又は技能講習修了者",
+  "legal_basis": "安衛令20(7) クレーン則68",
+  "page": 1,
+  "requirement_type": "免許/技能講習",
+  "logistics_relevant": true
+ },
+ {
+  "category": "クレーン等",
+  "role": "移動式クレーン運転者",
+  "work": "つり上げ荷重が1t未満の移動式クレーンの運転",
+  "requirement": "免許(移動式クレーン運転士) 技能講習修了者 特別教育修了者",
+  "legal_basis": "安衛則36(16) クレーン則67",
+  "page": 1,
+  "requirement_type": "免許/技能講習/特別教育",
+  "logistics_relevant": true
+ },
+ {
+  "category": "クレーン等",
+  "role": "建設用リフト運転者",
+  "work": "建設用リフトの運転",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(18) クレーン則183",
+  "page": 1,
+  "requirement_type": "特別教育",
+  "logistics_relevant": true
+ },
+ {
+  "category": "クレーン等",
+  "role": "玉掛け作業者",
+  "work": "制限荷重が1t以上の揚貨装置又はつり上げ荷重が1t以上 のクレーン、移動式クレーン又はデリックの玉掛け",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛令20(16) クレーン則221",
+  "page": 1,
+  "requirement_type": "技能講習",
+  "logistics_relevant": true
+ },
+ {
+  "category": "クレーン等",
+  "role": "玉掛け作業者",
+  "work": "制限荷重が1t未満の揚貨装置又はつり上げ荷重が1t未満 のクレーン、移動式クレーン又はデリックの玉掛け",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(19) クレーン則222",
+  "page": 1,
+  "requirement_type": "特別教育",
+  "logistics_relevant": true
+ },
+ {
+  "category": "ゴンドラ",
+  "role": "ゴンドラ操作者",
+  "work": "ゴンドラの操作",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(20) ゴンドラ則12",
+  "page": 1,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設機械等",
+  "role": "車両系建設機械(整地・運搬・ 積込み・掘削用)運転者",
+  "work": "機体重量3t以上のもの 動力を用い、かつ、不特定の場 所に自走できるものの運転の業 務。ただし、道路上の走行を除 く。",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛令20(12)",
+  "page": 1,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設機械等",
+  "role": "車両系建設機械(整地・運搬・ 積込み・掘削用)運転者",
+  "work": "機体重量3t未満のもの",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(9)",
+  "page": 1,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設機械等",
+  "role": "車両系建設機械(基礎工事 用)運転者",
+  "work": "機体重量3t以上のもの 動力を用い、かつ、不特定の場 所に自走できるものの運転の業 務。ただし、道路上の走行を除 く。",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛令20(12)",
+  "page": 1,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設機械等",
+  "role": "車両系建設機械(基礎工事 用)運転者",
+  "work": "機体重量3t未満のもの",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(9)",
+  "page": 1,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設機械等",
+  "role": "基礎工事用建設機械運転者",
+  "work": "動力を用い、かつ、不特定の場所に自走できるもの以外の ものの運転の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(9-2)",
+  "page": 1,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設機械等",
+  "role": "車両系建設機械(基礎工事 用)の作業装置の操作者",
+  "work": "動力を用い、かつ、不特定の場所に自走できるものの作業 装置の操作(車体上の運転席における操作を除く)",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(9-3)",
+  "page": 1,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設機械等",
+  "role": "車両系建設機械(締固め用) 運転者",
+  "work": "ローラーの運転業務(道路上の走行を除く)",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(10)",
+  "page": 1,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設機械等",
+  "role": "車両系建設機械(コンクリート 打設用)の作業装置の操作を 行う者",
+  "work": "コンクリート打設用機械の作業装置の操作の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(10-2)",
+  "page": 1,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設機械等",
+  "role": "車両系建設機械(解体用)運 転者(ブレーカ、鉄骨切断機、 コンクリート圧砕機、解体用 つかみ機）",
+  "work": "機体重量3t以上のもの 動力を用い、かつ、不特定の場 所に自走できるものの運転の業 務。ただし、道路上の走行を除 く。",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛令20(12)",
+  "page": 1,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設機械等",
+  "role": "車両系建設機械(解体用)運 転者(ブレーカ、鉄骨切断機、 コンクリート圧砕機、解体用 つかみ機）",
+  "work": "機体重量3t未満のもの",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(9)",
+  "page": 1,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設機械等",
+  "role": "ボーリングマシシ運転者",
+  "work": "ボーリングマシンの運転業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(10-3)",
+  "page": 1,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設機械等",
+  "role": "高所作業車運転者",
+  "work": "作業床の高さが10メートル以上の運転の業務(道路上の走 行運転を除く)",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛令20(15)",
+  "page": 1,
+  "requirement_type": "技能講習",
+  "logistics_relevant": true
+ },
+ {
+  "category": "建設機械等",
+  "role": "高所作業車運転者",
+  "work": "作業床の高さが10メートル未満の運転の業務(道路上の走 行運転を除く)",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(10-5)",
+  "page": 1,
+  "requirement_type": "特別教育",
+  "logistics_relevant": true
+ },
+ {
+  "category": "建設機械等",
+  "role": "不整地運搬車運転者",
+  "work": "最大積載量が1t以上の運転の業務(道路上の走行運転を 除く)",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛令20(14)",
+  "page": 1,
+  "requirement_type": "技能講習",
+  "logistics_relevant": true
+ },
+ {
+  "category": "建設機械等",
+  "role": "不整地運搬車運転者",
+  "work": "最大積載量が1t未満の運転の業務(道路上の走行運転を 除く)",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(5-3)",
+  "page": 1,
+  "requirement_type": "特別教育",
+  "logistics_relevant": true
+ },
+ {
+  "category": "建設機械等",
+  "role": "軌道動力車運転者",
+  "work": "軌条により人又は荷を運搬する動力車の運転業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衝則36(13)",
+  "page": 2,
+  "requirement_type": "特別教育",
+  "logistics_relevant": true
+ },
+ {
+  "category": "建設機械等",
+  "role": "フォークリフト運転者",
+  "work": "最大荷重が1t以上のフォークリフトの運転業務(道路上の 走行運転を除く)",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛令20(11)",
+  "page": 2,
+  "requirement_type": "技能講習",
+  "logistics_relevant": true
+ },
+ {
+  "category": "建設機械等",
+  "role": "フォークリフト運転者",
+  "work": "最大荷重が1t未満のフォークリフトの運転業務(道路上の 走行運転を除く)",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(5)",
+  "page": 2,
+  "requirement_type": "特別教育",
+  "logistics_relevant": true
+ },
+ {
+  "category": "建設機械等",
+  "role": "ショベルローダー等運転者",
+  "work": "最大荷重が1t以上のショベルローダー又はフォークロー ダーの運転業務(道路上の走行運転を除く)",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛令20(13)",
+  "page": 2,
+  "requirement_type": "技能講習",
+  "logistics_relevant": true
+ },
+ {
+  "category": "建設機械等",
+  "role": "ショベルローダー等運転者",
+  "work": "最大荷重が1t未満のショベルローダー又はフォークロー ダーの運転業務(道路上の走行運転を除く)",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(5-2)",
+  "page": 2,
+  "requirement_type": "特別教育",
+  "logistics_relevant": true
+ },
+ {
+  "category": "建設機械等",
+  "role": "ジャッキ式つり上げ機械",
+  "work": "ジャッキ式つり上げ機械の調整又は運転の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(10-4)",
+  "page": 2,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "巻き上げ機",
+  "role": "巻上げ機運転者",
+  "work": "動力駆動の巻上げ機(電気ホイスト・エアーホイスト・及びこ れら以外の巻上げ機でゴンドラに係るものを除く)",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(11)",
+  "page": 2,
+  "requirement_type": "特別教育",
+  "logistics_relevant": true
+ },
+ {
+  "category": "砥石",
+  "role": "研削砥石取替試運転作業者",
+  "work": "研削砥石の取替え又は取替え時の試運転",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(1)",
+  "page": 2,
+  "requirement_type": "特別教育",
+  "logistics_relevant": true
+ },
+ {
+  "category": "溶接",
+  "role": "ガス溶接作業主任者",
+  "work": "アセチレン溶接装置又はガス集合溶接装置を用いて行う 金属の溶接、溶断、加熱の作業",
+  "requirement": "免許",
+  "legal_basis": "安衛則314、316",
+  "page": 2,
+  "requirement_type": "免許",
+  "logistics_relevant": false
+ },
+ {
+  "category": "溶接",
+  "role": "ガス溶接作業者",
+  "work": "可燃性ガス及び酸素を用いて行う金属の溶接、溶断又は 加熱の業務",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛令20(10)",
+  "page": 2,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "溶接",
+  "role": "アーク溶接作業者",
+  "work": "アーク溶接機を用いて行う金属の溶接、溶断等の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(3)",
+  "page": 2,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "電気",
+  "role": "電気取扱者(高圧又は低圧)",
+  "work": "充電電路又はその支持物の敷設、点検、修理、操作、充 電部分が露出した開閉器の操作",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(4)",
+  "page": 2,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "電気",
+  "role": "電気取扱者(電気自動車)",
+  "work": "対地電圧が50ボルトを超える低圧の蓄電池を内蔵する自 動車（電気自動車等）の整備の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(4-2)",
+  "page": 2,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "火薬",
+  "role": "発破技士",
+  "work": "発破の業務(せん孔、装てん、結線、点火並びに不発の装 薬又は残薬の点検及び処理)",
+  "requirement": "免許(発破技士)",
+  "legal_basis": "安衛令20(1) 安衛則318",
+  "page": 2,
+  "requirement_type": "免許",
+  "logistics_relevant": false
+ },
+ {
+  "category": "酸欠作業",
+  "role": "酸素欠乏危険作業主任者",
+  "work": "第一種及び第二種酸素欠乏危険場所における作業",
+  "requirement": "技能講習修了者(一種・二種)",
+  "legal_basis": "酸欠則11",
+  "page": 2,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "酸欠作業",
+  "role": "酸素欠乏危険作業者",
+  "work": "酸素欠乏危険作業に係る業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(26) 酸欠則12",
+  "page": 2,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "粉じん",
+  "role": "特定粉じん作業者",
+  "work": "常時特定粉じん作業に係る業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(29) 粉じん則22",
+  "page": 2,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "貨物取扱・荷役作業",
+  "role": "はい作業主任者",
+  "work": "高さが2m以上のはいのはい付け又ははいくずしの作業(荷 役機械の運転者のみによっておこなわれるものを除く)",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛則428、429",
+  "page": 3,
+  "requirement_type": "技能講習",
+  "logistics_relevant": true
+ },
+ {
+  "category": "貨物取扱・荷役作業",
+  "role": "船内荷役作業主任者",
+  "work": "船舶に荷を積み、船舶から荷を卸し、又は船舶において荷 を移動させる作業(総トン数500t未満の船舶において揚貨 装置を用いないで行うものを除く)",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛則450、451",
+  "page": 3,
+  "requirement_type": "技能講習",
+  "logistics_relevant": true
+ },
+ {
+  "category": "貨物取扱・荷役作業",
+  "role": "揚貨装置運転者",
+  "work": "制限荷重5t以上の揚貨装置の運転の業務",
+  "requirement": "免許(揚貨装置運転士)",
+  "legal_basis": "安衛令20(2)",
+  "page": 3,
+  "requirement_type": "免許",
+  "logistics_relevant": true
+ },
+ {
+  "category": "貨物取扱・荷役作業",
+  "role": "揚貨装置運転者",
+  "work": "制限荷重5t未満の揚貨装置の運転の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(6)",
+  "page": 3,
+  "requirement_type": "特別教育",
+  "logistics_relevant": true
+ },
+ {
+  "category": "貨物取扱・荷役作業",
+  "role": "玉掛け作業者",
+  "work": "制限荷重が1t以上の揚貨装置又はつり上げ荷重が1t以上 のクレーン、移動式クレーン又はデリックの玉掛け",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛令20(16) クレーン則221",
+  "page": 3,
+  "requirement_type": "技能講習",
+  "logistics_relevant": true
+ },
+ {
+  "category": "貨物取扱・荷役作業",
+  "role": "玉掛け作業者",
+  "work": "制限荷重が1t未満の揚貨装置又はつり上げ荷重が1t未満 のクレーン、移動式クレーン又はデリックの玉掛け",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(19) クレーン則222",
+  "page": 3,
+  "requirement_type": "特別教育",
+  "logistics_relevant": true
+ },
+ {
+  "category": "プレス作業",
+  "role": "プレス機械作業主任者",
+  "work": "動力により駆動されるプレス機械を5台以上有する事業場 において行う当該機械による作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛則133、134",
+  "page": 3,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "プレス作業",
+  "role": "プレス金型取替作業者",
+  "work": "動力プレスの金型、シャーの刃部又はプレス若しくは シャーの安全装置若しくは安全囲いの取付け、取り外し又 は調整の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(2)",
+  "page": 3,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "林業",
+  "role": "林業架線作業主任者",
+  "work": "次のいずれかに該当する機械集材装置若しくは運材索道 の組立て、解体、変更若しくは修理の作業又はこれらの設 備による集材若しくは運材の作業 イ 原動機の定格出力が7.5キロワットをこえるもの ロ 支間の斜距離の合計が350メートル以上のもの ハ 最大使用荷重が200キログラム以上のもの",
+  "requirement": "免許",
+  "legal_basis": "安衛則513、514",
+  "page": 3,
+  "requirement_type": "免許",
+  "logistics_relevant": false
+ },
+ {
+  "category": "林業",
+  "role": "伐木等機械の運転の業務",
+  "work": "伐木等機械（伐木、造材又は原木若しくは薪炭材の集積を 行うための機械であって、動力を用い、かつ、不特定の場 所に自走できるものをいう。以下同じ。）の運転（道路上を 走行させる運転を除く。）の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(6の2)",
+  "page": 3,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "林業",
+  "role": "走行集材機械の運転の業務",
+  "work": "走行集材機械（車両の走行により集材を行うための機械で あって、動力を用い、かつ、不特定の場所に自走できるも のをいう。以下同じ。）の運転（道路上を走行させる運転を 除く。）の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(6の3)",
+  "page": 3,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "林業",
+  "role": "機械集材装置の運転の業務",
+  "work": "機械集材装置（集材機、架線、搬器、支柱及びこれらに附 属する物により構成され、動力を用いて、原木又は薪炭材 を巻き上げ、かつ、空中において運搬する設備をいう。以 下同じ。）の運転の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(7)",
+  "page": 3,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "林業",
+  "role": "簡易架線集材装置又は架線 集材機械の運転の業務",
+  "work": "簡易架線集材装置（集材機、架線、搬器、支柱及びこれら に附属する物により構成され、動力を用いて、原木等を巻 き上げ、かつ、原木等の一部が地面に接した状態で運搬 する設備をいう。以下同じ。）の運転又は架線集材機械（動 力を用いて原木等を巻き上げることにより当該原木等を運 搬するための機械であって、動力を用い、かつ、不特定の 場所に自走できるものをいう。以下同じ。）の運転（道路上 を走行させる運転を除く。）の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(7の2)",
+  "page": 3,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "林業",
+  "role": "チェーンソ一作業者",
+  "work": "チェーンソーを用いて行う立木の伐木、かかり木の処理又 は造材の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(8)",
+  "page": 3,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "ボイラー・圧力容器等",
+  "role": "ボイラー取扱作業主任者",
+  "work": "ボイラーの取扱い作業",
+  "requirement": "免許(特級・1級・2級)技能溝習 修了者",
+  "legal_basis": "ボイラー則24、25",
+  "page": 4,
+  "requirement_type": "免許",
+  "logistics_relevant": false
+ },
+ {
+  "category": "ボイラー・圧力容器等",
+  "role": "ボイラー取扱者",
+  "work": "ボイラーを取扱う業務",
+  "requirement": "免許(特級・1級・2級)技能講習 修了者",
+  "legal_basis": "安衛令20(3)",
+  "page": 4,
+  "requirement_type": "免許/技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "ボイラー・圧力容器等",
+  "role": "ボイラー取扱者",
+  "work": "小型ボイラーを取扱う業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(14)",
+  "page": 4,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "ボイラー・圧力容器等",
+  "role": "第一種圧力容器取扱作業主 任者",
+  "work": "化学設備に係る第一種圧力容器の取扱い作業",
+  "requirement": "技能講習修了者(化学一圧)",
+  "legal_basis": "ボイラー則62-1、63",
+  "page": 4,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "ボイラー・圧力容器等",
+  "role": "第一種圧力容器取扱作業主 任者",
+  "work": "化学設備に係る第一種圧力容器の取扱い作業以外の作 業",
+  "requirement": "ボイラー技士免許技能講習修 了者(化学・普通一圧)",
+  "legal_basis": "ボイラー則62-1、63",
+  "page": 4,
+  "requirement_type": "免許/技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "ボイラー・圧力容器等",
+  "role": "ボイラー等の溶接作業者",
+  "work": "ボイラー・第一種圧力容器の溶接の業務",
+  "requirement": "免許(特別・普通)",
+  "legal_basis": "安衛令20(4)",
+  "page": 4,
+  "requirement_type": "免許",
+  "logistics_relevant": false
+ },
+ {
+  "category": "ボイラー・圧力容器等",
+  "role": "ボイラー据付作業指揮者",
+  "work": "ボイラー据付の作業",
+  "requirement": "必要な能力を有すると認められ る者",
+  "legal_basis": "ボイラー則16、17",
+  "page": 4,
+  "requirement_type": "その他",
+  "logistics_relevant": false
+ },
+ {
+  "category": "ボイラー・圧力容器等",
+  "role": "ボイラー等の整備作業者",
+  "work": "ボイラー・第一種圧力容器の整備の業務",
+  "requirement": "免許(ボイラー整備士)",
+  "legal_basis": "安衛令20(5)",
+  "page": 4,
+  "requirement_type": "免許",
+  "logistics_relevant": false
+ },
+ {
+  "category": "ボイラー・圧力容器等",
+  "role": "特殊化学設備作業者",
+  "work": "特殊化学設備の取扱い、整備及び修理の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(27)",
+  "page": 4,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "高気圧作業",
+  "role": "高圧室内作業主任者",
+  "work": "高圧室内作業(潜函工法その他の圧気工法により、大気圧 を超える気圧下の作業室又はシャフトの内部において行う 作業)",
+  "requirement": "免許",
+  "legal_basis": "高圧則10",
+  "page": 4,
+  "requirement_type": "免許",
+  "logistics_relevant": false
+ },
+ {
+  "category": "高気圧作業",
+  "role": "圧縮機操作係員",
+  "work": "作業室及び気こう室へ送気するための空気圧縮機を運転 する業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(20の2) 高圧則11",
+  "page": 4,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "高気圧作業",
+  "role": "送気調節係員",
+  "work": "作業室又は潜水作業者への送気の調節を行うためのバル ブ又はコックの操作",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(21・23) 高圧則11",
+  "page": 4,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "高気圧作業",
+  "role": "加減圧係員",
+  "work": "気こう室への送気又は気こう室からの排気の調節を行うた めのバルブ又はコックの操作",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(22) 高圧則11",
+  "page": 4,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "高気圧作業",
+  "role": "再圧室操作係員",
+  "work": "再圧室を操作する業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(24) 高圧則11",
+  "page": 4,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "高気圧作業",
+  "role": "高圧室内作業者",
+  "work": "高圧室内作業に係る業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(24)の2 高圧則11",
+  "page": 4,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "高気圧作業",
+  "role": "潜水士",
+  "work": "潜水器を用い、かつ、空気圧縮機若しくは手押しポンプに よる送気又はボンベからの給気を受けて、水中において行 う業務",
+  "requirement": "免許(潜水士)",
+  "legal_basis": "安衛令20(9) 高圧則12",
+  "page": 4,
+  "requirement_type": "免許",
+  "logistics_relevant": false
+ },
+ {
+  "category": "ロボット",
+  "role": "ロボットヘの教示等作業者",
+  "work": "ロボットへの教示等の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(31)",
+  "page": 4,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "ロボット",
+  "role": "ロボットの検査等の作業者",
+  "work": "ロボットの検査、修理若しくは調整等の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(32)",
+  "page": 4,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "空気充填",
+  "role": "タイヤの空気充填作業者",
+  "work": "自動車用タイヤの組立てに係る業務のうち、空気圧縮機を 用いてタイヤに空気を充填する業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(33)",
+  "page": 4,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "放射線等",
+  "role": "エックス線作業主任者",
+  "work": "放射線業務にかかる作業",
+  "requirement": "免許",
+  "legal_basis": "電離則46、47",
+  "page": 4,
+  "requirement_type": "免許",
+  "logistics_relevant": false
+ },
+ {
+  "category": "放射線等",
+  "role": "ガンマ線透過写真撮影作業 主任者",
+  "work": "ガンマ線照射装置を用いて行う透過写真の撮影の作業",
+  "requirement": "免許",
+  "legal_basis": "電離則52-2、-3",
+  "page": 4,
+  "requirement_type": "免許",
+  "logistics_relevant": false
+ },
+ {
+  "category": "放射線等",
+  "role": "エックス線等透過写真撮影者",
+  "work": "エックス線装置又はガンマ線照射装置を用いて行う透過写 真の撮影の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(28)",
+  "page": 4,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "放射線等",
+  "role": "核燃料物質等取扱業務従事 者",
+  "work": "加工施設、再処理施設又は使用施設等の管理区域内に おいて核燃料物質若しくは使用済燃料又はこれらによって 汚染された物を取扱う業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛令36(28-2)",
+  "page": 4,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "放射線等",
+  "role": "核燃料物質等取扱業務従事 者",
+  "work": "原子炉施設の管理内において、核燃料物質若しくは使用 済燃料またはこれらによって汚染された物を取扱う業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(28-3)",
+  "page": 4,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "製材木工",
+  "role": "木材加工用機械作業主任者",
+  "work": "木材加工用機械5台以上(自動送材車式帯のこ盤が含まれ ている場合は3台以上)有する事業場において行う当該機 械による作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛則129、130",
+  "page": 5,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "乾燥設備",
+  "role": "乾燥設備作業主任者",
+  "work": "次に掲げる設備による物の加熱乾燥の作業 イ 乾燥設備のうち、危険物等に係る設備で、内容積が1 立方メートル以上のもの ロ 乾燥設備のうち、イの危険物等以外の物に係る設備 で、熱源として燃料を使用するもの(その最大消費量が固 体燃料にあっては毎時10kg以上、液体燃料にあっては毎 時10リットル以上、気体燃料にあっては毎時1立方メートル 以上)又は熱源として電力を使用するもの(定格消費電力 が10kW以上のものに限る)",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛則297、298",
+  "page": 5,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "採石",
+  "role": "採石のための掘削作業主任 者",
+  "work": "掘削面の高さが2m以上となる採石法第2条に規定する岩 石の採取のための掘削の作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛則403、404",
+  "page": 5,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "採石",
+  "role": "発破技士",
+  "work": "発破の業務(せん孔、装てん、結線、点火並びに不発の装 薬又は残薬の点検及び処理)",
+  "requirement": "免許(発破技士)",
+  "legal_basis": "安衛令20(1) 安衛則318",
+  "page": 5,
+  "requirement_type": "免許",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設工事",
+  "role": "コンクリート破砕器作業主任 者",
+  "work": "コンクリート破砕器を使用する破砕の作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛則321-3・-4",
+  "page": 5,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設工事",
+  "role": "地山の掘削及び土止め支保 工作業主任者",
+  "work": "掘削面の高さが2m以上となる地山の掘削及び土止め支保 工の切りばり又は腹おこしの取付け取りはずしの作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛則359、360、 374、375",
+  "page": 5,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設工事",
+  "role": "ずい道等の掘削作業主任者",
+  "work": "ずい道等の掘削、ずり積み、ずい道支保工の組立て、ロッ クボルトの取付け又はコンクリート等の吹付けの作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛則383-2・-3",
+  "page": 5,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設工事",
+  "role": "ずい道等の覆工作業主任者",
+  "work": "ずい道型わく支保工の組立て、移動、解体、コンクリートの 打設等ずい道等の覆工の作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛則383-4・-5",
+  "page": 5,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設工事",
+  "role": "ずい道内作業者",
+  "work": "ずい道等の掘削、覆工等の作業",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(30)",
+  "page": 5,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設工事",
+  "role": "型わく支保工の組立て等作 業主任者",
+  "work": "型わく支保工の組立て又は解体の作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛則246、247",
+  "page": 5,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設工事",
+  "role": "足場の組立て等作業主任者",
+  "work": "つり足場、張出し足場又は高さが5m以上の構造の足場の 組立て、解体又は変更の作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛則565、566",
+  "page": 5,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設工事",
+  "role": "足場の組立て作業等作業",
+  "work": "足場の組立て、解体又は変更の作業にかかる業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(39)",
+  "page": 5,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設工事",
+  "role": "建築物等の鉄骨の組立て等 作業主任者",
+  "work": "建築物の骨組み又は塔であって、金属製の部材により構 成されるもの(その高さが5m以上であるものに限る。)の組 立て、解体又は変更の作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛則517-4、-5",
+  "page": 5,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設工事",
+  "role": "鋼橋架設等作業主任者",
+  "work": "橋梁の上部構造であって、金属製の部材により構成される もの(その高さが5mであるもの又は当該上部構造のうち橋 梁の支間が30m以上である部分に限る。)の架設、解体又 は変更の作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛則517-8、-9",
+  "page": 5,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設工事",
+  "role": "木造建築物の組立て等作業 主任者",
+  "work": "軒高5m以上の木造建築物の構造部材の組立て、屋根下 地、外壁下地の取付けの作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛則517-12、-13",
+  "page": 5,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設工事",
+  "role": "コンクリート造の工作物の解 体等作業主任者",
+  "work": "高さ5m以上のコンクリート造の工作物の解体又は破壊の 作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛則517-17、-18",
+  "page": 5,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設工事",
+  "role": "コンクリート橋架設等作業主 任者",
+  "work": "橋梁の上部構造であって、コンクリート造のもの(その高さ が5m以上のもの又は当該上部構造のうち橋梁の支間が 30m以上である部分に限る。)の架設又は変更の作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "安衛則517-22、-23",
+  "page": 5,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設工事",
+  "role": "発破技士",
+  "work": "発破の業務(せん孔、装てん、結線、点火並びに不発の装 薬又は残薬の点検及び処理)",
+  "requirement": "免許(発破技士)",
+  "legal_basis": "安衛令20(1) 安衛則318",
+  "page": 5,
+  "requirement_type": "免許",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設工事",
+  "role": "ロープ高所作業",
+  "work": "高さが2m以上の箇所であって、作業床を設けることが困難 なところにおいて、昇降器具を用いて、労働者が当該昇降 器具により身体を保持しつつ行う作業に係る業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(40)",
+  "page": 5,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "建設工事",
+  "role": "墜落制止用器具",
+  "work": "高さが2m以上の個所であって、作業床を設けることが困難 なところにおいて、墜落制止用器具のうちフルハーネス型 のものを用いて行う作業にかかる業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(41)",
+  "page": 5,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "有害物質",
+  "role": "特定化学物質及び四アルキ ル鉛等作業主任者",
+  "work": "特定化学物質を製造し、又は取扱う作業 四アルキル鉛等に係る作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "特化則27、28 四アルキル則14、15",
+  "page": 6,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "有害物質",
+  "role": "鉛作業主任者",
+  "work": "鉛業務(遠隔操作によって行う隔離室におけるものを除く。) に係る作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "鉛則33、34",
+  "page": 6,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "有害物質",
+  "role": "石綿作業主任者",
+  "work": "特定石綿等を製造し、又は取り扱う作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "石綿則19",
+  "page": 6,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "有害物質",
+  "role": "石綿取り扱い作業者",
+  "work": "石綿等が使用されている建築物又は工作物の解体等の作 業",
+  "requirement": "特別教育修了者",
+  "legal_basis": "石綿則27",
+  "page": 6,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "有害物質",
+  "role": "四アルキル鉛作業者",
+  "work": "四アルキル鉛を取り扱う等の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(25) 四アルキル則21",
+  "page": 6,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "有害物質",
+  "role": "有機溶剤作業主任者",
+  "work": "屋内作業場、タンク等で有機溶剤とそれの含有量が5%を 超えるものを取扱う作業",
+  "requirement": "技能講習修了者",
+  "legal_basis": "有機則19、19-2",
+  "page": 6,
+  "requirement_type": "技能講習",
+  "logistics_relevant": false
+ },
+ {
+  "category": "有害物質",
+  "role": "廃棄物処理施設作業従事者",
+  "work": "廃棄物処理施設において、ばいじん及び焼却灰その他の 燃え殻を取扱う業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(34)",
+  "page": 6,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "有害物質",
+  "role": "廃棄物処理施設作業従事者",
+  "work": "廃棄物処理施設に設置された廃棄物焼却炉、集じん機等 の設備の保守点検等の業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(35)",
+  "page": 6,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ },
+ {
+  "category": "有害物質",
+  "role": "廃棄物処理施設作業従事者",
+  "work": "廃棄物処理施設に設置された廃棄物焼却炉、集じん機等 の解体等の業務及びこれに伴うばいじん及び焼却灰その 他の燃え殻を取扱う業務",
+  "requirement": "特別教育修了者",
+  "legal_basis": "安衛則36(36)",
+  "page": 6,
+  "requirement_type": "特別教育",
+  "logistics_relevant": false
+ }
+]
