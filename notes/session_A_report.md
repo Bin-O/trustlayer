@@ -5,7 +5,7 @@
 - 成果物：`create_obligations_master.sql`（2026-11-10 WB が SQL Editor で実行済み）、`lib/obligationMaster.ts`（新規）、
   `app/employees/[id]/page.tsx`・`lib/industry/{types.ts,packages/manufacturing.ts,packages/transport.ts}`（変更）、
   `verify_obligations_migration.mjs`（画面検証スクリプト・新規）
-- 状態：**SQL 実行済み → コード移行済み → データ同値 PASS → 画面検証 (a)(b) PASS → コミット済み（未 push）**
+- 状態：**SQL 実行済み → コード移行済み → データ同値 PASS → 画面検証 (a)(b) PASS → コミット 2e3efaa・afddb89（資産3ファイル）→ push 済み（2026-11-11 WB）**
 
 ---
 
