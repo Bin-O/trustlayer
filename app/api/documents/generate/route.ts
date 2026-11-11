@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import { generateKoyouJoken } from '@/lib/documents/generator'
 import { generateKoyouJokenTemplate } from '@/lib/documents/generatorKoyouJokenTemplate'
 import { generateTodokeJokenHenkou } from '@/lib/documents/generatorExcel'
@@ -98,6 +98,11 @@ function calcStats(
 }
 
 export async function POST(req: NextRequest) {
+  // ログインユーザーの cookie で動くクライアント（authenticated ロールで RLS 適用）
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+
   const body = await req.json()
   const { documentId, workerId, changeDate, changedSections, termination, newContract, fiscalYear, supportRecordId } = body
 
@@ -105,12 +110,6 @@ export async function POST(req: NextRequest) {
   if (!documentId || (!workerId && documentId !== 'teiki_hokoku')) {
     return NextResponse.json({ error: 'documentId と workerId は必須です' }, { status: 400 })
   }
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false } }
-  )
 
   // 生成履歴を記録（未対応の届出判定に使用）。失敗しても文書生成自体は成功として返す
   const recordGeneration = async (docId: string, wId: string | null) => {

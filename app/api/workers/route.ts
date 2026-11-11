@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 
 const ORG_ID = '11111111-1111-1111-1111-111111111111'
 
 export async function POST(req: NextRequest) {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    key,
-    { auth: { persistSession: false } }
-  )
+  // ログインユーザーの cookie で動くクライアント（authenticated ロールで RLS 適用）
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
 
   try {
     const body = await req.json()
